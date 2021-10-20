@@ -1,0 +1,55 @@
+#dtoverlay=pi3-disable-bt
+#dtoverlay=pi3-disable-wifi
+
+disable_splash=1
+
+dtparam=i2c_arm=on
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=on
+disable_audio_dither=1
+audio_pwm_mode=2
+
+[all]
+#dtoverlay=vc4-fkms-v3d
+gpu_mem_256=128
+gpu_mem_512=256
+gpu_mem_1024=256
+overscan_scale=1
+
+#Set GPIO pins to glorious 24-Bit DPI Mode 7
+#GPIO 0 and 1 needed for DPI Clock and Data Enable
+gpio=0=a2,np
+gpio=1=a2,np
+#Set GPIO pins 2 and 3 to I2C Mode. These can be used for other things, if needed.
+gpio=2=a0,np
+gpio=3=a0,np
+#Set up color pins
+gpio=4=a2,np
+gpio=5=a2,np
+gpio=6=a2,np
+gpio=7=a2,np
+gpio=8=a2,np
+gpio=9=a2,np
+gpio=10=a2,np
+gpio=11=a2,np
+gpio=12=a2,np //this might end up being an audio pin
+gpio=13=a2,np
+gpio=14=a2,np
+gpio=15=a2,np
+gpio=16=a2,np
+gpio=17=a2,np
+gpio=18=a2,np
+gpio=19=a2,np
+gpio=20=a2,np
+gpio=21=a2,np
+gpio=22=a2,np
+gpio=23=a2,np
+gpio=24=a2,np
+gpio=25=a2,np
+gpio=26=a2,np
+gpio=27=a2,np
+
+dtoverlay=gpio-shutdown,gpio_pin=44,debounce=100
+
+include lcd.txt
