@@ -1,0 +1,17 @@
+/*
+ * disable-pcie-overlay.dts
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&pcie0>;
+		__overlay__  {
+			status = "disabled";
+		};
+	};
+};
