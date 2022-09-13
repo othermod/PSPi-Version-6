@@ -1,4 +1,4 @@
-# PSPi Version 6
+# PSPi Version 6 (Compatible with Raspberry Pi Zero/Zero 2 and Raspberry Pi Compute Module 4)
 ![PSPi Zero](https://othermod.com/wp-content/uploads/IMG_8727.jpg)
 
 ### Option 1 - Installation Instructions Using Image
