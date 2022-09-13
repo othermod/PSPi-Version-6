@@ -1,0 +1,2 @@
+SUBSYSTEM=="usb", ATTR{product}=="i2c-tiny-usb", RUN+="/sbin/modprobe -b i2c-dev"
+SUBSYSTEM=="i2c-dev", DRIVERS=="i2c-tiny-usb", MODE="0660", GROUP="dialout"
