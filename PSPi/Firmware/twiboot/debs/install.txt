@@ -1,3 +1,0 @@
-sudo dpkg -i binutils-avr_2.26.20160125+Atmel3.6.1-4_armhf.deb
-sudo dpkg -i gcc-avr_1%3a5.4.0+Atmel3.6.1-2_armhf.deb
-sudo dpkg -i avr-libc_1%3a2.0.0+Atmel3.6.1-2_all.deb
