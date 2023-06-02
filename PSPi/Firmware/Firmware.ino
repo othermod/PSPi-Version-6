@@ -1,106 +1,131 @@
-#include <Wire.h>
+#define BACKLIGHT_ADDRESS 0x72
 
-#define I2C_ADDRESS 0x10
+// I had issues when setting values close to the minimum
+#define tSTART 10 // minimum of 2 microseconds
+#define tEOS 10 // minimum of 2 microseconds
+#define tH_LB 10 // minimum of 2 microseconds
+#define tH_HB 25 // minimum of 4 microseconds
+#define tL_LB 25 // minimum of 4 microseconds
+#define tL_HB 10 // minimum of 2 microseconds
 
-// Digital Input Port B
-#define SET_PORTB_PINS_AS_INPUTS DDRB &= B00000000
-#define ENABLE_PULLUPS_ON_PORTB  PORTB = B11111111
-#define READ_PORTB_PINS          PINB
+#define toff 3000 // minimum of 2500 microseconds to reset the chip
 
-// Digital Input Port D
-#define SET_PORTD_PINS_AS_INPUTS DDRD &= B00000000
-#define ENABLE_PULLUPS_ON_PORTD  PORTD = B11111111
-#define READ_PORTD_PINS          PIND
+#define tes_win 1000 // microseconds
 
-#define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
-#define ANALOG_PIN1 0
-#define ANALOG_PIN2 1
-#define ANALOG_PIN3 2
-#define ANALOG_PIN4 3
-#define ANALOG_PIN5 6
-#define ANALOG_PIN6 7
+#define PB1_LOW PORTB &= B11111101
+#define PB1_HIGH PORTB |= B00000010
 
-unsigned long previousMillis = 0;
-const long interval = 10; // interval at which to blink (milliseconds)
+byte brightness = 15;
 
-uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
-uint8_t debouncePortD[8] = {0};
+void setup() {
+//        LEFT_SWITCH
+//        |EN_5V0
+//        ||SHIFT_CLOCK
+//        |||SHIFT_DATA_BUFFERED
+//        ||||PWM_ORANGE_LCD
+//        |||||OPEN1
+//        ||||||PWM_LCD
+//        |||||||BTN_DISPLAY
+//        ||||||||
+  DDRB = B00000010; // set PORTB (0 is input, 1 is output)
+  
+//        EN_AUDIO
+//        |LED_LEFT_GPIO
+//        ||BTN_HOLD
+//        |||EN_SYS_MEGA
+//        ||||SHIFT_LATCH
+//        |||||AUDIO_GAIN_0
+//        ||||||AUDIO_GAIN_1
+//        |||||||BTN_SD
+//        ||||||||
+  DDRD = B00000000; // set PORTD (0 is input, 1 is output)
+  PORTB = B11111111; // set PORTD (0 is low, 1 is high)
+  PORTD = B11111111;
 
-struct I2C_Structure { // define the structure layout for transmitting I2C data to the Raspberry Pi
-  uint8_t buttonsPortB; // button status
-  uint8_t buttonsPortD; // button status
-  uint8_t analog1;
-  uint8_t analog2;
-  uint8_t analog3;
-  uint8_t analog4;
-  uint8_t analog5;
-  uint8_t analog6;
-};
+  // Startup sequence for EasyScale mode
+  PB1_LOW; // LOW
+  delayMicroseconds(toff);
 
-I2C_Structure I2C_data; // create the structure for the I2C data
-
-void requestEvent(){
-  Wire.write((char*) &I2C_data, sizeof(I2C_data)); // send the data to the Pi
+  // both of these must occur within 1000 microseconds of resetting the chip
+  PB1_HIGH; // HIGH
+  delayMicroseconds(150); // keep CTRL high for more than 100 microseconds
+  PB1_LOW; // LOW
+  delayMicroseconds(300); // drive CTRL low for more than 260 microseconds
+  setBrightness(brightness); // set the initial brightness of 50%
 }
 
-void readButtons(){
-  //Pin registers are accessed directly. This reads all 8 GPIOs on each register with one command.
-  byte readingB = ~READ_PORTB_PINS; // read the pins and invert them, so that a 1 means pushed
-  byte readingD = ~READ_PORTD_PINS;
+void setBrightness(byte brightness) { // can be 0-31, 0 must be handled correctly
+  startCondition();
+  sendByte(BACKLIGHT_ADDRESS); 
+  endOfStream();
+  startCondition();
+  sendByte(brightness);
+  endOfStream();
+  PB1_HIGH; // leave CTRL_PIN in a HIGH state
+}
 
-  byte i;
-  for(i=0;i<8;i++) {
-    // for port B buttons
-    if ((readingB >> i) & 1) {            // if this button is pressed
-      debouncePortB[i] = DEBOUNCE_CYCLES; // begin the debounce function for this button
-    }
-    else {                                // if this button is not pressed
-      if (debouncePortB[i]) {             // if debounce function is active ( > 0)
-        debouncePortB[i]--;               // decrement the debounce function
-        readingB = readingB|(1<<i);       // keep this pin pressed
-      }
-    }
-    // for port D buttons
-    if ((readingD >> i) & 1){             // if this button is pressed
-      debouncePortD[i] = DEBOUNCE_CYCLES; // begin the debounce function for this button
-    }
-    else {                                // if this button is not pressed
-      if (debouncePortD[i]) {             // if debounce function is active ( > 0)
-        debouncePortD[i]--;               // decrement the debounce function
-        readingD = readingD|(1<<i);       // keep this pin pressed
-      }
-    }
+void startCondition() {
+  PB1_HIGH; // HIGH
+  delayMicroseconds(tSTART);
+}
+
+void endOfStream() {
+  PB1_LOW; // LOW
+  delayMicroseconds(tEOS);
+}
+
+void sendBit(bool bit) {
+  if (bit) { // Send High Bit
+    PB1_LOW; // LOW
+    delayMicroseconds(tL_HB);
+    PB1_HIGH; // HIGH
+    delayMicroseconds(tH_HB);
+  } else { // Send Low Bit
+    PB1_LOW; // LOW
+    delayMicroseconds(tL_LB);
+    PB1_HIGH; // HIGH
+    delayMicroseconds(tH_LB);
   }
-  I2C_data.buttonsPortB = readingB; // copy the completed readings into the i2c variable to be read by the Raspberry Pi
-  I2C_data.buttonsPortD = readingD;
 }
 
-void readAnalog(){
-  I2C_data.analog1=(analogRead(ANALOG_PIN1) >> 2); // read the ADCs, and reduce from 10 to 8 bits
-  I2C_data.analog2=(analogRead(ANALOG_PIN2) >> 2);
-  I2C_data.analog3=(analogRead(ANALOG_PIN3) >> 2);
-  I2C_data.analog4=(analogRead(ANALOG_PIN4) >> 2);
-  I2C_data.analog5=(analogRead(ANALOG_PIN5) >> 2);
-  I2C_data.analog6=(analogRead(ANALOG_PIN6) >> 2);
+void sendByte(byte dataByte) {
+  for (int i = 7; i >= 0; i--) {
+    sendBit(bitRead(dataByte, i));
+  }
 }
 
-void setup(){
-  Wire.begin(I2C_ADDRESS);  // join i2c bus
-  Wire.onRequest(requestEvent); // register event
-  SET_PORTB_PINS_AS_INPUTS;
-  ENABLE_PULLUPS_ON_PORTB;
-  SET_PORTD_PINS_AS_INPUTS;
-  ENABLE_PULLUPS_ON_PORTD;
+byte inputsB;
+byte inputsD;
+bool displayChangeActive = 0;
+
+#define BTN_DISPLAY bitRead(inputsB,0)
+#define BTN_OPEN1 bitRead(inputsB,2)
+#define BTN_LEFT_SWITCH bitRead(inputsB,7)
+#define BTN_SD bitRead(inputsB,0)
+#define EN_SYS_MEGA bitRead(inputsD,4)
+#define BTN_HOLD bitRead(inputsB,5)
+
+void scanArduinoInputs() {
+  //scan the GPIOs that are used for input
+  inputsB = PINB;
+  inputsD = PINB;
+  if (!BTN_DISPLAY) {
+      displayChangeActive = 1;
+    } else {
+      if (displayChangeActive == 1) {
+        brightness = brightness + 4;
+      if (brightness > 31) {
+        brightness = 1;
+      }
+      displayChangeActive = 0;
+      setBrightness(brightness);
+      }
+    }
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time the loop was executed
-    previousMillis = currentMillis;
-
-    // Your functions here
-    readButtons();
-    readAnalog();
-  }
+  scanArduinoInputs();
+  //scanShiftRegisters();
+  
+  delay(10); // Delay for 1 second
 }
