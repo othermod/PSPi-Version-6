@@ -1,5 +1,10 @@
+#include <Wire.h>
+#include <SPI.h>
+
+#define I2C_ADDRESS 0x10
 #define BACKLIGHT_ADDRESS 0x72
 
+// LCD backlight chip timings
 // I had issues when setting values close to the minimum
 #define tSTART 10 // minimum of 2 microseconds
 #define tEOS 10 // minimum of 2 microseconds
@@ -7,109 +12,142 @@
 #define tH_HB 25 // minimum of 4 microseconds
 #define tL_LB 25 // minimum of 4 microseconds
 #define tL_HB 10 // minimum of 2 microseconds
-
 #define toff 3000 // minimum of 2500 microseconds to reset the chip
 
-#define tes_win 1000 // microseconds
+// Define all of the GPIO pins in a way that the macro can read
+#define BTN_DISPLAY B,0
+#define ONEWIRE_LCD B,1
+#define OPEN1 B,2
+#define PWM_LED_ORANGE B,3
+#define SHIFT_DATA_IN B,4
+#define CLOCK B,5
+#define EN_5V0 B,6
+#define LEFT_SWITCH B,7
 
-#define PB1_LOW PORTB &= B11111101
-#define PB1_HIGH PORTB |= B00000010
+#define BTN_SD D,0
+#define AUDIO_GAIN_1 D,1
+#define AUDIO_GAIN_0 D,2
+#define SHIFT_LOAD D,3
+#define EN_SYS_MEGA D,4
+#define BTN_HOLD D,5
+#define LED_LEFT_GPIO D,6
+#define EN_AUDIO D,7
+
+// Create a macros to directly read and write GPIO pins
+#define WRITE_PIN_HELPER(port, pin, state) \
+  do { \
+    if (state == HIGH) PORT ## port |= (1 << pin); \
+    else PORT ## port &= ~(1 << pin); \
+  } while (0)
+
+#define writePin(pinAndPort, state) WRITE_PIN_HELPER(pinAndPort, state)
+
+#define READ_PIN_HELPER(port, pin) ((PIN ## port >> pin) & 1)
+
+#define readPin(pinAndPort) READ_PIN_HELPER(pinAndPort)
+
+#define SET_PIN_DIR_HELPER(port, pin, mode) \
+  do { \
+    if (mode == OUTPUT) DDR ## port |= (1 << pin); \
+    else DDR ## port &= ~(1 << pin); \
+  } while (0)
+
+#define setPinDirection(pinAndPort, mode) SET_PIN_DIR_HELPER(pinAndPort, mode)
+
+#define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
+
+#define ANALOG_PIN1 0
+#define ANALOG_PIN2 1
+#define ANALOG_PIN3 2
+#define ANALOG_PIN4 3
+#define ANALOG_PIN5 6
+#define ANALOG_PIN6 7
 
 byte brightness = 15;
 
 void setup() {
-//        LEFT_SWITCH
-//        |EN_5V0
-//        ||SHIFT_CLOCK
-//        |||SHIFT_DATA_BUFFERED
-//        ||||PWM_ORANGE_LCD
-//        |||||OPEN1
-//        ||||||PWM_LCD
-//        |||||||BTN_DISPLAY
-//        ||||||||
-  DDRB = B00000010; // set PORTB (0 is input, 1 is output)
-  
-//        EN_AUDIO
-//        |LED_LEFT_GPIO
-//        ||BTN_HOLD
-//        |||EN_SYS_MEGA
-//        ||||SHIFT_LATCH
-//        |||||AUDIO_GAIN_0
-//        ||||||AUDIO_GAIN_1
-//        |||||||BTN_SD
-//        ||||||||
-  DDRD = B00000000; // set PORTD (0 is input, 1 is output)
-  PORTB = B11111111; // set PORTD (0 is low, 1 is high)
+  // These and the macro will go away once pin states are verified, and I will just do this once with a single command for each port
+  setPinDirection(BTN_DISPLAY, INPUT);
+  setPinDirection(ONEWIRE_LCD, OUTPUT);
+  setPinDirection(OPEN1, INPUT);
+  setPinDirection(PWM_LED_ORANGE, OUTPUT);
+  setPinDirection(SHIFT_DATA_IN, INPUT);
+  setPinDirection(CLOCK, OUTPUT);
+  setPinDirection(EN_5V0, OUTPUT);
+  setPinDirection(LEFT_SWITCH, INPUT);
+
+  setPinDirection(BTN_SD, INPUT);
+  setPinDirection(AUDIO_GAIN_1, OUTPUT);
+  setPinDirection(AUDIO_GAIN_0, OUTPUT);
+  setPinDirection(SHIFT_LOAD, OUTPUT);
+  setPinDirection(EN_SYS_MEGA, OUTPUT);
+  setPinDirection(BTN_HOLD, INPUT);
+  setPinDirection(LED_LEFT_GPIO, OUTPUT);
+  setPinDirection(EN_AUDIO, OUTPUT);
+
+  PORTB = B11111111; // set PORTD (0 is low, 1 is high) // this is temporary
   PORTD = B11111111;
 
+  Wire.begin(I2C_ADDRESS);  // join i2c bus
+  Wire.onRequest(requestEvent); // register event
+  SPI.begin();
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setDataMode(SPI_MODE0);
+  
+  // Set the 74HC165D initial condition
+  writePin(SHIFT_LOAD, HIGH);
+
   // Startup sequence for EasyScale mode
-  PB1_LOW; // LOW
+  writePin(ONEWIRE_LCD, LOW); // LOW
   delayMicroseconds(toff);
 
   // both of these must occur within 1000 microseconds of resetting the chip
-  PB1_HIGH; // HIGH
+  writePin(ONEWIRE_LCD, HIGH);
   delayMicroseconds(150); // keep CTRL high for more than 100 microseconds
-  PB1_LOW; // LOW
+  writePin(ONEWIRE_LCD, LOW);
   delayMicroseconds(300); // drive CTRL low for more than 260 microseconds
   setBrightness(brightness); // set the initial brightness of 50%
 }
 
 void setBrightness(byte brightness) { // can be 0-31, 0 must be handled correctly
-  startCondition();
-  sendByte(BACKLIGHT_ADDRESS); 
-  endOfStream();
-  startCondition();
+  sendByte(BACKLIGHT_ADDRESS); // just combine this into the sendByte function, since address must be sent?
   sendByte(brightness);
-  endOfStream();
-  PB1_HIGH; // leave CTRL_PIN in a HIGH state
-}
-
-void startCondition() {
-  PB1_HIGH; // HIGH
-  delayMicroseconds(tSTART);
-}
-
-void endOfStream() {
-  PB1_LOW; // LOW
-  delayMicroseconds(tEOS);
+  writePin(ONEWIRE_LCD, HIGH);
 }
 
 void sendBit(bool bit) {
   if (bit) { // Send High Bit
-    PB1_LOW; // LOW
+    writePin(ONEWIRE_LCD, LOW);
     delayMicroseconds(tL_HB);
-    PB1_HIGH; // HIGH
+    writePin(ONEWIRE_LCD, HIGH);
     delayMicroseconds(tH_HB);
   } else { // Send Low Bit
-    PB1_LOW; // LOW
+    writePin(ONEWIRE_LCD, LOW);
     delayMicroseconds(tL_LB);
-    PB1_HIGH; // HIGH
+    writePin(ONEWIRE_LCD, HIGH);
     delayMicroseconds(tH_LB);
   }
 }
 
 void sendByte(byte dataByte) {
+  writePin(ONEWIRE_LCD, HIGH); // HIGH start condition
+  delayMicroseconds(tSTART);
   for (int i = 7; i >= 0; i--) {
     sendBit(bitRead(dataByte, i));
   }
+  writePin(ONEWIRE_LCD, LOW); // LOW end condition
+  delayMicroseconds(tEOS);
 }
 
 byte inputsB;
 byte inputsD;
 bool displayChangeActive = 0;
 
-#define BTN_DISPLAY bitRead(inputsB,0)
-#define BTN_OPEN1 bitRead(inputsB,2)
-#define BTN_LEFT_SWITCH bitRead(inputsB,7)
-#define BTN_SD bitRead(inputsB,0)
-#define EN_SYS_MEGA bitRead(inputsD,4)
-#define BTN_HOLD bitRead(inputsB,5)
-
 void scanArduinoInputs() {
   //scan the GPIOs that are used for input
   inputsB = PINB;
   inputsD = PINB;
-  if (!BTN_DISPLAY) {
+  if (!readPin(BTN_DISPLAY)) { // Probably a better idea to store the 8 pins into a variable and check that instead
       displayChangeActive = 1;
     } else {
       if (displayChangeActive == 1) {
@@ -123,9 +161,62 @@ void scanArduinoInputs() {
     }
 }
 
+unsigned long previousMillis = 0;
+const long interval = 10; // interval at which to blink (milliseconds)
+
+uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
+uint8_t debouncePortD[8] = {0};
+
+struct I2C_Structure { // define the structure layout for transmitting I2C data to the Raspberry Pi
+  uint8_t buttonA; // button status
+  uint8_t buttonB; // button status
+  uint8_t analog1;
+  uint8_t analog2;
+  uint8_t analog3;
+  uint8_t analog4;
+  uint8_t analog5;
+  uint8_t analog6;
+};
+
+I2C_Structure I2C_data; // create the structure for the I2C data
+
+void requestEvent(){
+  Wire.write((char*) &I2C_data, sizeof(I2C_data)); // send the data to the Pi
+}
+
+void scanShiftRegisters(){
+  // Prepare 74HC165D for parallel load
+  writePin(SHIFT_LOAD, LOW);
+  delayMicroseconds(5); // give some time to setup, you may not need this
+  writePin(SHIFT_LOAD, HIGH);
+
+  // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
+  byte highByte = SPI.transfer(0);
+  byte lowByte = SPI.transfer(0);
+  I2C_data.buttonA = highByte;
+  I2C_data.buttonB = lowByte;
+
+}
+
+void readAnalog(){
+  I2C_data.analog1=(analogRead(ANALOG_PIN1) >> 2); // read the ADCs, and reduce from 10 to 8 bits
+  I2C_data.analog2=(analogRead(ANALOG_PIN2) >> 2);
+  I2C_data.analog3=(analogRead(ANALOG_PIN3) >> 2);
+  I2C_data.analog4=(analogRead(ANALOG_PIN4) >> 2);
+  I2C_data.analog5=(analogRead(ANALOG_PIN5) >> 2);
+  I2C_data.analog6=(analogRead(ANALOG_PIN6) >> 2);
+}
+
 void loop() {
-  scanArduinoInputs();
-  //scanShiftRegisters();
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    // save the last time the loop was executed
+    previousMillis = currentMillis;
+
+    scanArduinoInputs();
+    scanShiftRegisters();
+    readAnalog();
+  }
   
   delay(10); // Delay for 1 second
 }
