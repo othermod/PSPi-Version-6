@@ -1056,24 +1056,22 @@ unowifi.build.extra_flags=-DESP_CH_UART -DESP_CH_UART_BR={build.esp_ch_uart_br}
 
 ##############################################################
 
-atmega328bb.name=ATmega328p on PSPi (using internal clock)
+atmega328a_nb.name=ATmega328P (8MHz Internal, No bootloader)
 
-atmega328bb.upload.protocol=arduino
-atmega328bb.upload.maximum_size=30720
-atmega328bb.upload.speed=57600
+atmega328a_nb.build.mcu=atmega328p
+atmega328a_nb.build.f_cpu=8000000L
+atmega328a_nb.build.core=arduino:arduino
+atmega328a_nb.build.variant=arduino:standard
+atmega328a_nb.build.board=atmega328p
 
-atmega328bb.bootloader.low_fuses=0xE2
-atmega328bb.bootloader.high_fuses=0xDA
-atmega328bb.bootloader.extended_fuses=0x05
-atmega328bb.bootloader.file=atmega/ATmegaBOOT_168_atmega328_pro_8MHz.hex
-atmega328bb.bootloader.unlock_bits=0x3F
-atmega328bb.bootloader.lock_bits=0x0F
+##############################################################
+ 
+atmega8a_nb.name=ATmega8A (8MHz Internal, No bootloader)
 
-atmega328bb.build.mcu=atmega328p
-atmega328bb.build.f_cpu=8000000L
-atmega328bb.build.core=arduino:arduino
-atmega328bb.build.variant=arduino:standard
-atmega328bb.build.board=atmega328p
+atmega8a_nb.build.mcu=atmega8a
+atmega8a_nb.build.f_cpu=8000000L
+atmega8a_nb.build.core=arduino:arduino
+atmega8a_nb.build.variant=arduino:standard
+atmega8a_nb.build.board=atmega8a
 
-atmega328bb.bootloader.tool=arduino:avrdude
-atmega328bb.upload.tool=arduino:avrdude
+##############################################################
