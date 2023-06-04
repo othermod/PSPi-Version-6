@@ -162,7 +162,7 @@ void scanArduinoInputs() {
 }
 
 unsigned long previousMillis = 0;
-const long interval = 10; // interval at which to blink (milliseconds)
+const long interval = 10; // ms delay between the start of each loop
 
 uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
 uint8_t debouncePortD[8] = {0};
@@ -212,11 +212,8 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     // save the last time the loop was executed
     previousMillis = currentMillis;
-
     scanArduinoInputs();
     scanShiftRegisters();
     readAnalog();
   }
-  
-  delay(10); // Delay for 1 second
 }
