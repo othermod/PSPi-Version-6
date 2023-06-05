@@ -28,7 +28,7 @@
 #define AUDIO_GAIN_1 D,1
 #define AUDIO_GAIN_0 D,2
 #define SHIFT_LOAD D,3
-#define EN_SYS_MEGA D,4
+#define DETECT_RPI D,4
 #define BTN_HOLD D,5
 #define LED_LEFT_GPIO D,6
 #define EN_AUDIO D,7
@@ -64,6 +64,7 @@
 #define ANALOG_PIN6 7
 
 byte brightness = 15;
+uint16_t detectTimeout = 0;
 
 void setup() {
   // These and the macro will go away once pin states are verified, and I will just do this once with a single command for each port
@@ -80,33 +81,32 @@ void setup() {
   setPinDirection(AUDIO_GAIN_1, OUTPUT);
   setPinDirection(AUDIO_GAIN_0, OUTPUT);
   setPinDirection(SHIFT_LOAD, OUTPUT);
-  setPinDirection(EN_SYS_MEGA, OUTPUT);
+  setPinDirection(DETECT_RPI, INPUT);
   setPinDirection(BTN_HOLD, INPUT);
   setPinDirection(LED_LEFT_GPIO, OUTPUT);
   setPinDirection(EN_AUDIO, OUTPUT);
 
-  PORTB = B11111111; // set PORTD (0 is low, 1 is high) // this is temporary
-  PORTD = B11111111;
+  PORTB = B10110111; // ONEWIRE_LCD low. disable pullup on SHIFT_DATA_IN
+  PORTD = B10010111; // AUDIO_GAIN_0, AUDIO_GAIN_1 low. disable pullup on DETECT_RPI
 
   Wire.begin(I2C_ADDRESS);  // join i2c bus
   Wire.onRequest(requestEvent); // register event
   SPI.begin();
-  SPI.setBitOrder(MSBFIRST);
-  SPI.setDataMode(SPI_MODE0);
-  
-  // Set the 74HC165D initial condition
-  writePin(SHIFT_LOAD, HIGH);
+  SPI.setBitOrder(MSBFIRST); // can this be removed?
+  (SPI_MODE0); // can this be removed?  
+  //initializeBacklight(); this doesnt need to be here, because DETECT_RPI should never be high initially and the timeout should enable it 
+}
 
+void initializeBacklight() {
   // Startup sequence for EasyScale mode
   writePin(ONEWIRE_LCD, LOW); // LOW
-  delayMicroseconds(toff);
-
+  delayMicroseconds(toff); // lcd has to be off this long to reset before initializing
   // both of these must occur within 1000 microseconds of resetting the chip
   writePin(ONEWIRE_LCD, HIGH);
   delayMicroseconds(150); // keep CTRL high for more than 100 microseconds
   writePin(ONEWIRE_LCD, LOW);
   delayMicroseconds(300); // drive CTRL low for more than 260 microseconds
-  setBrightness(brightness); // set the initial brightness of 50%
+  setBrightness(brightness); // set the brightness
 }
 
 void setBrightness(byte brightness) { // can be 0-31, 0 must be handled correctly
@@ -147,7 +147,9 @@ void scanArduinoInputs() {
   //scan the GPIOs that are used for input
   inputsB = PINB;
   inputsD = PINB;
-  if (!readPin(BTN_DISPLAY)) { // Probably a better idea to store the 8 pins into a variable and check that instead
+  // Handle Display button being pressed
+  // Probably a better idea to store the 8 pins into a variable and check that instead
+  if (!readPin(BTN_DISPLAY)) {
       displayChangeActive = 1;
     } else {
       if (displayChangeActive == 1) {
@@ -157,6 +159,23 @@ void scanArduinoInputs() {
       }
       displayChangeActive = 0;
       setBrightness(brightness);
+      }
+    }
+    // Handle Raspberry Pi not detected
+    if (!readPin(DETECT_RPI)) { //rpi isnt detected 
+      if (!detectTimeout){ // if the timeout sequence hasnt started yet, begin it by killing audio and lcd
+        writePin(EN_AUDIO, LOW);
+        writePin(ONEWIRE_LCD, LOW);
+      }
+      detectTimeout++; 
+      if (detectTimeout > 500) {  // if the timeout reaches 5 seconds, kill power
+        writePin(EN_5V0, LOW);
+      }
+    } else {
+      if (!detectTimeout){ // if the pi is detected during the timeout, enable audio and LCD
+        writePin(EN_AUDIO, HIGH); 
+        initializeBacklight(); // re-initialize and enable backlight
+        detectTimeout = 0;
       }
     }
 }
