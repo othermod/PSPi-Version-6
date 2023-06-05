@@ -33,7 +33,7 @@
 #define LED_LEFT_GPIO D,6
 #define EN_AUDIO D,7
 
-// Create a macros to directly read and write GPIO pins
+// Create macros to directly read and write GPIO pins
 #define WRITE_PIN_HELPER(port, pin, state) \
   do { \
     if (state == HIGH) PORT ## port |= (1 << pin); \
@@ -93,8 +93,8 @@ void setup() {
   Wire.onRequest(requestEvent); // register event
   SPI.begin();
   SPI.setBitOrder(MSBFIRST); // can this be removed?
-  (SPI_MODE0); // can this be removed?  
-  //initializeBacklight(); this doesnt need to be here, because DETECT_RPI should never be high initially and the timeout should enable it 
+  (SPI_MODE0); // can this be removed?
+  //initializeBacklight(); this doesnt need to be here, because DETECT_RPI should never be high initially and the timeout should enable it
 }
 
 void initializeBacklight() {
@@ -149,6 +149,7 @@ void scanArduinoInputs() {
   inputsD = PINB;
   // Handle Display button being pressed
   // Probably a better idea to store the 8 pins into a variable and check that instead
+  // also, do these pins benefit from debouncing?
   if (!readPin(BTN_DISPLAY)) {
       displayChangeActive = 1;
     } else {
@@ -161,19 +162,20 @@ void scanArduinoInputs() {
       setBrightness(brightness);
       }
     }
+    // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
     // Handle Raspberry Pi not detected
-    if (!readPin(DETECT_RPI)) { //rpi isnt detected 
+    if (!readPin(DETECT_RPI)) { //rpi isnt detected
       if (!detectTimeout){ // if the timeout sequence hasnt started yet, begin it by killing audio and lcd
         writePin(EN_AUDIO, LOW);
         writePin(ONEWIRE_LCD, LOW);
       }
-      detectTimeout++; 
+      detectTimeout++;
       if (detectTimeout > 500) {  // if the timeout reaches 5 seconds, kill power
         writePin(EN_5V0, LOW);
       }
     } else {
       if (!detectTimeout){ // if the pi is detected during the timeout, enable audio and LCD
-        writePin(EN_AUDIO, HIGH); 
+        writePin(EN_AUDIO, HIGH);
         initializeBacklight(); // re-initialize and enable backlight
         detectTimeout = 0;
       }
@@ -214,7 +216,6 @@ void scanShiftRegisters(){
   byte lowByte = SPI.transfer(0);
   I2C_data.buttonA = highByte;
   I2C_data.buttonB = lowByte;
-
 }
 
 void readAnalog(){
