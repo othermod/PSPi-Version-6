@@ -137,12 +137,13 @@ byte inputsD;
 bool displayChangeActive = 0;
 
 void scanArduinoInputs() {
-  //scan the GPIOs that are used for input
-  inputsB = PINB;
-  inputsD = PINB;
-  // Handle Display button being pressed
-  // Probably a better idea to store the 8 pins into a variable and check that instead
+  // Probably a better idea to store all the pins into a variable and cycle through them to check statuses
+  // scan the GPIOs that are used for input
   // also, do these pins benefit from debouncing?
+  inputsB = PINB;
+  inputsD = PIND;
+
+  // Handle Display button being pressed
   if (!readPin(BTN_DISPLAY)) {
       displayChangeActive = 1;
     } else {
