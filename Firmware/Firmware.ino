@@ -116,17 +116,10 @@ void setBrightness(byte brightness) { // can be 0-31, 0 must be handled correctl
 }
 
 void sendBit(bool bit) {
-  if (bit) { // Send High Bit
     writePin(ONEWIRE_LCD, LOW);
-    delayMicroseconds(tL_HB);
+    delayMicroseconds(bit ? tL_HB : tL_LB);
     writePin(ONEWIRE_LCD, HIGH);
-    delayMicroseconds(tH_HB);
-  } else { // Send Low Bit
-    writePin(ONEWIRE_LCD, LOW);
-    delayMicroseconds(tL_LB);
-    writePin(ONEWIRE_LCD, HIGH);
-    delayMicroseconds(tH_LB);
-  }
+    delayMicroseconds(bit ? tH_HB : tH_LB);
 }
 
 void sendByte(byte dataByte) {
