@@ -86,8 +86,8 @@ void setup() {
   setPinDirection(LED_LEFT_GPIO, OUTPUT);
   setPinDirection(EN_AUDIO, OUTPUT);
 
-  PORTB = B10110111; // ONEWIRE_LCD low. disable pullup on SHIFT_DATA_IN
-  PORTD = B10010111; // AUDIO_GAIN_0, AUDIO_GAIN_1 low. disable pullup on DETECT_RPI
+  PORTB = B11101101; // ONEWIRE_LCD low. disable pullup on SHIFT_DATA_IN
+  PORTD = B11101001; // AUDIO_GAIN_0, AUDIO_GAIN_1 low. disable pullup on DETECT_RPI
 
   Wire.begin(I2C_ADDRESS);  // join i2c bus
   Wire.onRequest(requestEvent); // register event
