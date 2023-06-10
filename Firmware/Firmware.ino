@@ -94,6 +94,14 @@ void setup() {
   SPI.begin();
   SPI.setBitOrder(MSBFIRST); // can this be removed?
   (SPI_MODE0); // can this be removed?
+  
+  // this disables the backlight and audio until the Pi is detected
+  enterSleep();
+  // this ensures that the backlight and audio will enable if the Pi is detected immediately at boot (CM4 mainly)
+  // this may go away if I use a different GPIO from the CM4 that stays low for a few seconds
+  // check to see what happens when reboots occur
+  detectTimeout++;
+  
   //initializeBacklight(); this doesnt need to be here, because DETECT_RPI should never be high initially and the timeout should enable it
 }
 
@@ -142,38 +150,52 @@ void scanArduinoInputs() {
   // also, do these pins benefit from debouncing?
   inputsB = PINB;
   inputsD = PIND;
+  //can put these in main or here. just do it after inputs are scanned
+  detectRPi();
+  detectDisplayButton();
+}
 
+void detectDisplayButton() {
   // Handle Display button being pressed
   if (!readPin(BTN_DISPLAY)) {
       displayChangeActive = 1;
     } else {
+      // increase the brightness when the Display button is released
       if (displayChangeActive == 1) {
-        brightness = brightness + 4;
-      if (brightness > 31) {
-        brightness = 1;
-      }
-      displayChangeActive = 0;
-      setBrightness(brightness);
+        brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
+        displayChangeActive = 0;
+        setBrightness(brightness);
       }
     }
-    // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
-    // Handle Raspberry Pi not detected
-    if (!readPin(DETECT_RPI)) { //rpi isnt detected
-      if (!detectTimeout){ // if the timeout sequence hasnt started yet, begin it by killing audio and lcd
-        writePin(EN_AUDIO, LOW);
-        writePin(ONEWIRE_LCD, LOW);
-      }
-      detectTimeout++;
-      if (detectTimeout > 500) {  // if the timeout reaches 5 seconds, kill power
-        writePin(EN_5V0, LOW);
-      }
-    } else {
-      if (!detectTimeout){ // if the pi is detected during the timeout, enable audio and LCD
-        writePin(EN_AUDIO, HIGH);
-        initializeBacklight(); // re-initialize and enable backlight
-        detectTimeout = 0;
-      }
+}
+
+void detectRPi() {
+  // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
+  // Handle Raspberry Pi not detected
+  if (!readPin(DETECT_RPI)) { //rpi isnt detected
+    if (!detectTimeout){ // if the timeout sequence hasnt started yet, begin it by killing audio and lcd
+      enterSleep();
     }
+    detectTimeout++;
+    if (detectTimeout > 500) {  // if the timeout reaches 5 seconds, kill power
+      writePin(EN_5V0, LOW);
+    }
+  } else {
+    if (detectTimeout){ // if the pi is detected during the timeout, enable audio and LCD
+      wakeFromSleep();
+      detectTimeout = 0;
+    }
+  }
+}
+
+void enterSleep() {
+  writePin(EN_AUDIO, LOW);
+  writePin(ONEWIRE_LCD, LOW);
+}
+
+void wakeFromSleep() {
+  writePin(EN_AUDIO, HIGH);
+  initializeBacklight(); // re-initialize and enable backlight
 }
 
 unsigned long previousMillis = 0;
