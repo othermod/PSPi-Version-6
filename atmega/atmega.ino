@@ -65,6 +65,26 @@
 
 byte brightness = 15;
 uint16_t detectTimeout = 0;
+byte inputsB;
+byte inputsD;
+bool displayChangeActive = 0;
+unsigned long previousMillis = 0;
+const long interval = 10; // ms delay between the start of each loop
+uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
+uint8_t debouncePortD[8] = {0};
+
+struct I2C_Structure { // define the structure layout for transmitting I2C data to the Raspberry Pi
+  uint8_t buttonA; // button status
+  uint8_t buttonB; // button status
+  uint8_t analog1;
+  uint8_t analog2;
+  uint8_t analog3;
+  uint8_t analog4;
+  uint8_t analog5;
+  uint8_t analog6;
+};
+
+I2C_Structure I2C_data; // create the structure for the I2C data
 
 void setup() {
   // These and the macro will go away once pin states are verified, and I will just do this once with a single command for each port
@@ -94,15 +114,13 @@ void setup() {
   SPI.begin();
   SPI.setBitOrder(MSBFIRST); // can this be removed?
   (SPI_MODE0); // can this be removed?
-  
+
   // this disables the backlight and audio until the Pi is detected
   enterSleep();
-  // this ensures that the backlight and audio will enable if the Pi is detected immediately at boot (CM4 mainly)
+  // this ensures that the backlight and audio will enable as soon as the Pi is detected at boot
   // this may go away if I use a different GPIO from the CM4 that stays low for a few seconds
   // check to see what happens when reboots occur
   detectTimeout++;
-  
-  //initializeBacklight(); this doesnt need to be here, because DETECT_RPI should never be high initially and the timeout should enable it
 }
 
 void initializeBacklight() {
@@ -139,10 +157,6 @@ void sendByte(byte dataByte) {
   writePin(ONEWIRE_LCD, LOW); // LOW end condition
   delayMicroseconds(tEOS);
 }
-
-byte inputsB;
-byte inputsD;
-bool displayChangeActive = 0;
 
 void scanArduinoInputs() {
   // Probably a better idea to store all the pins into a variable and cycle through them to check statuses
@@ -197,25 +211,6 @@ void wakeFromSleep() {
   writePin(EN_AUDIO, HIGH);
   initializeBacklight(); // re-initialize and enable backlight
 }
-
-unsigned long previousMillis = 0;
-const long interval = 10; // ms delay between the start of each loop
-
-uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
-uint8_t debouncePortD[8] = {0};
-
-struct I2C_Structure { // define the structure layout for transmitting I2C data to the Raspberry Pi
-  uint8_t buttonA; // button status
-  uint8_t buttonB; // button status
-  uint8_t analog1;
-  uint8_t analog2;
-  uint8_t analog3;
-  uint8_t analog4;
-  uint8_t analog5;
-  uint8_t analog6;
-};
-
-I2C_Structure I2C_data; // create the structure for the I2C data
 
 void requestEvent(){
   Wire.write((char*) &I2C_data, sizeof(I2C_data)); // send the data to the Pi
