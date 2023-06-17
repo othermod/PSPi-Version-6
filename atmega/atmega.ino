@@ -30,7 +30,7 @@
 #define SHIFT_LOAD D,3
 #define DETECT_RPI D,4
 #define BTN_HOLD D,5
-#define LED_LEFT_GPIO D,6
+#define LED_LEFT D,6
 #define EN_AUDIO D,7
 
 // Create macros to directly read and write GPIO pins
@@ -67,7 +67,8 @@ byte brightness = 15;
 uint16_t detectTimeout = 0;
 byte inputsB;
 byte inputsD;
-bool displayChangeActive = 0;
+bool displayButtonPressed = 0;
+bool muteButtonPressed = 0;
 unsigned long previousMillis = 0;
 const long interval = 10; // ms delay between the start of each loop
 uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
@@ -82,6 +83,7 @@ struct I2C_Structure { // define the structure layout for transmitting I2C data 
   uint8_t analog4;
   uint8_t analog5;
   uint8_t analog6;
+  // uint8_t misc; // 5 bits for brightness level, 1 for mute status,
 };
 
 I2C_Structure I2C_data; // create the structure for the I2C data
@@ -103,7 +105,7 @@ void setup() {
   setPinDirection(SHIFT_LOAD, OUTPUT);
   setPinDirection(DETECT_RPI, INPUT);
   setPinDirection(BTN_HOLD, INPUT);
-  setPinDirection(LED_LEFT_GPIO, OUTPUT);
+  setPinDirection(LED_LEFT, OUTPUT);
   setPinDirection(EN_AUDIO, OUTPUT);
 
   PORTB = B11101101; // ONEWIRE_LCD low. disable pullup on SHIFT_DATA_IN
@@ -172,13 +174,28 @@ void scanArduinoInputs() {
 void detectDisplayButton() {
   // Handle Display button being pressed
   if (!readPin(BTN_DISPLAY)) {
-      displayChangeActive = 1;
+      displayButtonPressed = 1;
     } else {
       // increase the brightness when the Display button is released
-      if (displayChangeActive == 1) {
+      if (displayButtonPressed == 1) {
         brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
-        displayChangeActive = 0;
+        displayButtonPressed = 0;
         setBrightness(brightness);
+      }
+    }
+}
+
+void detectMuteButton() {
+  // Handle Mute button being pressed
+  if (!readPin(BTN_MUTE)) {
+      muteButtonPressed = 1;
+    } else {
+      // invert EN_AUDIO when the mute button is released
+      // can alse handle mute being held to increase hardware amplification
+      if (muteButtonPressed == 1) {
+        // invert EN_AUDIO
+        // should the mute status save in eeprom?
+        muteButtonPressed = 0;
       }
     }
 }
