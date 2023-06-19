@@ -22,7 +22,7 @@ void initialize_gamepad() {
     ioctl(fd_uinput, UI_SET_EVBIT, EV_ABS);
 
     for (i = 0; i < 16; i++)
-        ioctl(fd_uinput, UI_SET_KEYBIT, BTN_0 + i);
+        ioctl(fd_uinput, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
 
     ioctl(fd_uinput, UI_SET_ABSBIT, ABS_X);
     ioctl(fd_uinput, UI_SET_ABSBIT, ABS_Y);
@@ -63,7 +63,7 @@ void update_gamepad() {
         if(((buffer[i / 8] >> (i % 8)) & 1) != ((previous_buttons[i / 8] >> (i % 8)) & 1)) {
             memset(&ev, 0, sizeof(ev));
             ev.type = EV_KEY;
-            ev.code = BTN_0 + i;
+            ev.code = BTN_TRIGGER_HAPPY1 + i;
             ev.value = ((buffer[i / 8] >> (i % 8)) & 1) == 0 ? 1 : 0;
             write(fd_uinput, &ev, sizeof(ev));
             previous_buttons[i / 8] ^= (1 << (i % 8));
