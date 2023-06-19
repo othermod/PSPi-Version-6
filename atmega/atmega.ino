@@ -56,17 +56,17 @@
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
 
-#define ANALOG_PIN1 0
-#define ANALOG_PIN2 1
-#define ANALOG_PIN3 2
-#define ANALOG_PIN4 3
-#define ANALOG_PIN5 6
-#define ANALOG_PIN6 7
+#define JOY_RX_PIN 0
+#define JOY_RY_PIN 1
+#define SENSE_SYS_PIN 2
+#define SENSE_BAT_PIN 3
+#define JOY_LX_PIN 6
+#define JOY_LY_PIN 7
 
 byte brightness = 15;
 uint16_t detectTimeout = 0;
-byte inputsB;
-byte inputsD;
+byte arduinoInputsPortB;
+byte arduinoInputsPortD;
 bool displayButtonPressed = 0;
 bool muteButtonPressed = 0;
 unsigned long previousMillis = 0;
@@ -77,12 +77,12 @@ uint8_t debouncePortD[8] = {0};
 struct I2C_Structure { // define the structure layout for transmitting I2C data to the Raspberry Pi
   uint8_t buttonA; // button status
   uint8_t buttonB; // button status
-  uint8_t analog1;
-  uint8_t analog2;
-  uint8_t analog3;
-  uint8_t analog4;
-  uint8_t analog5;
-  uint8_t analog6;
+  uint8_t JOY_LX;
+  uint8_t JOY_LY;
+  uint8_t JOY_RX;
+  uint8_t JOY_RY;
+  uint8_t SENSE_SYS;
+  uint8_t SENSE_BAT;
   // uint8_t misc; // 5 bits for brightness level, 1 for mute status,
 };
 
@@ -164,11 +164,27 @@ void scanArduinoInputs() {
   // Probably a better idea to store all the pins into a variable and cycle through them to check statuses
   // scan the GPIOs that are used for input
   // also, do these pins benefit from debouncing?
-  inputsB = PINB;
-  inputsD = PIND;
+  arduinoInputsPortB = PINB;
+  arduinoInputsPortD = PIND;
   //can put these in main or here. just do it after inputs are scanned
   detectRPi();
   detectDisplayButton();
+}
+
+void scanShiftRegisterInputs(){
+  // Prepare 74HC165D for parallel load
+  writePin(SHIFT_LOAD, LOW);
+  delayMicroseconds(5); // give some time to setup, you may not need this
+  writePin(SHIFT_LOAD, HIGH);
+
+  // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
+  byte shiftRegisterInput1 = SPI.transfer(0);
+  byte shiftRegisterInput2 = SPI.transfer(0);
+
+    //add debouncing
+
+  I2C_data.buttonA = shiftRegisterInput1;
+  I2C_data.buttonB = shiftRegisterInput2;
 }
 
 void detectDisplayButton() {
@@ -185,6 +201,7 @@ void detectDisplayButton() {
     }
 }
 
+/*
 void detectMuteButton() {
   // Handle Mute button being pressed
   if (!readPin(BTN_MUTE)) {
@@ -199,7 +216,7 @@ void detectMuteButton() {
       }
     }
 }
-
+*/
 void detectRPi() {
   // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
   // Handle Raspberry Pi not detected
@@ -233,26 +250,13 @@ void requestEvent(){
   Wire.write((char*) &I2C_data, sizeof(I2C_data)); // send the data to the Pi
 }
 
-void scanShiftRegisters(){
-  // Prepare 74HC165D for parallel load
-  writePin(SHIFT_LOAD, LOW);
-  delayMicroseconds(5); // give some time to setup, you may not need this
-  writePin(SHIFT_LOAD, HIGH);
-
-  // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
-  byte highByte = SPI.transfer(0);
-  byte lowByte = SPI.transfer(0);
-  I2C_data.buttonA = highByte;
-  I2C_data.buttonB = lowByte;
-}
-
 void readAnalog(){
-  I2C_data.analog1=(analogRead(ANALOG_PIN1) >> 2); // read the ADCs, and reduce from 10 to 8 bits
-  I2C_data.analog2=(analogRead(ANALOG_PIN2) >> 2);
-  I2C_data.analog3=(analogRead(ANALOG_PIN3) >> 2);
-  I2C_data.analog4=(analogRead(ANALOG_PIN4) >> 2);
-  I2C_data.analog5=(analogRead(ANALOG_PIN5) >> 2);
-  I2C_data.analog6=(analogRead(ANALOG_PIN6) >> 2);
+  I2C_data.JOY_RX=(analogRead(JOY_RX_PIN) >> 2); // read the ADCs, and reduce from 10 to 8 bits
+  I2C_data.JOY_RY=(analogRead(JOY_RY_PIN) >> 2);
+  I2C_data.SENSE_SYS=(analogRead(SENSE_SYS_PIN) >> 2);
+  I2C_data.SENSE_BAT=(analogRead(SENSE_BAT_PIN) >> 2);
+  I2C_data.JOY_LX=(analogRead(JOY_LX_PIN) >> 2);
+  I2C_data.JOY_LY=(analogRead(JOY_LY_PIN) >> 2);
 }
 
 void loop() {
@@ -261,7 +265,7 @@ void loop() {
     // save the last time the loop was executed
     previousMillis = currentMillis;
     scanArduinoInputs();
-    scanShiftRegisters();
+    scanShiftRegisterInputs();
     readAnalog();
   }
 }
