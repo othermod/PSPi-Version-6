@@ -1,19 +1,19 @@
-#dtoverlay=pi3-disable-bt
-#dtoverlay=pi3-disable-wifi
+# For more options and information see
+# http://rpf.io/configtxt
+# Some settings may impact device functionality. See link above for details
 
-disable_splash=1
-
+# Uncomment some or all of these to enable the optional hardware interfaces
 dtparam=i2c_arm=on
 
 # Enable audio (loads snd_bcm2835)
 dtparam=audio=on
-disable_audio_dither=1
-audio_pwm_mode=2
+#disable_audio_dither=1
+#audio_pwm_mode=1
 
-# HDMI
-hdmi_drive=1
-hdmi_ignore_edid_audio=1
-hdmi_blanking=2
+[pi4]
+# Enable DRM VC4 V3D driver on top of the dispmanx display stack
+dtoverlay=vc4-fkms-v3d
+max_framebuffers=2
 
 [all]
 #dtoverlay=vc4-fkms-v3d
@@ -22,15 +22,15 @@ gpu_mem_512=256
 gpu_mem_1024=256
 overscan_scale=1
 
-#Set GPIO pins to 18-Bit DPI Mode 6
+#All Pi Boards
+#Set GPIO pins to 21-Bit DPI
 #GPIO 0 and 1 needed for DPI Clock and Data Enable
 gpio=0=a2,np
 gpio=1=a2,np
 #Set GPIO pins 2 and 3 to I2C Mode. These can be used for other things, if needed.
 gpio=2=a0,np
 gpio=3=a0,np
-#Set up color pins
-
+#color
 gpio=5=a2,np
 gpio=6=a2,np
 gpio=7=a2,np
@@ -38,7 +38,7 @@ gpio=8=a2,np
 gpio=9=a2,np
 gpio=10=a2,np
 gpio=11=a2,np
-
+#color
 gpio=13=a2,np
 gpio=14=a2,np
 gpio=15=a2,np
@@ -46,7 +46,7 @@ gpio=16=a2,np
 gpio=17=a2,np
 gpio=18=a2,np
 gpio=19=a2,np
-
+#color
 gpio=21=a2,np
 gpio=22=a2,np
 gpio=23=a2,np
@@ -55,12 +55,33 @@ gpio=25=a2,np
 gpio=26=a2,np
 gpio=27=a2,np
 
-gpio=4=ip,pu
-gpio=12=ip,pu
-gpio=20=ip,pu
+#Configure DPI signal
+framebuffer_width=800
+framebuffer_height=480
+enable_dpi_lcd=1
+display_default_lcd=1
+dpi_group=2
+dpi_mode=87
+dpi_output_format=503863
+#dpi_output_format=0b00001111011000000110111
+dpi_timings=800 0 40 48 88 480 0 13 3 32 0 0 0 60 0 32000000 6
 
-dtoverlay=gpio-poweroff,gpiopin=20,active_low="y"
+#disable HDMI audio
+hdmi_ignore_edid_audio=1
 
+#Zero Stuff
+#activity LED
+dtparam=act_led_gpio=20
+
+#audio
 dtoverlay=audio,pins_12_45
 
-include lcd.txt
+#poweroff
+dtoverlay=gpio-poweroff,gpiopin=4,active_low="y"
+
+disable_splash=1
+
+#CM4 stuff
+#dtoverlay=dwc2,dr_mode=host
+#dtoverlay=disable-pcie
+#hdmi_force_hotplug=1
