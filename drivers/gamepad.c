@@ -1,110 +1,101 @@
-#include <fcntl.h>
-#include <linux/i2c-dev.h>
 #include <linux/uinput.h>
-#include <stdio.h>
-#include <string.h>
+#include <linux/i2c-dev.h>
+#include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
+#include <stdio.h>
 #include <stdint.h>
 
-#define I2C_FILE_NAME "/dev/i2c-1"
-#define I2C_ADDR 0x10
-#define UINPUT_FILE_NAME "/dev/uinput"
+#define I2C_DEV_PATH "/dev/i2c-1"
+#define UINPUT_DEV_PATH "/dev/uinput"
 
 struct uinput_user_dev uidev;
-struct input_event     ev;
+int fd_i2c, fd_uinput;
+uint8_t previous_buttons[2] = {0, 0};
+uint8_t previous_axes[2] = {0, 0};
 
-int main() {
-    int i2c_file, uinput_file;
-    __s32 value;
-    uint8_t data[8];
+void initialize_gamepad() {
+    int i;
 
-    // Open the I2C device file
-    if ((i2c_file = open(I2C_FILE_NAME, O_RDWR)) < 0) {
-        perror("Failed to open the i2c bus");
-        return 1;
-    }
+    fd_uinput = open(UINPUT_DEV_PATH, O_WRONLY | O_NONBLOCK);
+    ioctl(fd_uinput, UI_SET_EVBIT, EV_KEY);
+    ioctl(fd_uinput, UI_SET_EVBIT, EV_ABS);
 
-    if (ioctl(i2c_file, I2C_SLAVE, I2C_ADDR) < 0) {
-        perror("Failed to access the i2c device");
-        return 1;
-    }
+    for (i = 0; i < 16; i++)
+        ioctl(fd_uinput, UI_SET_KEYBIT, BTN_0 + i);
 
-    // Open the uinput device file
-    if ((uinput_file = open(UINPUT_FILE_NAME, O_WRONLY | O_NONBLOCK)) < 0) {
-        perror("Failed to open uinput device");
-        return 1;
-    }
+    ioctl(fd_uinput, UI_SET_ABSBIT, ABS_X);
+    ioctl(fd_uinput, UI_SET_ABSBIT, ABS_Y);
 
     memset(&uidev, 0, sizeof(uidev));
-    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "uinput-sample");
+    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi-Controller");
     uidev.id.bustype = BUS_USB;
     uidev.id.vendor  = 0x1;
     uidev.id.product = 0x1;
     uidev.id.version = 1;
 
-    ioctl(uinput_file, UI_SET_EVBIT, EV_KEY);
-    ioctl(uinput_file, UI_SET_EVBIT, EV_ABS);
-
-    // Setup gamepad buttons
-    for (int i = 0; i < 16; i++) {
-        ioctl(uinput_file, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
-    }
-
-    // Setup gamepad axes
-    ioctl(uinput_file, UI_SET_ABSBIT, ABS_X);
-    ioctl(uinput_file, UI_SET_ABSBIT, ABS_Y);
-    uidev.absmin[ABS_X] = 0;
-    uidev.absmax[ABS_X] = 255;
+    uidev.absmin[ABS_X] = 30;
+    uidev.absmax[ABS_X] = 225;
     uidev.absflat[ABS_X] = 20; // deadzone
     uidev.absfuzz[ABS_X] = 20; // hysteresis
-    uidev.absmin[ABS_Y] = 0;
-    uidev.absmax[ABS_Y] = 255;
+    uidev.absmin[ABS_Y] = 30;
+    uidev.absmax[ABS_Y] = 225;
     uidev.absflat[ABS_Y] = 20; // deadzone
     uidev.absfuzz[ABS_Y] = 20; // hysteresis
 
-    write(uinput_file, &uidev, sizeof(uidev));
-    if (ioctl(uinput_file, UI_DEV_CREATE)) {
-        perror("Failed to create uinput device");
-        return 1;
+    write(fd_uinput, &uidev, sizeof(uidev));
+    ioctl(fd_uinput, UI_DEV_CREATE);
+}
+
+void initialize_i2c() {
+    fd_i2c = open(I2C_DEV_PATH, O_RDWR);
+    ioctl(fd_i2c, I2C_SLAVE, 0x10);
+}
+
+void update_gamepad() {
+    struct input_event ev;
+    uint8_t buffer[8];
+    int i;
+
+    read(fd_i2c, buffer, 8);
+
+    for (i = 0; i < 16; i++) {
+        if(((buffer[i / 8] >> (i % 8)) & 1) != ((previous_buttons[i / 8] >> (i % 8)) & 1)) {
+            memset(&ev, 0, sizeof(ev));
+            ev.type = EV_KEY;
+            ev.code = BTN_0 + i;
+            ev.value = ((buffer[i / 8] >> (i % 8)) & 1) == 0 ? 1 : 0;
+            write(fd_uinput, &ev, sizeof(ev));
+            previous_buttons[i / 8] ^= (1 << (i % 8));
+        }
     }
 
-    while (1) {
-        if (read(i2c_file, data, 8) != 8) {
-            perror("Failed to read from the i2c bus");
-            return 1;
-        }
-
-        // Update gamepad buttons
-        for (int i = 0; i < 16; i++) {
-            memset(&ev, 0, sizeof(struct input_event));
-            ev.type = EV_KEY;
-            ev.code = BTN_TRIGGER_HAPPY1 + i;
-            ev.value = !(data[i/8] & (1 << (i%8)));
-            write(uinput_file, &ev, sizeof(struct input_event));
-        }
-
-        // Update gamepad axes
-        for (int i = 0; i < 2; i++) {
-            memset(&ev, 0, sizeof(struct input_event));
+    for (i = 0; i < 2; i++) {
+        if(buffer[2 + i] != previous_axes[i]) {
+            memset(&ev, 0, sizeof(ev));
             ev.type = EV_ABS;
             ev.code = i == 0 ? ABS_X : ABS_Y;
-            ev.value = data[2 + i];
-            write(uinput_file, &ev, sizeof(struct input_event));
+            ev.value = buffer[2 + i];
+            write(fd_uinput, &ev, sizeof(ev));
+            previous_axes[i] = buffer[2 + i];
         }
-
-        // Synchronize
-        memset(&ev, 0, sizeof(struct input_event));
-        ev.type = EV_SYN;
-        ev.code = SYN_REPORT;
-        ev.value = 0;
-        write(uinput_file, &ev, sizeof(struct input_event));
-
-        usleep(10000); // 10 ms delay
     }
 
-    ioctl(uinput_file, UI_DEV_DESTROY);
-    close(uinput_file);
-    close(i2c_file);
+    memset(&ev, 0, sizeof(ev));
+    ev.type = EV_SYN;
+    ev.code = SYN_REPORT;
+    ev.value = 0;
+    write(fd_uinput, &ev, sizeof(ev));
+}
+
+int main() {
+    initialize_i2c();
+    initialize_gamepad();
+
+    while (1) {
+        update_gamepad();
+        usleep(16000);
+    }
 
     return 0;
 }
