@@ -11,7 +11,7 @@
 
 struct uinput_user_dev uidev;
 int fd_i2c, fd_uinput;
-uint8_t previous_buttons[2] = {0, 0};
+uint16_t previous_buttons = 0;
 uint8_t previous_axes[2] = {0, 0};
 
 void initialize_gamepad() {
@@ -59,14 +59,16 @@ void update_gamepad() {
 
     read(fd_i2c, buffer, 8);
 
+    uint16_t buttons = (buffer[1] << 8) | buffer[0]; // Combine the two bytes into a 16-bit unsigned integer
+
     for (i = 0; i < 16; i++) {
-        if(((buffer[i / 8] >> (i % 8)) & 1) != ((previous_buttons[i / 8] >> (i % 8)) & 1)) {
+        if(((buttons >> i) & 1) != ((previous_buttons >> i) & 1)) {
             memset(&ev, 0, sizeof(ev));
             ev.type = EV_KEY;
             ev.code = BTN_TRIGGER_HAPPY1 + i;
-            ev.value = ((buffer[i / 8] >> (i % 8)) & 1) == 0 ? 1 : 0;
+            ev.value = ((buttons >> i) & 1) == 0 ? 1 : 0;
             write(fd_uinput, &ev, sizeof(ev));
-            previous_buttons[i / 8] ^= (1 << (i % 8));
+            previous_buttons ^= (1 << i);
         }
     }
 
