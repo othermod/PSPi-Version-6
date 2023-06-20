@@ -5,13 +5,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define I2C_DEV_PATH "/dev/i2c-1"
 #define UINPUT_DEV_PATH "/dev/uinput"
 
 struct uinput_user_dev uidev;
 int fd_i2c, fd_uinput;
-uint16_t previous_buttons = 0;
+uint16_t previous_buttons = 65535;
 uint8_t previous_axes[2] = {0, 0};
 
 void initialize_gamepad() {
@@ -69,6 +70,20 @@ void update_gamepad() {
             ev.value = ((buttons >> i) & 1) == 0 ? 1 : 0;
             write(fd_uinput, &ev, sizeof(ev));
             previous_buttons ^= (1 << i);
+            //printf("Button %d changed\n", i);
+
+            if (i == 13 && ev.value == 0) {
+              //printf("Increasing Volume\n");
+                system("amixer get Headphone | grep -o \"[0-9]*%\" | head -1 | awk -F\"%\" '{ print $1 + 5 }' | xargs -I{} amixer set Headphone {}%");
+
+            }
+
+            // Check the 6th bit of the second byte for volume down
+            if (i == 14 && ev.value == 0) {
+              //printf("Decreasing Volume\n");
+                system("amixer get Headphone | grep -o \"[0-9]*%\" | head -1 | awk -F\"%\" '{ print $1 - 5 }' | xargs -I{} amixer set Headphone {}%");
+
+            }
         }
     }
 
