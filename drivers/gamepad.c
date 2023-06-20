@@ -81,7 +81,7 @@ void update_gamepad() {
             // Check the 6th bit of the second byte for volume down
             if (i == 14 && ev.value == 0) {
               //printf("Decreasing Volume\n");
-                system("amixer get Headphone | grep -o \"[0-9]*%\" | head -1 | awk -F\"%\" '{ print $1 - 5 }' | xargs -I{} amixer set Headphone {}%");
+              system("amixer get Headphone | grep -o \"[0-9]*%\" | head -1 | awk -F\"%\" '{ print ($1 - 5 < 50 ? 50 : $1 - 5) }' | xargs -I{} amixer set Headphone {}%");
 
             }
         }
