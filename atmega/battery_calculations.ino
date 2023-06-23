@@ -23,29 +23,7 @@ struct Battery_Structure {
 
 Battery_Structure BATTERY_DATA;
 
-struct I2C_Structure { // define the structure layout for transmitting I2C data to the Raspberry Pi
-  uint8_t buttonsPortB; // button status
-  uint8_t buttonsPortD; // button status
-  uint8_t joystickLX; // button status
-  uint8_t joystickLY; // button status
-  uint8_t joystickRX; // button status
-  uint8_t joystickRY; // button status
-  uint16_t actualVoltage;
-  int actualAmperage;
-  uint16_t correctedVoltage;
-
-};
-
-I2C_Structure I2C_DATA; // create the structure for the I2C data
-
-
-
 void readADCs() {
-  I2C_DATA.joystickLX=analogRead(0) >> 2; // read the ADCs. bitshift to reduce from 10 to 8 bits
-  I2C_DATA.joystickLY=analogRead(1) >> 2;
-  I2C_DATA.joystickRY=analogRead(2) >> 2;
-  I2C_DATA.joystickRX=analogRead(3) >> 2;
-
   BATTERY_DATA.ADCReadingSys = analogRead(7);
   BATTERY_DATA.ADCReadingBat = analogRead(6);
 }
