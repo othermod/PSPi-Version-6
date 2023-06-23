@@ -253,8 +253,8 @@ void requestEvent(){
 void readAnalogInputs(){
   I2C_data.JOY_RX=(analogRead(JOY_RX_PIN) >> 2); // read the ADCs, and reduce from 10 to 8 bits
   I2C_data.JOY_RY=(analogRead(JOY_RY_PIN) >> 2);
-  I2C_data.SENSE_SYS=(analogRead(SENSE_SYS_PIN) >> 2);
-  I2C_data.SENSE_BAT=(analogRead(SENSE_BAT_PIN) >> 2);
+  I2C_data.SENSE_SYS=(analogRead(SENSE_SYS_PIN)); // don't bitshift this. it is never above 100
+  I2C_data.SENSE_BAT=(analogRead(SENSE_BAT_PIN)); // don't bitshift this. it is never above 100
   I2C_data.JOY_LX=(analogRead(JOY_LX_PIN) >> 2);
   I2C_data.JOY_LY=(analogRead(JOY_LY_PIN) >> 2);
 }
