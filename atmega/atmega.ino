@@ -160,7 +160,7 @@ void sendByte(byte dataByte) {
   delayMicroseconds(tEOS);
 }
 
-void scanArduinoInputs() {
+void readArduinoInputs() {
   // Probably a better idea to store all the pins into a variable and cycle through them to check statuses
   // scan the GPIOs that are used for input
   // also, do these pins benefit from debouncing?
@@ -171,7 +171,7 @@ void scanArduinoInputs() {
   detectDisplayButton();
 }
 
-void scanShiftRegisterInputs(){
+void readShiftRegisterInputs(){
   // Prepare 74HC165D for parallel load
   writePin(SHIFT_LOAD, LOW);
   delayMicroseconds(5); // give some time to setup, you may not need this
@@ -250,7 +250,7 @@ void requestEvent(){
   Wire.write((char*) &I2C_data, sizeof(I2C_data)); // send the data to the Pi
 }
 
-void readAnalog(){
+void readAnalogInputs(){
   I2C_data.JOY_RX=(analogRead(JOY_RX_PIN) >> 2); // read the ADCs, and reduce from 10 to 8 bits
   I2C_data.JOY_RY=(analogRead(JOY_RY_PIN) >> 2);
   I2C_data.SENSE_SYS=(analogRead(SENSE_SYS_PIN) >> 2);
@@ -264,8 +264,8 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     // save the last time the loop was executed
     previousMillis = currentMillis;
-    scanArduinoInputs();
-    scanShiftRegisterInputs();
-    readAnalog();
+    readArduinoInputs();
+    readShiftRegisterInputs();
+    readAnalogInputs();
   }
 }
