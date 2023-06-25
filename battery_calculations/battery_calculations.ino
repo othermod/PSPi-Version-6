@@ -8,18 +8,18 @@
 // when the atmega begins, it should detect voltage based off voltage and amperage.
 // when pi initializes, it switches to coloumb counting. create variable for capacity and allow pi to transmit it to the atmega
 
-struct Battery_Structure {
+typedef struct {
   bool calculationMode;
   bool isCharging;
-  uint16_t voltageSYSx16; // should stay under 2 bytes in all situations
-  uint16_t voltageBATx16; // should stay under 2 bytes in all situations
-  uint32_t voltageSYS; // should stay under 4 bytes in all situations
-  uint32_t voltageBAT; // should stay under 4 bytes in all situations
+  uint16_t voltageSYSx16;
+  uint16_t voltageBATx16;
+  uint32_t voltageSYS;
+  uint32_t voltageBAT;
   uint16_t rawVoltage;
   uint16_t senseRVoltageDifference;
   uint16_t finalAmperage;
   uint16_t finalVoltage;
-};
+} Battery_Structure;
 
 Battery_Structure battery;
 
