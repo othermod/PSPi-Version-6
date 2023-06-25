@@ -34,6 +34,8 @@
 #define EN_AUDIO D,7
 
 // Create macros to directly read and write GPIO pins
+// they are needed because the pin numbering is broken when using the crystal pins as gpios
+// these are only here temporarily to make the code cleaner while I build all of the features
 #define WRITE_PIN_HELPER(port, pin, state) \
   do { \
     if (state == HIGH) PORT ## port |= (1 << pin); \
