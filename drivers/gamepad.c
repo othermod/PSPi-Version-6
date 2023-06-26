@@ -11,7 +11,9 @@
 #include <alsa/asoundlib.h>
 
 #define I2C_DEV_PATH "/dev/i2c-1"
+#define I2C_ADDRESS 0x10
 #define UINPUT_DEV_PATH "/dev/uinput"
+
 #define VOL_INCREASE 1
 #define VOL_DECREASE -1
 
@@ -86,6 +88,10 @@ void initialize_gamepad() {
     int i;
 
     fd_uinput = open(UINPUT_DEV_PATH, O_WRONLY | O_NONBLOCK);
+    if (fd_uinput < 0) {
+        perror("Failed to open uinput device");
+        exit(1);
+    }
     ioctl(fd_uinput, UI_SET_EVBIT, EV_KEY);
     ioctl(fd_uinput, UI_SET_EVBIT, EV_ABS);
 
@@ -117,8 +123,16 @@ void initialize_gamepad() {
 
 void initialize_i2c() {
     fd_i2c = open(I2C_DEV_PATH, O_RDWR);
-    ioctl(fd_i2c, I2C_SLAVE, 0x10);
+    if (fd_i2c < 0) {
+        perror("Failed to open the i2c bus");
+        exit(1);
+    }
+    if (ioctl(fd_i2c, I2C_SLAVE, I2C_ADDRESS) < 0) {
+        perror("Failed to acquire bus access and/or talk to slave");
+        exit(1);
+    }
 }
+
 
 void update_gamepad() {
     struct input_event ev;
