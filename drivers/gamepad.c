@@ -10,6 +10,12 @@
 #include <stdbool.h>
 #include <alsa/asoundlib.h>
 
+#include <assert.h>
+#include "imageGraphics.h"
+#include "imageLayer.h"
+#include <math.h>
+#include "bcm_host.h"
+
 #define I2C_DEV_PATH "/dev/i2c-1"
 #define I2C_ADDRESS 0x10
 #define UINPUT_DEV_PATH "/dev/uinput"
@@ -182,7 +188,7 @@ void update_gamepad() {
 
 typedef struct {
   bool calculationMode;
-  bool isCharging;
+  uint8_t isCharging;
   uint16_t voltageSYSx16;
   uint16_t voltageBATx16;
   uint16_t voltageSYS;
@@ -202,18 +208,18 @@ void calculateAmperage() {
   //i2cBuffer[7]++;
   uint16_t readVoltageSYS = i2cBuffer[6] * 3000 / 1024;
   uint16_t readVoltageBAT = i2cBuffer[7] * 3000 / 1024;
-  printf("senseSYS: %d\n", i2cBuffer[6]);
-  printf("senseBAT: %d\n", i2cBuffer[7]);
-  printf("voltageSYS: %d\n", readVoltageSYS);
-  printf("voltageBAT: %d\n", readVoltageBAT);
+  //printf("senseSYS: %d\n", i2cBuffer[6]);
+  //printf("senseBAT: %d\n", i2cBuffer[7]);
+  //printf("voltageSYS: %d\n", readVoltageSYS);
+  //printf("voltageBAT: %d\n", readVoltageBAT);
 
   // rolling average of 16 ADC readings. eliminates some noise and increases accuracy
   battery.voltageSYSx16 = battery.voltageSYSx16 - (battery.voltageSYSx16 / 16) + readVoltageSYS;
   battery.voltageBATx16 = battery.voltageBATx16 - (battery.voltageBATx16 / 16) + readVoltageBAT;
-  printf("voltageSYSx16: %d\n", battery.voltageSYSx16);
-  printf("voltageBATx16: %d\n", battery.voltageBATx16);
-  printf("rollingaveraged: %d\n", battery.voltageSYSx16/16);
-  printf("rollingaveraged: %d\n", battery.voltageBATx16/16);
+  //printf("voltageSYSx16: %d\n", battery.voltageSYSx16);
+  //printf("voltageBATx16: %d\n", battery.voltageBATx16);
+  //printf("rollingaveraged: %d\n", battery.voltageSYSx16/16);
+  //printf("rollingaveraged: %d\n", battery.voltageBATx16/16);
 
   // amperage step 1 of 3
   // the amperage is measured by calculating the difference between the two voltage readings
@@ -225,15 +231,15 @@ void calculateAmperage() {
     battery.isCharging = 1;
     battery.senseRVoltageDifference = (battery.voltageBATx16 - battery.voltageSYSx16) / 16;
   }
-  printf("isCharging: %d\n", battery.isCharging);
+  //printf("isCharging: %d\n", battery.isCharging);
   // amperage step 2 of 3
   // the amperage reading now has to be corrected because the two resistor voltage dividers skew the voltage drop reading slightly
   battery.senseRVoltageDifference = battery.senseRVoltageDifference*(RESISTOR_A_KOHM+RESISTOR_B_KOHM)/RESISTOR_A_KOHM;
-  printf("senseRVoltageDifference: %d\n", battery.senseRVoltageDifference);
+  //printf("senseRVoltageDifference: %d\n", battery.senseRVoltageDifference);
   // amperage step 3 of 3
   // calculate the actual amperage using the sense resistor value
   battery.finalAmperage = battery.senseRVoltageDifference*(1000 / SENSE_RESISTOR_MILLIOHM);
-  printf("finalAmperage: %d\n", battery.finalAmperage); // the amperage math is tested and functioning perfectly
+  //printf("finalAmperage: %d\n", battery.finalAmperage); // the amperage math is tested and functioning perfectly
 }
 
 void calculateVoltage() {
@@ -249,7 +255,7 @@ void calculateVoltage() {
   } else {
     battery.rawVoltage = battery.rawVoltage + battery.senseRVoltageDifference;
   }
-  printf("rawVoltage: %d\n", battery.rawVoltage);
+  //printf("rawVoltage: %d\n", battery.rawVoltage);
   // voltage step 3 of 3
   // the final step is to determine the actual battery voltage, because the battery has internal resistance and the voltage is affected by charging and discharging it
   // we have to estimate what the voltage would be in an idle state
@@ -260,24 +266,183 @@ void calculateVoltage() {
   }
 }
 
+bool isMute = 0;
+uint8_t isCharging = 1;
+uint8_t batteryPercent = 50;
+
+// create colors ( format is: red, green, blue, opacity)
+static RGBA8_T clearColor = { 0,    0,    0,    0};
+static RGBA8_T green =      { 0,    255,  0,    255};
+static RGBA8_T red =        { 255,  0,    0,    255};
+static RGBA8_T orange =     { 255,  127,  0,    255};
+static RGBA8_T white =      { 255,  255,  255,  255};
+static RGBA8_T black =      { 0,    0,    0,    255};
+
+void drawBattery(IMAGE_LAYER_T * batteryLayer) {
+  IMAGE_T * image = & (batteryLayer -> image);
+  //clearImageRGB(image, & clearColor); //the image doesn't need to be erased because the same pixels are being used and colors are changing
+  RGBA8_T * batteryColor;
+  batteryColor = & green;
+  if (batteryPercent < 20) { // sets color depending on battery level
+    batteryColor = & orange;
+  }
+  if (batteryPercent < 10) {
+    batteryColor = & red;
+  }
+  // draw the battery outline and fill with color
+  imageBoxFilledRGB(image, 1, 0, 30, 14, & white);
+  imageBoxFilledRGB(image, 0, 4, 2, 10, & white);
+  imageBoxFilledRGB(image, 2, 1, 29, 13, & black);
+  imageBoxFilledRGB(image, 1, 5, 3, 9, & black);
+
+
+  imageBoxFilledRGB(image, 28 - batteryPercent / 4, 2, 28, 12, batteryColor);
+  if (battery.isCharging) {
+    RGBA8_T * boltColor;
+    if (battery.isCharging == 2) {
+      boltColor = & green;
+    } else {
+      boltColor = & white;
+    }
+    // draw the lightning bolt to show that the battery is charging
+    imageBoxFilledRGB(image, 15, 3, 16, 11, boltColor);
+    imageBoxFilledRGB(image, 12, 4, 14, 6, boltColor);
+    imageBoxFilledRGB(image, 10, 6, 11, 8, boltColor);
+    imageBoxFilledRGB(image, 7, 7, 9, 8, boltColor);
+    imageBoxFilledRGB(image, 17, 8, 19, 10, boltColor);
+    imageBoxFilledRGB(image, 20, 7, 21, 8, boltColor);
+    imageBoxFilledRGB(image, 22, 6, 24, 7, boltColor);
+    imageBoxFilledRGB(image, 14, 2, 17, 2, & black);
+    imageBoxFilledRGB(image, 17, 2, 17, 7, & black);
+    imageBoxFilledRGB(image, 18, 7, 19, 7, & black);
+    imageBoxFilledRGB(image, 19, 6, 21, 6, & black);
+    imageBoxFilledRGB(image, 21, 5, 25, 5, & black);
+    imageBoxFilledRGB(image, 25, 6, 25, 7, & black);
+    imageBoxFilledRGB(image, 24, 7, 24, 8, & black);
+    imageBoxFilledRGB(image, 23, 8, 22, 8, & black);
+    imageBoxFilledRGB(image, 22, 9, 20, 9, & black);
+    imageBoxFilledRGB(image, 20, 10, 19, 10, & black);
+    imageBoxFilledRGB(image, 19, 11, 17, 11, & black);
+    imageBoxFilledRGB(image, 17, 12, 14, 12, & black);
+    imageBoxFilledRGB(image, 14, 11, 14, 8, & black);
+    imageBoxFilledRGB(image, 14, 7, 12, 7, & black);
+    imageBoxFilledRGB(image, 12, 8, 10, 8, & black);
+    imageBoxFilledRGB(image, 10, 9, 6, 9, & black);
+    imageBoxFilledRGB(image, 6, 8, 6, 8, & black);
+    imageBoxFilledRGB(image, 6, 7, 7, 7, & black);
+    imageBoxFilledRGB(image, 7, 6, 9, 6, & black);
+    imageBoxFilledRGB(image, 9, 5, 11, 5, & black);
+    imageBoxFilledRGB(image, 11, 4, 12, 4, & black);
+    imageBoxFilledRGB(image, 12, 3, 14, 3, & black);
+  }
+  changeSourceAndUpdateImageLayer(batteryLayer);
+}
+
+void drawMute(IMAGE_LAYER_T * muteLayer) {
+  IMAGE_T * image = & (muteLayer -> image);
+  // draw the battery outline and fill with color
+  if (!isMute) {
+    imageBoxFilledRGB(image, 5, 0, 11, 14, & white);
+    imageBoxFilledRGB(image, 4, 1, 4, 13, & white);
+    imageBoxFilledRGB(image, 3, 2, 3, 12, & white);
+    imageBoxFilledRGB(image, 2, 3, 2, 11, & white);
+    imageBoxFilledRGB(image, 0, 4, 1, 10, & white);
+
+    imageBoxFilledRGB(image, 6, 1, 10, 13, & black);
+    imageBoxFilledRGB(image, 5, 2, 5, 12, & black);
+    imageBoxFilledRGB(image, 4, 3, 4, 11, & black);
+    imageBoxFilledRGB(image, 3, 4, 3, 10, & black);
+    imageBoxFilledRGB(image, 1, 5, 2, 9, & black);
+
+    imageBoxFilledRGB(image, 0, 0, 2, 2, & red);
+    imageBoxFilledRGB(image, 2, 2, 4, 4, & red);
+    imageBoxFilledRGB(image, 4, 4, 6, 6, & red);
+    imageBoxFilledRGB(image, 6, 6, 8, 8, & red);
+    imageBoxFilledRGB(image, 8, 8, 10, 10, & red);
+    imageBoxFilledRGB(image, 10, 10, 12, 12, & red);
+    imageBoxFilledRGB(image, 12, 12, 14, 14, & red);
+  } else {
+    clearImageRGB(image, & clearColor); // erase the whole image
+  }
+  changeSourceAndUpdateImageLayer(muteLayer);
+}
+
+void clearLayer(IMAGE_LAYER_T * layer) {
+  IMAGE_T * image = & (layer -> image);
+  clearImageRGB(image, & clearColor);
+  changeSourceAndUpdateImageLayer(layer);
+}
+
+
 int main() {
+  uint32_t displayNumber = 0;
+
+  bcm_host_init();
+
+  DISPMANX_DISPLAY_HANDLE_T display
+    = vc_dispmanx_display_open(displayNumber);
+  assert(display != 0);
+
+  DISPMANX_MODEINFO_T info;
+  int result = vc_dispmanx_display_get_info(display, & info);
+  assert(result == 0);
+
+  static int layer = 100000;
+
+  IMAGE_LAYER_T batteryLayer;
+  initImageLayer( & batteryLayer,
+    31, // battery image width
+    15, // battery image height
+    VC_IMAGE_RGBA16);
+  createResourceImageLayer( & batteryLayer, layer);
+
+  IMAGE_LAYER_T muteLayer;
+  initImageLayer( & muteLayer,
+    15, // battery image width
+    15, // battery image height
+    VC_IMAGE_RGBA16);
+  createResourceImageLayer( & muteLayer, layer);
+
+  DISPMANX_UPDATE_HANDLE_T update = vc_dispmanx_update_start(0);
+  assert(update != 0);
+  int xOffset = info.width - 31;
+  int yOffset = 0;
+  addElementImageLayerOffset( & batteryLayer, xOffset, yOffset, display, update);
+  xOffset = info.width - 46;
+  addElementImageLayerOffset( & muteLayer, xOffset, yOffset, display, update);
+
+  result = vc_dispmanx_update_submit_sync(update);
+  assert(result == 0);
     initialize_i2c();
     initialize_gamepad();
     initialize_alsa("default", "Headphone");
     uint8_t report = 1;
+    uint8_t previousCharging = 0;
+    uint8_t previousPercent = 0;
 
     while (1) {
       report++;
-      report &= 0b00000111;
+      report &= 0b00011111;
+      calculateAmperage();
+      calculateVoltage();
       if (!report) {
-        calculateAmperage();
-        calculateVoltage();
+        batteryPercent = (battery.finalVoltage - 3000 + 50) / 12;
+        if ((previousCharging != battery.isCharging)|(batteryPercent != previousPercent)) {
+          drawBattery(& batteryLayer); // make sure this is only done if something changes
+        }
       }
         update_gamepad();
+
+        previousPercent = batteryPercent;
+        previousCharging = battery.isCharging;
         usleep(16000);
     }
 
     snd_mixer_close(handle);
+    destroyImageLayer( & batteryLayer);
+    destroyImageLayer( & muteLayer);
+    result = vc_dispmanx_display_close(display);
+    assert(result == 0);
 
     return 0;
 }
