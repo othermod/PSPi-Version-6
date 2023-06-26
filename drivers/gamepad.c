@@ -1,4 +1,7 @@
 //compile w/ gcc -O3 gamepad.c -lasound -o gamepad
+
+// TODO
+// The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
 #include <linux/uinput.h>
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
@@ -28,7 +31,7 @@
 #define COULOMB 0
 #define RESISTOR_A_KOHM 150
 #define RESISTOR_B_KOHM 10
-#define BATTERY_INTERNAL_RESISTANCE_MILLIOHM 270
+#define BATTERY_INTERNAL_RESISTANCE_MILLIOHM 250
 
 struct uinput_user_dev uidev;
 int fd_i2c, fd_uinput;
@@ -197,6 +200,8 @@ typedef struct {
   uint16_t senseRVoltageDifference;
   uint16_t finalAmperage;
   uint16_t finalVoltage;
+  uint16_t indicatorVoltage;
+  int percent;
 } Battery_Structure;
 
 Battery_Structure battery;
@@ -264,11 +269,17 @@ void calculateVoltage() {
   } else {
   battery.finalVoltage = battery.rawVoltage + battery.finalAmperage * BATTERY_INTERNAL_RESISTANCE_MILLIOHM / 1000;
   }
+  printf("finalVoltage: %d\n", battery.finalVoltage);
+  if (battery.finalVoltage > battery.indicatorVoltage + 25) {
+    battery.indicatorVoltage++;
+  } else if (battery.finalVoltage < battery.indicatorVoltage - 25) {
+    battery.indicatorVoltage--;
+  }
+  printf("indicatorVoltage: %d\n", battery.indicatorVoltage);
+
 }
 
 bool isMute = 0;
-uint8_t isCharging = 1;
-uint8_t batteryPercent = 50;
 
 // create colors ( format is: red, green, blue, opacity)
 static RGBA8_T clearColor = { 0,    0,    0,    0};
@@ -283,10 +294,10 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
   //clearImageRGB(image, & clearColor); //the image doesn't need to be erased because the same pixels are being used and colors are changing
   RGBA8_T * batteryColor;
   batteryColor = & green;
-  if (batteryPercent < 20) { // sets color depending on battery level
+  if (battery.percent < 20) { // sets color depending on battery level
     batteryColor = & orange;
   }
-  if (batteryPercent < 10) {
+  if (battery.percent < 10) {
     batteryColor = & red;
   }
   // draw the battery outline and fill with color
@@ -296,7 +307,7 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
   imageBoxFilledRGB(image, 1, 5, 3, 9, & black);
 
 
-  imageBoxFilledRGB(image, 28 - batteryPercent / 4, 2, 28, 12, batteryColor);
+  imageBoxFilledRGB(image, 28 - battery.percent / 4, 2, 28, 12, batteryColor);
   if (battery.isCharging) {
     RGBA8_T * boltColor;
     if (battery.isCharging == 2) {
@@ -419,21 +430,27 @@ int main() {
     uint8_t report = 1;
     uint8_t previousCharging = 0;
     uint8_t previousPercent = 0;
+    battery.indicatorVoltage = 3000;
 
     while (1) {
       report++;
-      report &= 0b00011111;
+      report &= 0b00111111;
       calculateAmperage();
       calculateVoltage();
       if (!report) {
-        batteryPercent = (battery.finalVoltage - 3000 + 50) / 12;
-        if ((previousCharging != battery.isCharging)|(batteryPercent != previousPercent)) {
+        battery.percent = 100 - (4150 - battery.indicatorVoltage) / 8.5;
+        if (battery.percent < 0) {
+          battery.percent = 0;
+        } else if (battery.percent > 100) {
+          battery.percent = 100;
+        }
+        if ((previousCharging != battery.isCharging)|(battery.percent != previousPercent)) {
           drawBattery(& batteryLayer); // make sure this is only done if something changes
         }
       }
         update_gamepad();
 
-        previousPercent = batteryPercent;
+        previousPercent = battery.percent;
         previousCharging = battery.isCharging;
         usleep(16000);
     }
