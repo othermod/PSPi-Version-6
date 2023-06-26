@@ -1,8 +1,8 @@
-OBJS=osd.o
-BIN=osd
+OBJS=gamepad.o
+BIN=gamepad
 
 CFLAGS+=-Wall -O3 -g -I./common
-LDFLAGS+=-L/opt/vc/lib/ -lbcm_host -lm -L./lib -lraspidmx
+LDFLAGS+=-L/opt/vc/lib/ -lbcm_host -lm -L./lib -lraspidmx -lasound
 
 INCLUDES+=-I/opt/vc/include/ -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux
 
