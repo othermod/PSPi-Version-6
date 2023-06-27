@@ -15,6 +15,9 @@ all: $(BIN)
 $(BIN): $(OBJS)
 	$(CC) -o $@ -Wl,--whole-archive $(OBJS) $(LDFLAGS) -Wl,--no-whole-archive -rdynamic
 
+install: $(BIN)
+	cp $(BIN) /usr/local/bin/
+
 clean:
 	@rm -f $(OBJS)
 	@rm -f $(BIN)
