@@ -190,61 +190,46 @@ void update_gamepad() {
 }
 
 typedef struct {
-  bool calculationMode;
-  uint8_t isCharging;
+  bool isCharging;
   uint16_t voltageSYSx16;
   uint16_t voltageBATx16;
   uint16_t voltageSYS;
   uint16_t voltageBAT;
   uint16_t rawVoltage;
-  uint16_t senseRVoltageDifference;
-  uint16_t finalAmperage;
+  int senseRVoltageDifference;
+  int finalAmperage;
   uint16_t finalVoltage;
   uint16_t indicatorVoltage;
+  uint8_t chargeIndicator;
   int percent;
 } Battery_Structure;
 
 Battery_Structure battery;
 
 void calculateAmperage() {
-  //i2cBuffer[6]++; //the voltages are reported slightly lower than they should be, so I'm adding one to the ADC readings
-  //i2cBuffer[7]++;
-  //i2cBuffer[6]++; //the voltages are reported slightly lower than they should be, so I'm adding one to the ADC readings
-  //i2cBuffer[7]++;
   uint16_t readVoltageSYS = i2cBuffer[6] * 3000 / 1024;
   uint16_t readVoltageBAT = i2cBuffer[7] * 3000 / 1024;
-  //printf("senseSYS: %d\n", i2cBuffer[6]);
-  //printf("senseBAT: %d\n", i2cBuffer[7]);
-  //printf("voltageSYS: %d\n", readVoltageSYS);
-  //printf("voltageBAT: %d\n", readVoltageBAT);
 
   // rolling average of 16 ADC readings. eliminates some noise and increases accuracy
   battery.voltageSYSx16 = battery.voltageSYSx16 - (battery.voltageSYSx16 / 16) + readVoltageSYS;
   battery.voltageBATx16 = battery.voltageBATx16 - (battery.voltageBATx16 / 16) + readVoltageBAT;
-  //printf("voltageSYSx16: %d\n", battery.voltageSYSx16);
-  //printf("voltageBATx16: %d\n", battery.voltageBATx16);
-  //printf("rollingaveraged: %d\n", battery.voltageSYSx16/16);
-  //printf("rollingaveraged: %d\n", battery.voltageBATx16/16);
 
   // amperage step 1 of 3
   // the amperage is measured by calculating the difference between the two voltage readings
   // the rolling averages are 16x the actual reading, so the result has to be divided by 16
   if (battery.voltageSYSx16 > battery.voltageBATx16) {
     battery.isCharging = 0;
-    battery.senseRVoltageDifference = (battery.voltageSYSx16 - battery.voltageBATx16) / 16;
   } else {
     battery.isCharging = 1;
-    battery.senseRVoltageDifference = (battery.voltageBATx16 - battery.voltageSYSx16) / 16;
   }
-  //printf("isCharging: %d\n", battery.isCharging);
+  battery.senseRVoltageDifference = (battery.voltageBATx16 - battery.voltageSYSx16) / 16;
   // amperage step 2 of 3
   // the amperage reading now has to be corrected because the two resistor voltage dividers skew the voltage drop reading slightly
   battery.senseRVoltageDifference = battery.senseRVoltageDifference*(RESISTOR_A_KOHM+RESISTOR_B_KOHM)/RESISTOR_A_KOHM;
-  //printf("senseRVoltageDifference: %d\n", battery.senseRVoltageDifference);
   // amperage step 3 of 3
   // calculate the actual amperage using the sense resistor value
   battery.finalAmperage = battery.senseRVoltageDifference*(1000 / SENSE_RESISTOR_MILLIOHM);
-  //printf("finalAmperage: %d\n", battery.finalAmperage); // the amperage math is tested and functioning perfectly
+
 }
 
 void calculateVoltage() {
@@ -255,27 +240,16 @@ void calculateVoltage() {
   // the voltage needs one more correction, which will be done after the voltage drop on the resistor is calculated
   // voltage step 2 of 3
   // add the voltage drop to the read voltage system side, which will give the actual battery voltage
-  if (battery.isCharging) { // need to add or subtract depending on whether it is charging
-    battery.rawVoltage = battery.rawVoltage - battery.senseRVoltageDifference;
-  } else {
-    battery.rawVoltage = battery.rawVoltage + battery.senseRVoltageDifference;
-  }
-  //printf("rawVoltage: %d\n", battery.rawVoltage);
+  battery.rawVoltage = battery.rawVoltage - battery.senseRVoltageDifference;
   // voltage step 3 of 3
   // the final step is to determine the actual battery voltage, because the battery has internal resistance and the voltage is affected by charging and discharging it
   // we have to estimate what the voltage would be in an idle state
-  if (battery.isCharging) {
   battery.finalVoltage = battery.rawVoltage - battery.finalAmperage * BATTERY_INTERNAL_RESISTANCE_MILLIOHM / 1000;
-  } else {
-  battery.finalVoltage = battery.rawVoltage + battery.finalAmperage * BATTERY_INTERNAL_RESISTANCE_MILLIOHM / 1000;
-  }
-  //printf("finalVoltage: %d\n", battery.finalVoltage);
   if (battery.finalVoltage > battery.indicatorVoltage + 25) {
     battery.indicatorVoltage++;
   } else if (battery.finalVoltage < battery.indicatorVoltage - 25) {
     battery.indicatorVoltage--;
   }
-  //printf("indicatorVoltage: %d\n", battery.indicatorVoltage);
 
 }
 
@@ -308,9 +282,9 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
 
 
   imageBoxFilledRGB(image, 28 - battery.percent / 4, 2, 28, 12, batteryColor);
-  if (battery.isCharging) {
+  if (battery.chargeIndicator) {
     RGBA8_T * boltColor;
-    if (battery.isCharging == 2) {
+    if (battery.chargeIndicator == 2) {
       boltColor = & green;
     } else {
       boltColor = & white;
@@ -434,24 +408,31 @@ int main() {
 
     while (1) {
       report++;
-      report &= 0b00111111;
+      report &= 0b00011111;
       calculateAmperage();
       calculateVoltage();
       if (!report) {
-        battery.percent = 100 - (4150 - battery.indicatorVoltage) / 8.5;
+        battery.percent = 100 - (4010 - battery.indicatorVoltage) / 8.5;
         if (battery.percent < 0) {
           battery.percent = 0;
         } else if (battery.percent > 100) {
           battery.percent = 100;
         }
-        if ((previousCharging != battery.isCharging)|(battery.percent != previousPercent)) {
+        if (battery.isCharging) {
+          battery.chargeIndicator = 1;}
+        if ((battery.indicatorVoltage > 4000) & (battery.finalAmperage < 100)) {
+          battery.chargeIndicator = 2;}
+          if (!battery.isCharging & (battery.finalAmperage > 50)) {
+            battery.chargeIndicator = 0;
+          }
+        if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
           drawBattery(& batteryLayer); // make sure this is only done if something changes
         }
       }
         update_gamepad();
 
         previousPercent = battery.percent;
-        previousCharging = battery.isCharging;
+        previousCharging = battery.chargeIndicator;
         usleep(16000);
     }
 
