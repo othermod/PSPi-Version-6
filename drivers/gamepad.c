@@ -269,13 +269,13 @@ void calculateVoltage() {
   } else {
   battery.finalVoltage = battery.rawVoltage + battery.finalAmperage * BATTERY_INTERNAL_RESISTANCE_MILLIOHM / 1000;
   }
-  printf("finalVoltage: %d\n", battery.finalVoltage);
+  //printf("finalVoltage: %d\n", battery.finalVoltage);
   if (battery.finalVoltage > battery.indicatorVoltage + 25) {
     battery.indicatorVoltage++;
   } else if (battery.finalVoltage < battery.indicatorVoltage - 25) {
     battery.indicatorVoltage--;
   }
-  printf("indicatorVoltage: %d\n", battery.indicatorVoltage);
+  //printf("indicatorVoltage: %d\n", battery.indicatorVoltage);
 
 }
 
