@@ -430,7 +430,7 @@ int main() {
     uint8_t report = 1;
     uint8_t previousCharging = 0;
     uint8_t previousPercent = 0;
-    battery.indicatorVoltage = 3000;
+    battery.indicatorVoltage = 3300;
 
     while (1) {
       report++;
