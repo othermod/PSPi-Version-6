@@ -1,5 +1,3 @@
-//compile w/ gcc -O3 gamepad.c -lasound -o gamepad
-
 // TODO
 // The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
 #include <linux/uinput.h>
@@ -27,11 +25,12 @@
 #define VOL_DECREASE -1
 
 #define SENSE_RESISTOR_MILLIOHM 50 // maybe allow the Pi to change this and store in EEPROM
-#define VOLTAGE 1 // voltage mode is the initial condition
-#define COULOMB 0
 #define RESISTOR_A_KOHM 150
 #define RESISTOR_B_KOHM 10
 #define BATTERY_INTERNAL_RESISTANCE_MILLIOHM 250
+#define DISCHARGING 0
+#define CHARGING 1
+#define CHARGED 2
 
 struct uinput_user_dev uidev;
 int fd_i2c, fd_uinput;
@@ -284,7 +283,7 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
   imageBoxFilledRGB(image, 28 - battery.percent / 4, 2, 28, 12, batteryColor);
   if (battery.chargeIndicator) {
     RGBA8_T * boltColor;
-    if (battery.chargeIndicator == 2) {
+    if (battery.chargeIndicator == CHARGED) {
       boltColor = & green;
     } else {
       boltColor = & white;
@@ -418,13 +417,17 @@ int main() {
         } else if (battery.percent > 100) {
           battery.percent = 100;
         }
-        if (battery.isCharging) {
-          battery.chargeIndicator = 1;}
-        if ((battery.indicatorVoltage > 4000) & (battery.finalAmperage < 100)) {
-          battery.chargeIndicator = 2;}
-          if (!battery.isCharging & (battery.finalAmperage > 50)) {
-            battery.chargeIndicator = 0;
-          }
+        if (battery.finalAmperage < -60) {
+          battery.chargeIndicator = DISCHARGING; }
+        if (battery.finalAmperage >= 0) {
+          battery.chargeIndicator = CHARGING;}
+        if ((battery.indicatorVoltage > 4000) & (battery.finalAmperage > -40)) {
+          battery.chargeIndicator = CHARGED;}
+          //printf("chargeIndicator: %d\n", battery.chargeIndicator);
+          //printf("finalAmperage: %d\n", battery.finalAmperage);
+          //printf("indicatorVoltage: %d\n", battery.indicatorVoltage);
+          //printf("percent: %d\n", battery.percent);
+
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
           drawBattery(& batteryLayer); // make sure this is only done if something changes
         }
