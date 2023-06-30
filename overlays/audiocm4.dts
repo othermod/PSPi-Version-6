@@ -1,0 +1,42 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+        compatible = "brcm,bcm2835";
+
+        fragment@0 {
+                target = <&audio_pins>;
+                frag0: __overlay__ {
+                };
+        };
+
+	fragment@1 {
+                target = <&audio_pins>;
+                __overlay__ {
+                        brcm,pins = < 40 45 >;
+                        brcm,function = < 4 >; /* alt0 alt0 */
+                };
+        };
+
+	fragment@2 {
+		target = <&audio_pins>;
+		__dormant__ {
+                        brcm,pins = < 40 41 >;
+                        brcm,function = < 4 >; /* alt0 alt0 */
+		};
+	};
+
+	fragment@3 {
+		target = <&audio>;
+		__overlay__  {
+			brcm,disable-headphones = <0>;
+		};
+	};
+
+	__overrides__ {
+		swap_lr = <&frag0>, "swap_lr?";
+		enable_jack = <&frag0>, "enable_jack?";
+		pins_40_45 = <0>,"+1-2";
+		pins_40_41 = <0>,"-1+2";
+	};
+};
