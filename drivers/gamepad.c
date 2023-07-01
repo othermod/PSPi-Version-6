@@ -1,7 +1,8 @@
 // TODO
-// The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
-// Add volume osd indicator
-// Add brightness osd indicator
+// 1. The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
+// 2. Add volume osd indicator
+// 3. Add brightness osd indicator
+// 4. Disable LCD if no input is detected for a few minutes. Standby of sorts. Allow this to be enabled and disabled.
 #include <linux/uinput.h>
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
