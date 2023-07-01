@@ -67,22 +67,22 @@ void setup() {
   setPinAsOutput(LED_LEFT);
   setPinAsOutput(EN_AUDIO);
 
-  setPinHigh(BTN_DISPLAY);
+  // SHIFT_DATA_IN is controlled by SPI
+  // CLOCK is controlled by SPI
   setPinLow(ONEWIRE_LCD);
-  setPinHigh(SUPERVISOR);
   setPinLow(PWM_LED_ORANGE); // will probably do PWM instead
-  // setPin?(SHIFT_DATA_IN);
-  // setPin?(CLOCK);
   setPinLow(EN_5V0);
-  setPinHigh(LEFT_SWITCH);
-  setPinHigh(BTN_SD);
   setPinLow(AUDIO_GAIN_1);
   setPinLow(AUDIO_GAIN_0);
   setPinLow(SHIFT_LOAD);
   setPinLow(DETECT_RPI);
-  setPinHigh(BTN_HOLD);
   setPinLow(LED_LEFT);
   setPinLow(EN_AUDIO);
+  setPinHigh(BTN_DISPLAY);
+  setPinHigh(SUPERVISOR);
+  setPinHigh(LEFT_SWITCH);
+  setPinHigh(BTN_SD);
+  setPinHigh(BTN_HOLD);
 
   Wire.begin(I2C_ADDRESS);  // join i2c bus
   Wire.onRequest(requestEvent); // register event
