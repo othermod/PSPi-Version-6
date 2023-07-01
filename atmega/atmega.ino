@@ -179,7 +179,7 @@ void detectDisplayButton() {
       if (displayButtonPressed == 1) {
         brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
         displayButtonPressed = 0;
-        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | (((brightness - 1) / 4) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so only use 3 bits.
+        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so reduce from 5 to 3 bits.
         setBrightness(brightness);
       }
     }
@@ -205,7 +205,7 @@ void detectMuteButton() {
 void detectRPi() {
   // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
   // Handle Raspberry Pi not detected
-  if (!readPin(DETECT_RPI)) { //rpi isnt detected
+  if (!readPin(DETECT_RPI)) { // rpi isnt detected
     if (!detectTimeout){ // if the timeout sequence hasnt started yet, begin it by killing audio and lcd
       enterSleep();
     }
