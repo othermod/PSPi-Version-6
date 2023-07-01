@@ -17,6 +17,7 @@
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
 
+byte brightness = 0b00000001;
 uint16_t detectTimeout = 0;
 
 byte arduinoInputsB;
@@ -91,9 +92,10 @@ void setup() {
 
   // this disables the backlight and audio until the Pi is detected
   enterSleep();
-  // this ensures that the backlight and audio will enable as soon as the Pi is detected at boot
+  // this ensures that the backlight will enable as soon as the Pi is detected at boot
   // this may go away if I use a different GPIO from the CM4 that stays low for a few seconds
   // check to see what happens when reboots occur
+  // enable audio after i2c activity begins
   detectTimeout++;
 }
 
@@ -112,7 +114,7 @@ void initializeBacklight() {
 void setBrightness(byte brightness) { // can be 0-31, 0 must be handled correctly
   sendByte(BACKLIGHT_ADDRESS); // just combine this into the sendByte function, since address must be sent?
   sendByte(brightness);
-  setPinHigh(ONEWIRE_LCD);
+  //setPinHigh(ONEWIRE_LCD);
 }
 
 void sendBit(bool bit) {
@@ -123,13 +125,16 @@ void sendBit(bool bit) {
 }
 
 void sendByte(byte dataByte) {
-  setPinHigh(ONEWIRE_LCD); // HIGH start condition
+  //setPinHigh(ONEWIRE_LCD); // start condition is already high, because the previous byte ended high
+  noInterrupts(); // disable interrupts to i2c requests don't affect timings
   delayMicroseconds(tSTART);
   for (int i = 7; i >= 0; i--) {
     sendBit(bitRead(dataByte, i));
   }
-  setPinLow(ONEWIRE_LCD); // LOW end condition
+  setPinLow(ONEWIRE_LCD); // LOW end condition to signify end of byte
   delayMicroseconds(tEOS);
+  setPinHigh(ONEWIRE_LCD); //end with pin high
+  interrupts(); // enable interrupts again
 }
 
 void readArduinoInputs() {
