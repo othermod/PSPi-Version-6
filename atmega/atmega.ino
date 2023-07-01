@@ -32,16 +32,22 @@ const long interval = 10; // ms delay between the start of each loop
 uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
 uint8_t debouncePortD[8] = {0};
 
-struct I2C_Structure { // define the structure layout for transmitting I2C data to the Raspberry Pi
+// define the structure layout for transmitting I2C data to the Raspberry Pi
+// the first 4 bytes must be read continuously. 
+// STATUS is read at whatever interval is needed
+// left joystick can be read less often
+// right joystick is only read when it is enabled
+struct I2C_Structure { 
   uint8_t buttonA; // button status
   uint8_t buttonB; // button status
+  uint8_t SENSE_SYS;
+  uint8_t SENSE_BAT;
+  uint8_t STATUS; // 5 bits for brightness level (can use 3 bits because there are only 8 levels), 1 for mute status, 1 for power switch, 1 for hold switch
   uint8_t JOY_LX;
   uint8_t JOY_LY;
   uint8_t JOY_RX;
   uint8_t JOY_RY;
-  uint8_t SENSE_SYS;
-  uint8_t SENSE_BAT;
-  // uint8_t misc; // 5 bits for brightness level, 1 for mute status, 1 for power, 1 for hold
+  
 };
 
 I2C_Structure I2C_data; // create the structure for the I2C data

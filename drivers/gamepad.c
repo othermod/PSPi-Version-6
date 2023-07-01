@@ -40,7 +40,7 @@ int fd_i2c, fd_uinput;
 uint16_t previous_buttons = 65535;
 uint8_t previous_axes[2] = {0, 0};
 
-uint8_t i2cBuffer[8];
+uint8_t i2cBuffer[9]; // the last two bytes are right joystick
 
 snd_mixer_t *handle;
 snd_mixer_elem_t* elem;
@@ -174,13 +174,13 @@ void update_gamepad() {
     }
 
     for (i = 0; i < 2; i++) {
-        if(i2cBuffer[2 + i] != previous_axes[i]) {
+        if(i2cBuffer[5 + i] != previous_axes[i]) {
             memset(&ev, 0, sizeof(ev));
             ev.type = EV_ABS;
             ev.code = i == 0 ? ABS_X : ABS_Y;
-            ev.value = i2cBuffer[2 + i];
+            ev.value = i2cBuffer[5 + i];
             write(fd_uinput, &ev, sizeof(ev));
-            previous_axes[i] = i2cBuffer[2 + i];
+            previous_axes[i] = i2cBuffer[5 + i];
         }
     }
 
@@ -209,8 +209,8 @@ typedef struct {
 Battery_Structure battery;
 
 void calculateAmperage() {
-  uint16_t readVoltageSYS = i2cBuffer[6] * 3000 / 1024;
-  uint16_t readVoltageBAT = i2cBuffer[7] * 3000 / 1024;
+  uint16_t readVoltageSYS = i2cBuffer[2] * 3000 / 1024;
+  uint16_t readVoltageBAT = i2cBuffer[3] * 3000 / 1024;
 
   // rolling average of 16 ADC readings. eliminates some noise and increases accuracy
   battery.voltageSYSx16 = battery.voltageSYSx16 - (battery.voltageSYSx16 / 16) + readVoltageSYS;
