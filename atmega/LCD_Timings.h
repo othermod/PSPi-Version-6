@@ -1,6 +1,6 @@
 #define BACKLIGHT_ADDRESS 0x72
 
-// LCD backlight chip timings
+// TPS61160DRVR LCD backlight chip timings
 // I had issues when setting values close to the minimum
 #define tSTART 10 // minimum of 2 microseconds
 #define tEOS 10 // minimum of 2 microseconds
