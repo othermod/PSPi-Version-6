@@ -13,8 +13,6 @@
 
 #define I2C_ADDRESS 0x10
 
-
-
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
 
 byte brightness = 0b00000001;
@@ -33,11 +31,11 @@ uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debo
 uint8_t debouncePortD[8] = {0};
 
 // define the structure layout for transmitting I2C data to the Raspberry Pi
-// the first 4 bytes must be read continuously. 
+// the first 4 bytes must be read continuously.
 // STATUS is read at whatever interval is needed
 // left joystick can be read less often
 // right joystick is only read when it is enabled
-struct I2C_Structure { 
+struct I2C_Structure {
   uint8_t buttonA; // button status
   uint8_t buttonB; // button status
   uint8_t SENSE_SYS;
@@ -47,7 +45,7 @@ struct I2C_Structure {
   uint8_t JOY_LY;
   uint8_t JOY_RX;
   uint8_t JOY_RY;
-  
+
 };
 
 I2C_Structure I2C_data; // create the structure for the I2C data
@@ -181,6 +179,7 @@ void detectDisplayButton() {
       if (displayButtonPressed == 1) {
         brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
         displayButtonPressed = 0;
+        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | (((brightness - 1) / 4) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so only use 3 bits.
         setBrightness(brightness);
       }
     }
@@ -203,22 +202,6 @@ void detectMuteButton() {
     }
 }
 
-/*
-void detectMuteButton() {
-  // Handle Mute button being pressed
-  if (!readPin(BTN_MUTE)) {
-      muteButtonPressed = 1;
-    } else {
-      // invert EN_AUDIO when the mute button is released
-      // can alse handle mute being held to increase hardware amplification
-      if (muteButtonPressed == 1) {
-        // invert EN_AUDIO
-        // should the mute status save in eeprom?
-        muteButtonPressed = 0;
-      }
-    }
-}
-*/
 void detectRPi() {
   // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
   // Handle Raspberry Pi not detected
