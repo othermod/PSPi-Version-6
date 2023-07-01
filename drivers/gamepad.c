@@ -158,7 +158,7 @@ void update_gamepad() {
             memset(&ev, 0, sizeof(ev));
             ev.type = EV_KEY;
             ev.code = BTN_TRIGGER_HAPPY1 + i;
-            ev.value = ((buttons >> i) & 1) == 0 ? 1 : 0;
+            ev.value = (buttons >> i) & 1;
             write(fd_uinput, &ev, sizeof(ev));
             previous_buttons ^= (1 << i);
 

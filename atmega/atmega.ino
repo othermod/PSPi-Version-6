@@ -157,8 +157,9 @@ void readShiftRegisterInputs(){
   setPinHigh(SHIFT_LOAD);
 
   // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
-  registerInputs1 = SPI.transfer(0);
-  registerInputs2 = SPI.transfer(0);
+  // Flip every bit so that 1 means pressed. This will also be used in the the dimming/low lower function.
+  registerInputs1 = ~SPI.transfer(0);
+  registerInputs2 = ~SPI.transfer(0);
 
     //add debouncing
   I2C_data.buttonA = registerInputs1;
