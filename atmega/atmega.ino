@@ -89,6 +89,8 @@ void setup() {
   SPI.begin();
   SPI.setBitOrder(MSBFIRST); // can this be removed?
   (SPI_MODE0); // can this be removed?
+  delay(500);
+  setPinHigh(EN_5V0);
 
   // this disables the backlight and audio until the Pi is detected
   enterSleep();
