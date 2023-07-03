@@ -453,10 +453,6 @@ int main() {
           battery.chargeIndicator = CHARGING;}
         if ((battery.indicatorVoltage > 4000) & (battery.finalAmperage > -40)) {
           battery.chargeIndicator = CHARGED;}
-          //printf("chargeIndicator: %d\n", battery.chargeIndicator);
-          //printf("finalAmperage: %d\n", battery.finalAmperage);
-          //printf("indicatorVoltage: %d\n", battery.indicatorVoltage);
-          //printf("percent: %d\n", battery.percent);
 
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
           drawBattery(& batteryLayer); // make sure this is only done if something changes
