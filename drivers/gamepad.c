@@ -39,6 +39,7 @@ struct uinput_user_dev uidev;
 int fd_i2c, fd_uinput;
 uint16_t previous_buttons = 65535;
 uint8_t previous_axes[2] = {0, 0};
+uint8_t brightness = 0;
 
 uint8_t i2cBuffer[9]; // the last two bytes are right joystick
 
@@ -354,6 +355,15 @@ void drawMute(IMAGE_LAYER_T * muteLayer) {
   changeSourceAndUpdateImageLayer(muteLayer);
 }
 
+void drawBrightness(IMAGE_LAYER_T * brightnessLayer) {
+  IMAGE_T * image = & (brightnessLayer -> image);
+  for (size_t i = 0; i <= brightness; i++) {
+    imageBoxFilledRGB(image, 100 * i + 40, 400, 100 * i + 60, 420, & black);
+    imageBoxFilledRGB(image, 100 * i + 44, 404, 100 * i + 56, 416, & white);
+  }
+  changeSourceAndUpdateImageLayer(brightnessLayer);
+}
+
 void clearLayer(IMAGE_LAYER_T * layer) {
   IMAGE_T * image = & (layer -> image);
   clearImageRGB(image, & clearColor);
@@ -383,6 +393,10 @@ int main() {
     VC_IMAGE_RGBA16);
   createResourceImageLayer( & batteryLayer, layer);
 
+  IMAGE_LAYER_T brightnessLayer;
+  initImageLayer( & brightnessLayer, info.width, info.height, VC_IMAGE_RGBA16);
+  createResourceImageLayer( & brightnessLayer, layer);
+
   IMAGE_LAYER_T muteLayer;
   initImageLayer( & muteLayer,
     15, // battery image width
@@ -395,6 +409,7 @@ int main() {
   int xOffset = info.width - 31;
   int yOffset = 0;
   addElementImageLayerOffset( & batteryLayer, xOffset, yOffset, display, update);
+  addElementImageLayerOffset( & brightnessLayer, 0, 0, display, update);
   xOffset = info.width - 46;
   addElementImageLayerOffset( & muteLayer, xOffset, yOffset, display, update);
 
@@ -406,7 +421,9 @@ int main() {
     uint8_t report = 1;
     uint8_t previousCharging = 0;
     uint8_t previousPercent = 0;
+    uint8_t previousStatus = 0;
     battery.indicatorVoltage = 3300;
+    uint8_t showBrightness = 0;
 
     while (1) {
       report++;
@@ -436,14 +453,33 @@ int main() {
         }
       }
         update_gamepad();
+        if (previousStatus != i2cBuffer[4]) {
+          brightness = i2cBuffer[4] & 0b00000111;
+          isMute = i2cBuffer[4] & 0b10000000; // maybe bitshift and make boolean
+          //printf("%d\n", brightness);
+          showBrightness = 1;
+          if (brightness == 0b00000000) {
+            clearLayer( & brightnessLayer); // do this to remove the other 7 squares when it cycles back to 1 square
+          }
+          drawBrightness( & brightnessLayer);
+        }
+        if (showBrightness) {
+          showBrightness++;
+          showBrightness = showBrightness & 0b00011111;
+          if (!showBrightness){
+            clearLayer( & brightnessLayer);
+          }
+        }
 
         previousPercent = battery.percent;
         previousCharging = battery.chargeIndicator;
+        previousStatus = i2cBuffer[4];
         usleep(16000);
     }
 
     snd_mixer_close(handle);
     destroyImageLayer( & batteryLayer);
+    destroyImageLayer( & brightnessLayer);
     destroyImageLayer( & muteLayer);
     result = vc_dispmanx_display_close(display);
     assert(result == 0);

@@ -197,6 +197,8 @@ void detectMuteButton() {
         } else {
           setPinHigh(EN_AUDIO);
         }
+        // add mute condition to STATUS
+        I2C_data.STATUS = (I2C_data.STATUS & B01111111) | (readPin(EN_AUDIO) << 7);
         muteButtonPressed = 0;
       }
     }
