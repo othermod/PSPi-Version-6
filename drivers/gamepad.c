@@ -35,6 +35,16 @@
 #define CHARGING 1
 #define CHARGED 2
 
+#define buttonA 0
+#define buttonB 1
+#define SENSE_SYS 2
+#define SENSE_BAT 3
+#define STATUS 4
+#define JOY_LX 5
+#define JOY_LY 6
+#define JOY_RX 7
+#define JOY_RY 8
+
 struct uinput_user_dev uidev;
 int fd_i2c, fd_uinput;
 uint16_t previous_buttons = 65535;
@@ -153,7 +163,7 @@ void update_gamepad() {
 
     read(fd_i2c, i2cBuffer, 8);
 
-    uint16_t buttons = (i2cBuffer[1] << 8) | i2cBuffer[0]; // Combine the two bytes into a 16-bit unsigned integer
+    uint16_t buttons = (i2cBuffer[buttonB] << 8) | i2cBuffer[buttonA]; // Combine the two bytes into a 16-bit unsigned integer
 
     for (i = 0; i < 16; i++) {
         if(((buttons >> i) & 1) != ((previous_buttons >> i) & 1)) {
@@ -175,13 +185,13 @@ void update_gamepad() {
     }
 
     for (i = 0; i < 2; i++) {
-        if(i2cBuffer[5 + i] != previous_axes[i]) {
+        if(i2cBuffer[JOY_LX + i] != previous_axes[i]) {
             memset(&ev, 0, sizeof(ev));
             ev.type = EV_ABS;
             ev.code = i == 0 ? ABS_X : ABS_Y;
-            ev.value = i2cBuffer[5 + i];
+            ev.value = i2cBuffer[JOY_LX + i];
             write(fd_uinput, &ev, sizeof(ev));
-            previous_axes[i] = i2cBuffer[5 + i];
+            previous_axes[i] = i2cBuffer[JOY_LX + i];
         }
     }
 
@@ -210,8 +220,8 @@ typedef struct {
 Battery_Structure battery;
 
 void calculateAmperage() {
-  uint16_t readVoltageSYS = i2cBuffer[2] * 3000 / 1024;
-  uint16_t readVoltageBAT = i2cBuffer[3] * 3000 / 1024;
+  uint16_t readVoltageSYS = i2cBuffer[SENSE_SYS] * 3000 / 1024;
+  uint16_t readVoltageBAT = i2cBuffer[SENSE_BAT] * 3000 / 1024;
 
   // rolling average of 16 ADC readings. eliminates some noise and increases accuracy
   battery.voltageSYSx16 = battery.voltageSYSx16 - (battery.voltageSYSx16 / 16) + readVoltageSYS;
@@ -453,9 +463,10 @@ int main() {
         }
       }
         update_gamepad();
-        if (previousStatus != i2cBuffer[4]) {
-          brightness = i2cBuffer[4] & 0b00000111;
-          isMute = i2cBuffer[4] & 0b10000000; // maybe bitshift and make boolean
+        if (previousStatus != i2cBuffer[STATUS]) {
+          brightness = i2cBuffer[STATUS] & 0b00000111;
+          isMute = i2cBuffer[STATUS] & 0b10000000; // maybe bitshift and make boolean
+
           //printf("%d\n", brightness);
           showBrightness = 1;
           if (brightness == 0b00000000) {
@@ -473,7 +484,7 @@ int main() {
 
         previousPercent = battery.percent;
         previousCharging = battery.chargeIndicator;
-        previousStatus = i2cBuffer[4];
+        previousStatus = i2cBuffer[STATUS];
         usleep(16000);
     }
 
