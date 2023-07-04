@@ -35,8 +35,8 @@
 #define CHARGING 1
 #define CHARGED 2
 
-#define buttonA 0
-#define buttonB 1
+#define BUTTON_A 0
+#define BUTTON_B 1
 #define SENSE_SYS 2
 #define SENSE_BAT 3
 #define STATUS 4
@@ -163,7 +163,7 @@ void update_gamepad() {
 
     read(fd_i2c, i2cBuffer, 8);
 
-    uint16_t buttons = (i2cBuffer[buttonB] << 8) | i2cBuffer[buttonA]; // Combine the two bytes into a 16-bit unsigned integer
+    uint16_t buttons = (i2cBuffer[BUTTON_B] << 8) | i2cBuffer[BUTTON_A]; // Combine the two bytes into a 16-bit unsigned integer
 
     for (i = 0; i < 16; i++) {
         if(((buttons >> i) & 1) != ((previous_buttons >> i) & 1)) {
@@ -453,7 +453,6 @@ int main() {
           battery.chargeIndicator = CHARGING;}
         if ((battery.indicatorVoltage > 4000) & (battery.finalAmperage > -40)) {
           battery.chargeIndicator = CHARGED;}
-
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
           drawBattery(& batteryLayer); // make sure this is only done if something changes
         }
@@ -472,7 +471,7 @@ int main() {
         }
         if (showBrightness) {
           showBrightness++;
-          showBrightness = showBrightness & 0b00011111;
+          showBrightness = showBrightness & 0b00111111;
           if (!showBrightness){
             clearLayer( & brightnessLayer);
           }
