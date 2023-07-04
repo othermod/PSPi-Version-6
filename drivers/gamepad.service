@@ -1,0 +1,10 @@
+[Unit]
+Description=othermod Gamepad Service
+
+[Service]
+Type=simple
+ExecStart=sudo gamepad
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

@@ -74,7 +74,7 @@ hdmi_ignore_edid_audio=1
 dtparam=act_led_gpio=20
 
 #audio
-dtoverlay=audio,pins_12_45
+dtoverlay=mono
 
 #poweroff
 dtoverlay=gpio-poweroff,gpiopin=4,active_low="y"

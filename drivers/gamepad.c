@@ -427,7 +427,7 @@ int main() {
   assert(result == 0);
     initialize_i2c();
     initialize_gamepad();
-    initialize_alsa("default", "Headphone");
+    initialize_alsa("default", "PCM");
     uint8_t report = 1;
     uint8_t previousCharging = 0;
     uint8_t previousPercent = 0;
