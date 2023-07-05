@@ -56,24 +56,34 @@ uint8_t i2cBuffer[9]; // the last two bytes are right joystick
 snd_mixer_t *handle;
 snd_mixer_elem_t* elem;
 
-void initialize_alsa(const char* card, const char* selem_name) {
-    snd_mixer_selem_id_t *sid;
-
+void initialize_alsa(const char* card) {
     snd_mixer_open(&handle, 0);
     snd_mixer_attach(handle, card);
     snd_mixer_selem_register(handle, NULL, NULL);
     snd_mixer_load(handle);
 
+    snd_mixer_selem_id_t *sid;
     snd_mixer_selem_id_alloca(&sid);
-    snd_mixer_selem_id_set_index(sid, 0);
-    snd_mixer_selem_id_set_name(sid, selem_name);
 
-    elem = snd_mixer_find_selem(handle, sid);
+    elem = NULL;
+    for (elem = snd_mixer_first_elem(handle); elem; elem = snd_mixer_elem_next(elem)) {
+        if (snd_mixer_selem_is_active(elem)) {
+            snd_mixer_selem_get_id(elem, sid);
+            if (snd_mixer_selem_has_playback_volume(elem)) {
+                //printf("Found active volume element: %s\n", snd_mixer_selem_id_get_name(sid));
+                break;
+            }
+        }
+    }
 
     if (!elem) {
-        fprintf(stderr, "Cannot find simple control '%s',%i\n", snd_mixer_selem_id_get_name(sid), snd_mixer_selem_id_get_index(sid));
+        fprintf(stderr, "No suitable volume element found\n");
+        snd_mixer_close(handle);
+        return;
     }
 }
+
+
 
 int change_volume(int operation, long change_value) {
     long minv, maxv, outvol;
@@ -427,7 +437,7 @@ int main() {
   assert(result == 0);
     initialize_i2c();
     initialize_gamepad();
-    initialize_alsa("default", "PCM");
+    initialize_alsa("default");
     uint8_t report = 1;
     uint8_t previousCharging = 0;
     uint8_t previousPercent = 0;
