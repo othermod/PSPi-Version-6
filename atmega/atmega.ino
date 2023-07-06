@@ -1,8 +1,8 @@
 /* TODO
 1. Forced poweroff will be more gentle if the arduino detects the power button being held and kills 5v after 2 seconds, and then kills all power
-2. The lcd is not switching brightness reliably, so try increasing the delays
-3. Mute audio as soon as I2C communication stops. Do this by inverting the inputs from the shift register, and checking whether both bytes are 0
-4. Set up button debouncing
+2. Mute audio as soon as I2C communication stops.
+3. Set up button debouncing.
+4. Allow receiving of commands over I2C (dimming, mute)
 */
 
 #include <Wire.h>

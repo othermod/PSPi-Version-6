@@ -1,8 +1,8 @@
-// TODO
-// 1. The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
-// 2. Add volume osd indicator
-// 3. Add brightness osd indicator
-// 4. Disable LCD if no input is detected for a few minutes. Standby of sorts. Allow this to be enabled and disabled.
+/* TODO
+1. The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
+2. Add volume osd indicator
+3. Disable LCD if no input is detected for a period of time. Standby of sorts. Allow this to be enabled and disabled.
+*/
 #include <linux/uinput.h>
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
@@ -82,8 +82,6 @@ void initialize_alsa(const char* card) {
         return;
     }
 }
-
-
 
 int change_volume(int operation, long change_value) {
     long minv, maxv, outvol;
