@@ -230,6 +230,7 @@ void enterSleep() {
 }
 
 void wakeFromSleep() {
+  delay(500);
   setPinHigh(EN_AUDIO);
   initializeBacklight(); // re-initialize and enable backlight
 }
