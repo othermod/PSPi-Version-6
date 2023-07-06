@@ -114,6 +114,7 @@ void initializeBacklight() {
   delayMicroseconds(150); // keep CTRL high for more than 100 microseconds
   setPinLow(ONEWIRE_LCD);
   delayMicroseconds(300); // drive CTRL low for more than 260 microseconds
+  setPinHigh(ONEWIRE_LCD);
   setBrightness(brightness); // set the brightness
 }
 
