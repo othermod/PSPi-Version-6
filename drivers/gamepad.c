@@ -2,6 +2,7 @@
 1. The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
 2. Add volume osd indicator
 3. Disable LCD if no input is detected for a period of time. Standby of sorts. Allow this to be enabled and disabled.
+4. Increase joystick sensitivity, so it reaches the maximum value at diagonals.
 */
 #include <linux/uinput.h>
 #include <linux/i2c-dev.h>
