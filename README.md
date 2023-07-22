@@ -35,11 +35,6 @@ You can follow along with the project on [EasyEDA](https://oshwlab.com/adamseams
 ## Ordering
 The boards can be ordered from the manufacturer at any point, but please be aware that the project is still in the testing phase and changes may be made. Some assembly will be required if you order from them, and they are quite expensive in low quantities. I'll also eventually sell these board on my website.
 
-## Links
-- YouTube Playlist: [PSPi Project Playlist](#)
-- EasyEDA Project: [PSPi Version 6 on EasyEDA](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy)
-- Discord: [PSPi Discord Server](#)
-
 ## Contact
 If you have any thoughts, suggestions, or ideas, please feel free to reach out. Contributions, either by helping with the design, coding, testing, or just recommending improvements, are always welcome.
 
