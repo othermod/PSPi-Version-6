@@ -30,7 +30,7 @@ The project is still a work in progress, and although the basic functions are no
 This project is a one-man-show but any help or input is welcome and appreciated. Whether you have experience with design, coding, testing, or just have some ideas for improvement, your contribution is valuable. You can also contribute by spreading the word and sharing the project with others. Financial contributions are also greatly appreciated to help cover the cost of prototypes and speed up testing and improvements.
 
 ## Follow the Project
-You can follow along with the project on [EasyEDA](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy) or [Discord](https://discord.gg/V96c3JC) for constant updates, or on [YouTube](youtube.com/othermod) for occasional updates.
+You can follow along with the project on [EasyEDA](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy) or [Discord](https://discord.gg/V96c3JC) for constant updates, or on [YouTube](https://youtube.com/othermod) for occasional updates.
 
 ## Ordering
 The boards can be ordered from the manufacturer at any point, but please be aware that the project is still in the testing phase and changes may be made. Some assembly will be required if you order from them, and they are quite expensive in low quantities. I'll also eventually sell these board on my website.
