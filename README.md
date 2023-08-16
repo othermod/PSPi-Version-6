@@ -4,13 +4,13 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 ![PSPi](https://othermod.com/wp-content/uploads/IMG_8727.jpg)
 
 ## Hardware Features
-- **Improved Display:** The new board uses 7 bits for each color when using the Pi Zero and 8 bits for each color when using the Compute Module, improving color depth for images and videos.
-- **LCD Power Consumption:** Adjustments have been made to the LCD components to reduce power consumption when the screen is off.
-- **Battery Charging:** A new battery charger has been added, charging the battery faster with almost no heat generation.
-- **Power Circuits Overhaul:** All of the power circuits underwent a major overhaul, better handling the high current of the Compute Module and gracefully managing power on and power off.
-- **Microcontroller:** The board uses an atmega8a, a cost-effective microcontroller functionally identical to the atmega328p used in Arduino boards for this specific application.
-- **Board Shape:** Changes to the board shape have made it closer to the shape of the original PSP board, simplifying the speaker connections.
-- **Compatibility:** This new board features a 40-pin Raspberry Pi female connector and is compatible with all standard 40-pin Raspberry Pi boards.
+- **Improved Display:** The board uses an [aftermarket 800x480 LCD](https://www.ebay.com/itm/4-3-inch-800x480-IPS-TFT-LCD-Module-All-Viewing-Optional-TouchScreen-Display-/292806918081?mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=5338322564&customid=&toolid=10001&mkevt=1) instead of the lower resolution original one. It uses 21 bits for color when using the Pi Zero and 24 bits for color when using the Compute Module.
+- **High Efficiency:** The PSPi is designed to sip as little power as possible. The backlight is dimmable, and the lowest brightness setting allows for up to 8 hours of play time when using the Raspberry Pi Zero.
+- **Battery Charging:** It has a very efficient battery charger, which charges the battery quickly and with almost no heat generation. Charging is done using either the barrel jack or the miniUSB connector.
+- **Audio:** The board has an isolated buffer-filter-amplifier circuit for improved audio and minimal noise.
+- **Smart Power Circuits:** The power circuits are designed to handle the different Raspberry Pi versions. It powers on with a quick push of the power button, and features a forced poweroff when the power button is held, and also features a graceful poweroff after shutdown.
+- **Microcontroller:** The board uses an atmega8a for input and battery sensing, limiting the number of calculations done on the Pi itself.
+- **Compatibility:** This board fits into the PSP 1000 series only. It features a 40-pin Raspberry Pi female connector and is compatible with all standard 40-pin Raspberry Pi boards. Using an optional carrier, it is also compatible with the Raspberry Pi CM4. The board shape closely matches the original PSP board, simplifying the installation.
 
 ## Software Features
 - **Supports RetroPie, Lakka, and many more operating systems:** RetroPie provides a great, minimal interface that gives decent play time because it isn’t doing too much in the background when its idle. Lakka looks great on the PSP but uses a ton of processing power and drains the battery faster. I plan to get Ubuntu working next.
@@ -21,7 +21,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 ## Resources Included Here
 - **Code for Raspberry Pi:** This repository includes the necessary code for the Raspberry Pi that forms the brains of the PSPi.
 - **Firmware for atmega:** The firmware for the atmega microcontroller used in the PSPi is also part of this repository.
-- **PCB and Schematics:** You can find the PCB and schematics on EasyEDA at [this link](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy).
+- **PCB and Schematics:** You can also find the PCB and schematics on EasyEDA at [this link](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy).
 
 ## Status
 The project is still a work in progress, and although the basic functions are now up and running, there are still a few tweaks and improvements to be made.
