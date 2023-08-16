@@ -3,25 +3,32 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 
 ![PSPi](https://othermod.com/wp-content/uploads/IMG_8727.jpg)
 
-## Hardware Features
-- **Improved Display:** The board uses an [aftermarket 800x480 LCD](https://www.ebay.com/itm/4-3-inch-800x480-IPS-TFT-LCD-Module-All-Viewing-Optional-TouchScreen-Display-/292806918081?mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=5338322564&customid=&toolid=10001&mkevt=1) instead of the lower resolution original one. It uses 21 bits for color when using the Pi Zero and 24 bits for color when using the Compute Module.
-- **High Efficiency:** The PSPi is designed to sip as little power as possible. The backlight is dimmable, and the lowest brightness setting allows for up to 8 hours of play time when using the Raspberry Pi Zero.
-- **Battery Charging:** It has a very efficient battery charger, which charges the battery quickly and with almost no heat generation. Charging is done using either the barrel jack or the miniUSB connector.
-- **Audio:** The board has an isolated buffer-filter-amplifier circuit for improved audio and minimal noise.
-- **Smart Power Circuits:** The power circuits are designed to handle the different Raspberry Pi versions. It powers on with a quick push of the power button, and features a forced poweroff when the power button is held, and also features a graceful poweroff after shutdown.
-- **Microcontroller:** The board uses an atmega8a for input and battery sensing, limiting the number of calculations done on the Pi itself.
-- **Compatibility:** This board fits into the PSP 1000 series only. It features a 40-pin Raspberry Pi female connector and is compatible with all standard 40-pin Raspberry Pi boards. Using an optional carrier, it is also compatible with the Raspberry Pi CM4. The board shape closely matches the original PSP board, simplifying the installation.
+### Hardware Features
+
+|Feature|Description|
+|-|-|
+| **Improved Display** | Uses an [aftermarket 800x480 LCD](https://www.ebay.com/itm/4-3-inch-800x480-IPS-TFT-LCD-Module-All-Viewing-Optional-TouchScreen-Display-/292806918081) instead of the original. 21 bits for color with Pi Zero, 24 bits with Compute Module.|
+| **High Efficiency** | Designed to consume minimal power. Dimmable backlight allows up to 8 hours of playtime with Raspberry Pi Zero.|
+| **Battery Charging** | Efficient charger with minimal heat generation. Charging via barrel jack or miniUSB connector.|
+| **Audio** | Isolated buffer-filter-amplifier circuit for improved audio and minimal noise.|
+| **Smart Power Circuits** | Handles different Raspberry Pi versions, quick power on/off, graceful shutdown.|
+| **Microcontroller** | Uses atmega8a for input and battery sensing, limiting calculations on the Pi.|
+| **Compatibility** | Fits PSP 1000 series, 40-pin Raspberry Pi connector, optional compatibility with Raspberry Pi CM4.|
 
 ## Software Features
-- **Supports RetroPie, Lakka, and many more operating systems:** RetroPie provides a great, minimal interface that gives decent play time because it isn’t doing too much in the background when its idle. Lakka looks great on the PSP but uses a ton of processing power and drains the battery faster. I plan to get Ubuntu working next.
-- **Software Volume Adjustment:** The board now supports software volume adjustment, and both the headphone and speaker volume adjust.
-- **Battery Calculation and Indication:** The software displays the battery capacity remaining at all times.
-- The software is still somewhat basic, and being used to test some of the hardware functions. It will be gradually improved as the board gets closer to release.
+| Feature                        | Description                                                                                                     |
+|-|-|
+| **Operating Systems Supported**| - RetroPie: Minimal interface, decent playtime.<br> - Lakka: Visually appealing but uses more processing power.<br> - Ubuntu: Planned support. |
+| **Software Volume Adjustment** | Supports adjustment for headphone/speaker volume.                                                      |
+| **OSD** | Displays remaining battery capacity.                                                                           |
+| **Development Status**         | Software is still in development and will be improved as the board gets closer to release.                      |
 
-## Resources Included Here
-- **Code for Raspberry Pi:** This repository includes the necessary code for the Raspberry Pi that forms the brains of the PSPi.
-- **Firmware for atmega:** The firmware for the atmega microcontroller used in the PSPi is also part of this repository.
-- **PCB and Schematics:** You can also find the PCB and schematics on EasyEDA at [this link](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy).
+### Resources Included Here
+| Resource | Description | Link |
+|-|-|-|
+| **Code for Raspberry Pi** | Necessary code for the Raspberry Pi that forms the brains of the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/drivers) |
+| **Firmware for atmega**   | Firmware for the atmega microcontroller used in the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/atmega) |
+| **PCB and Schematics**    | PCB and schematics for the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/boards) |
 
 ## Status
 The project is still a work in progress, and although the basic functions are now up and running, there are still a few tweaks and improvements to be made.
