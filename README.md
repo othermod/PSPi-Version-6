@@ -7,7 +7,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 
 |Feature|Description|
 |-|-|
-| **Improved Display** | Uses an [aftermarket 800x480 LCD](https://www.ebay.com/itm/4-3-inch-800x480-IPS-TFT-LCD-Module-All-Viewing-Optional-TouchScreen-Display-/292806918081) instead of the original. 21 bits for color with Pi Zero, 24 bits with Compute Module.|
+| **Improved Display** | Uses an [aftermarket 800x480 LCD](https://www.ebay.com/itm/4-3-inch-800x480-IPS-TFT-LCD-Module-All-Viewing-Optional-TouchScreen-Display-/292806918081?mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=5338322564&customid=&toolid=10001&mkevt=1) instead of the original. 21 bits for color with Pi Zero, 24 bits with Compute Module.|
 | **High Efficiency** | Designed to consume minimal power. Dimmable backlight allows up to 8 hours of playtime with Raspberry Pi Zero.|
 | **Battery Charging** | Efficient charger with minimal heat generation. Charging via barrel jack or miniUSB connector.|
 | **Audio** | Isolated buffer-filter-amplifier circuit for improved audio and minimal noise.|
