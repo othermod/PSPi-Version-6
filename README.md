@@ -7,18 +7,18 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 
 |Feature|Description|
 |-|-|
-| **Improved Display** | Uses an [aftermarket 800x480 LCD](https://www.ebay.com/itm/4-3-inch-800x480-IPS-TFT-LCD-Module-All-Viewing-Optional-TouchScreen-Display-/292806918081?mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=5338322564&customid=&toolid=10001&mkevt=1) instead of the original. 21 bits for color with Pi Zero, 24 bits with Compute Module.|
-| **High Efficiency** | Designed to consume minimal power. Dimmable backlight allows up to 8 hours of playtime with Raspberry Pi Zero.|
-| **Battery Charging** | Efficient charger with minimal heat generation. Charging via barrel jack or miniUSB connector.|
+| **Improved Display** | Uses an [aftermarket 800x480 LCD](https://www.ebay.com/itm/4-3-inch-800x480-IPS-TFT-LCD-Module-All-Viewing-Optional-TouchScreen-Display-/292806918081?mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=5338322564&customid=&toolid=10001&mkevt=1) instead of the original 480x272 one. <br>21-bit color with Pi Zero, and 24-bit with Compute Module.|
+| **High Efficiency** | Designed to consume minimal power. <br>Dimmable backlight allows up to 8 hours of playtime with Raspberry Pi Zero.|
+| **Battery Charging** | Efficient charger with minimal heat generation. <br>Charge via barrel jack or miniUSB connector.|
 | **Audio** | Isolated buffer-filter-amplifier circuit for improved audio and minimal noise.|
-| **Smart Power Circuits** | Handles different Raspberry Pi versions, quick power on/off, graceful shutdown.|
-| **Microcontroller** | Uses atmega8a for input and battery sensing, limiting calculations on the Pi.|
-| **Compatibility** | Fits PSP 1000 series, 40-pin Raspberry Pi connector, optional compatibility with Raspberry Pi CM4.|
+| **Smart Power Circuits** | Handles the different Raspberry Pi versions. Includes quick power on/off, graceful shutdown, and forced power-off.|
+| **Microcontroller** | Uses atmega8a for input and battery sensing, limiting calculations done on the Pi.|
+| **Compatibility** | Fits PSP 1000 series only.<br>Works with 40-pin Raspberry Pi boards. Compatible with Raspberry Pi CM4 when using the optional Carrier board.<br>Only the Zero/2W and CM4 fit into the shell.|
 
 ## Software Features
 | Feature                        | Description                                                                                                     |
 |-|-|
-| **Operating Systems Supported**| - RetroPie: Minimal interface, decent playtime.<br> - Lakka: Visually appealing but uses more processing power.<br> - Ubuntu: Planned support. |
+| **Operating Systems Supported**| RetroPie: Minimal interface, decent playtime.<br> Lakka: Visually appealing but uses more processing power.<br> Ubuntu: Full Linux OS. |
 | **Software Volume Adjustment** | Supports adjustment for headphone/speaker volume.                                                      |
 | **OSD** | Displays remaining battery capacity.                                                                           |
 | **Development Status**         | Software is still in development and will be improved as the board gets closer to release.                      |
@@ -43,6 +43,6 @@ You can follow along with the project on [EasyEDA](https://oshwlab.com/adamseams
 The boards can be ordered from the manufacturer at any point, but please be aware that the project is still in the testing phase and changes may be made. Some assembly will be required if you order from them, and they are quite expensive in low quantities. I'll also eventually sell these board on my website.
 
 ## Contact
-If you have any thoughts, suggestions, or ideas, please feel free to reach out. Contributions, either by helping with the design, coding, testing, or just recommending improvements, are always welcome.
+If you have any thoughts, suggestions, or ideas, please feel free to reach out.
 
 *Thank you for your interest in the PSPi project, and stay tuned for more updates.*
