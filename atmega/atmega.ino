@@ -56,29 +56,30 @@ void setup() {
   // These and the macros will go away once pin states are verified, and I will just do this once with a single command for each port
   setPinAsInput(BTN_DISPLAY);
   setPinAsInput(SUPERVISOR);
-  setPinAsInput(SHIFT_DATA_IN);
-  setPinAsInput(LEFT_SWITCH);
-  setPinAsInput(BTN_SD);
-  setPinAsInput(DETECT_RPI);
-  setPinAsInput(BTN_HOLD);
   setPinAsOutput(ONEWIRE_LCD);
   setPinAsOutput(PWM_LED_ORANGE);
-  setPinAsOutput(CLOCK);
+  setPinAsInput(SPI_DATA_IN);
+  setPinAsOutput(SPI_CLOCK);
   setPinAsOutput(EN_5V0);
-  setPinAsOutput(AUDIO_GAIN_1);
-  setPinAsOutput(AUDIO_GAIN_0);
-  setPinAsOutput(SHIFT_LOAD);
   setPinAsOutput(LED_LEFT);
+
+  setPinAsOutput(EN_AMP);
+  setPinAsInput(DETECT_RPI);
+
+  setPinAsOutput(SPI_SHIFT_LOAD);
+  setPinAsInput(BTN_SD);
+  setPinAsInput(BTN_HOLD);
+  setPinAsInput(LEFT_SWITCH);
   setPinAsOutput(EN_AUDIO);
 
-  // SHIFT_DATA_IN is controlled by SPI
-  // CLOCK is controlled by SPI
+  // SPI_DATA_IN is controlled by SPI
+  // SPI_CLOCK is controlled by SPI
   setPinLow(ONEWIRE_LCD);
   setPinLow(PWM_LED_ORANGE); // will probably do PWM instead
   setPinLow(EN_5V0);
-  setPinLow(AUDIO_GAIN_1);
-  setPinLow(AUDIO_GAIN_0);
-  setPinLow(SHIFT_LOAD);
+  setPinHigh(EN_AMP);
+  //setPinLow(AUDIO_GAIN_0);
+  setPinLow(SPI_SHIFT_LOAD);
   setPinLow(DETECT_RPI);
   setPinLow(LED_LEFT);
   setPinLow(EN_AUDIO);
@@ -157,9 +158,9 @@ void readArduinoInputs() {
 
 void readShiftRegisterInputs(){
   // Prepare 74HC165D for parallel load
-  setPinLow(SHIFT_LOAD);
+  setPinLow(SPI_SHIFT_LOAD);
   delayMicroseconds(5); // give some time to setup, you may not need this
-  setPinHigh(SHIFT_LOAD);
+  setPinHigh(SPI_SHIFT_LOAD);
 
   // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
   // Flip every bit so that 1 means pressed. This will also be used in the the dimming/low lower function.
