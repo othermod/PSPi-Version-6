@@ -18,7 +18,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 ## Software Features
 | Feature                        | Description                                                                                                     |
 |-|-|
-| **Operating Systems Supported**| RetroPie: Minimal interface, decent playtime.<br> Lakka: Visually appealing but uses more processing power.<br> Ubuntu: Full Linux OS. |
+| **Operating Systems Supported**| RetroPie: Minimal interface, decent playtime.<br> Lakka: Visually appealing but uses more processing power.<br> Ubuntu: Full Linux OS.<br> Raspberry Pi OS: Full Linux OS. |
 | **Software Volume Adjustment** | Supports adjustment for headphone/speaker volume.                                                      |
 | **OSD** | Displays remaining battery capacity.                                                                           |
 | **Development Status**         | Software is still in development and will be improved as the board gets closer to release.                      |
@@ -28,7 +28,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 |-|-|-|
 | **Code for Raspberry Pi** | Necessary code for the Raspberry Pi that forms the brains of the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/drivers) |
 | **Firmware for atmega**   | Firmware for the atmega microcontroller used in the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/atmega) |
-| **PCB and Schematics**    | PCB and schematics for the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/boards) |
+| **PCB and Schematics**    | PCB and schematics for the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/boards) <br> [EasyEDA](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy)|
 
 ## Status
 The project is still a work in progress, and although the basic functions are now up and running, there are still a few tweaks and improvements to be made.
@@ -37,12 +37,12 @@ The project is still a work in progress, and although the basic functions are no
 This project is a one-man-show but any help or input is welcome and appreciated. Whether you have experience with design, coding, testing, or just have some ideas for improvement, your contribution is valuable. You can also contribute by spreading the word and sharing the project with others. Financial contributions are also greatly appreciated to help cover the cost of prototypes and speed up testing and improvements.
 
 ## Follow the Project
-You can follow along with the project on [EasyEDA](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy) or [Discord](https://discord.gg/V96c3JC) for constant updates, or on [YouTube](https://youtube.com/othermod) for occasional updates.
+You can follow along with the project on [Discord](https://discord.gg/V96c3JC) for constant updates, or on [YouTube](https://youtube.com/othermod) for occasional updates.
 
 ## Ordering
-The boards can be ordered from the manufacturer at any point, but please be aware that the project is still in the testing phase and changes may be made. Some assembly will be required if you order from them, and they are quite expensive in low quantities. I'll also eventually sell these board on my website.
+The boards can be ordered from the manufacturer at any point, but please be aware that the project is still in the testing phase and changes may be made. Some assembly will be required if you order from them, and they are quite expensive in low quantities. I'll also eventually sell these boards on my website.
 
 ## Contact
-If you have any thoughts, suggestions, or ideas, please feel free to reach out.
+If you have any thoughts, suggestions, or ideas, please feel free to [reach out](https://linktr.ee/othermod).
 
 *Thank you for your interest in the PSPi project, and stay tuned for more updates.*
