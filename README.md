@@ -20,7 +20,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 |-|-|
 | **Operating Systems Supported**| RetroPie: Minimal interface, decent playtime.<br> Lakka: Visually appealing but uses more processing power.<br> Ubuntu: Full Linux OS.<br> Raspberry Pi OS: Full Linux OS. |
 | **Software Volume Adjustment** | Supports adjustment for headphone/speaker volume.                                                      |
-| **OSD** | Displays remaining battery capacity.                                                                           |
+| **OSD** | Displays remaining battery capacity, brightness level, and volume level.                                                                           |
 | **Development Status**         | Software is still in development and will be improved as the board gets closer to release.                      |
 
 ### Resources Included Here
