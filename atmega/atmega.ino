@@ -63,7 +63,7 @@ void setup() {
   setPinAsOutput(EN_5V0);
   setPinAsOutput(LED_LEFT);
 
-  setPinAsOutput(EN_AMP);
+  setPinAsInput(EN_AMP);
   setPinAsInput(DETECT_RPI);
 
   setPinAsOutput(SPI_SHIFT_LOAD);
