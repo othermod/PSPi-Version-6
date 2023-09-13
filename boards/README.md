@@ -14,7 +14,7 @@ Some components are not available for automatic placement and must be placed man
 1. **M2.5x6mm Standoffs**: [AliExpress Link](https://s.click.aliexpress.com/e/_DBPcEQb)
 2. **M2.5 Washer (0.5mm Thick)**:
 2. **miniUSB Connector**: [LCSC Link](https://www.lcsc.com/product-detail/_Jing-Extension-of-the-Electronic-Co-_C13453.html)
-3. **Gold Plated Beads/Pads for Joystick Contact**: [AliExpress Link](https://s.click.aliexpress.com/e/_DDhnfcj) or [AliExpress Link](https://s.click.aliexpress.com/e/_DEbcF3V)
+3. **Gold Plated Beads/Pads for Joystick Contact**: [AliExpress Link for 1.0mm Beads](https://s.click.aliexpress.com/e/_DDhnfcj) or [AliExpress Link for 1.3mm](https://s.click.aliexpress.com/e/_DEbcF3V)
 4. **PSP Barrel Jack SMD Connector**: [AliExpress Link](https://s.click.aliexpress.com/e/_DErpHYb)
 5. **PSP Headphone Jack Connector**: [AliExpress Link](https://s.click.aliexpress.com/e/_DDpWHFz)
 
