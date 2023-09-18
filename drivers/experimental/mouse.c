@@ -13,6 +13,8 @@
 #include <errno.h>
 
 #define AXIS_CENTER 127
+#define AXIS_THRESHOLD_LOW 112
+#define AXIS_THRESHOLD_HIGH 142
 
 typedef struct {
     uint8_t buttonA;
@@ -73,21 +75,20 @@ int main(int argc, char * argv[]) {
     ioctl(virtualMouse, UI_DEV_CREATE);
     sleep(1);
     bool shouldEmit = 0;
-
+    ControllerData current_data;
     while (1) {
-    ControllerData current_data = *shared_data;
-
+    current_data = *shared_data;
     if (previous_data.JOY_LX != current_data.JOY_LX ||
-        current_data.JOY_LX > 142 ||
-        current_data.JOY_LX < 112) {
+        current_data.JOY_LX > AXIS_THRESHOLD_HIGH ||
+        current_data.JOY_LX < AXIS_THRESHOLD_LOW) {
         emit(virtualMouse, EV_REL, REL_X, (current_data.JOY_LX - AXIS_CENTER) / 16);
         previous_data.JOY_LX = current_data.JOY_LX;
         shouldEmit = true;
     }
 
     if (previous_data.JOY_LY != current_data.JOY_LY ||
-        current_data.JOY_LY > 142 ||
-        current_data.JOY_LY < 112) {
+        current_data.JOY_LY > AXIS_THRESHOLD_HIGH ||
+        current_data.JOY_LY < AXIS_THRESHOLD_LOW) {
         emit(virtualMouse, EV_REL, REL_Y, (current_data.JOY_LY - AXIS_CENTER) / 16);
         previous_data.JOY_LY = current_data.JOY_LY;
         shouldEmit = true;
