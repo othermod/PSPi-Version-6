@@ -72,34 +72,43 @@ int main(int argc, char * argv[]) {
     ioctl(virtualMouse, UI_DEV_SETUP, &usetup);
     ioctl(virtualMouse, UI_DEV_CREATE);
     sleep(1);
+    bool shouldEmit = 0;
 
     while (1) {
-    bool shouldEmit = false;
+    ControllerData current_data = *shared_data;
 
-    if (abs(shared_data->JOY_LX - AXIS_CENTER) > 15 ||
-        abs(shared_data->JOY_LY - AXIS_CENTER) > 15 ||
-        previous_data.JOY_LX != shared_data->JOY_LX ||
-        previous_data.JOY_LY != shared_data->JOY_LY) {
-
-        emit(virtualMouse, EV_REL, REL_X, (shared_data->JOY_LX - AXIS_CENTER) / 16);
-        emit(virtualMouse, EV_REL, REL_Y, (shared_data->JOY_LY - AXIS_CENTER) / 16);
+    if (previous_data.JOY_LX != current_data.JOY_LX ||
+        current_data.JOY_LX > 142 ||
+        current_data.JOY_LX < 112) {
+        emit(virtualMouse, EV_REL, REL_X, (current_data.JOY_LX - AXIS_CENTER) / 16);
+        previous_data.JOY_LX = current_data.JOY_LX;
         shouldEmit = true;
     }
 
-    if (previous_data.buttonA != shared_data->buttonA) {
-        emit(virtualMouse, EV_KEY, BTN_LEFT, ((shared_data->buttonA >> 0x03) & 1));
-        emit(virtualMouse, EV_KEY, BTN_RIGHT, ((shared_data->buttonA >> 0x06) & 1));
+    if (previous_data.JOY_LY != current_data.JOY_LY ||
+        current_data.JOY_LY > 142 ||
+        current_data.JOY_LY < 112) {
+        emit(virtualMouse, EV_REL, REL_Y, (current_data.JOY_LY - AXIS_CENTER) / 16);
+        previous_data.JOY_LY = current_data.JOY_LY;
+        shouldEmit = true;
+    }
+
+    if (previous_data.buttonA != current_data.buttonA) {
+        emit(virtualMouse, EV_KEY, BTN_LEFT, ((current_data.buttonA >> 0x03) & 1));
+        emit(virtualMouse, EV_KEY, BTN_RIGHT, ((current_data.buttonA >> 0x06) & 1));
+        previous_data.buttonA = current_data.buttonA;
         shouldEmit = true;
     }
 
     if (shouldEmit) {
         emit(virtualMouse, EV_SYN, SYN_REPORT, 0);
-        previous_data = *shared_data;
-        usleep(8000);
+        shouldEmit = false;
+        usleep(10000);
     } else {
-      usleep(20000);
+        usleep(20000);
     }
 }
+
     ioctl(virtualMouse, UI_DEV_DESTROY);
     close(virtualMouse);
     munmap(shared_data, sizeof(ControllerData));
