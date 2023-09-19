@@ -1,8 +1,10 @@
 /* TODO
-1. Forced poweroff will be more gentle if the arduino detects the power button being held and kills 5v after 2 seconds, and then kills all power
-2. Mute audio as soon as I2C communication stops.
-3. Set up button debouncing.
-4. Allow receiving of commands over I2C (dimming, mute)
+1. Forced poweroff will be more gentle if the arduino detects the power button being held and kills 5v after 2 seconds, and then kills all power. It can mute&kill audio too
+2. Mute audio as soon as I2C communication stops?
+3. Mute audio before enabling and disabling the audio LDO
+4. Set up 30-50ms button debouncing.
+5. Allow receiving of commands over I2C (dimming, mute)?
+6. Allow button combos to change behaviors? Dim/kill lcd
 */
 
 #include <Wire.h>
@@ -40,7 +42,7 @@ struct I2C_Structure {
   uint8_t buttonB; // button status
   uint8_t SENSE_SYS;
   uint8_t SENSE_BAT;
-  uint8_t STATUS; // 5 bits for brightness level (can use 3 bits because there are only 8 levels), 1 for mute status, 1 for power switch, 1 for hold switch
+  uint8_t STATUS; // 3 bits for brightness level, 1 for mute status, 1 for power switch, 1 for hold switch, 1 for left switch
   uint8_t JOY_LX;
   uint8_t JOY_LY;
   uint8_t JOY_RX;
@@ -181,7 +183,7 @@ void detectDisplayButton() {
       if (displayButtonPressed == 1) {
         brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
         displayButtonPressed = 0;
-        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so reduce from 5 to 3 bits.
+        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
         setBrightness(brightness);
       }
     }
@@ -195,12 +197,12 @@ void detectMuteButton() {
       // invert EN_AUDIO
       if (muteButtonPressed == 1) {
         if (readPin(EN_AUDIO)) {
+          I2C_data.STATUS &= B01111111;  // Clear bit 7
           setPinLow(EN_AUDIO);
         } else {
+          I2C_data.STATUS |= B10000000;  // Set bit 7
           setPinHigh(EN_AUDIO);
         }
-        // add mute condition to STATUS
-        I2C_data.STATUS = (I2C_data.STATUS & B01111111) | (readPin(EN_AUDIO) << 7);
         muteButtonPressed = 0;
       }
     }
@@ -255,8 +257,10 @@ void loop() {
     // save the last time the loop was executed
     previousMillis = currentMillis;
     readArduinoInputs();
-    readShiftRegisterInputs();
     readAnalogInputs();
+    readShiftRegisterInputs();
     detectMuteButton();
+
+
   }
 }
