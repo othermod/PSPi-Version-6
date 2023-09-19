@@ -22,7 +22,7 @@ int setup_uinput_device(int uinput_fd) {
     struct uinput_user_dev uidev;
     memset(&uidev, 0, sizeof(uidev));
 
-    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi Gamepad");
+    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi-Controller");
     uidev.id.bustype = BUS_USB;
     uidev.id.vendor = 0x1234;
     uidev.id.product = 0x5678;
@@ -40,7 +40,7 @@ int setup_uinput_device(int uinput_fd) {
 
     ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
     for(int i = 0; i < 16; i++) {
-        ioctl(uinput_fd, UI_SET_KEYBIT, BTN_0 + i);
+        ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
     }
 
     ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
@@ -57,14 +57,14 @@ void update_controller_data(ControllerData *shared_data, ControllerData *last_da
     for(int i = 0; i < 8; i++) {
         if (((shared_data->buttonA >> i) & 1) != ((last_data->buttonA >> i) & 1)) {
             events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_0 + i;
+            events[event_count].code = BTN_TRIGGER_HAPPY1 + i;
             events[event_count].value = (shared_data->buttonA >> i) & 1;
             event_count++;
         }
 
         if (((shared_data->buttonB >> i) & 1) != ((last_data->buttonB >> i) & 1)) {
             events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_8 + i;
+            events[event_count].code = BTN_TRIGGER_HAPPY9 + i;
             events[event_count].value = (shared_data->buttonB >> i) & 1;
             event_count++;
         }
