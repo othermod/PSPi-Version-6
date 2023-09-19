@@ -375,13 +375,11 @@ int main() {
         }
 
         if ((shared_data->buttonB >> 5) & 1) {
-          printf("\nVolume up");
-            change_volume(VOL_INCREASE, 100);
+          change_volume(VOL_INCREASE, 100);
         }
 
         if ((shared_data->buttonB >> 6) & 1) {
-          printf("\nVolume down");
-            change_volume(VOL_DECREASE, 100);
+          change_volume(VOL_DECREASE, 100);
         }
 
         if (showBrightness) {
