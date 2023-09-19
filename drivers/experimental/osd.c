@@ -1,3 +1,8 @@
+/* TODO
+1. The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
+2. Add volume osd indicator
+3. is two-way communication possible now? would it need to be in main.c?
+*/
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
@@ -225,7 +230,7 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
 void drawMute(IMAGE_LAYER_T * muteLayer) {
   IMAGE_T * image = & (muteLayer -> image);
   // draw the battery outline and fill with color
-  if (!isMute) {
+  if (isMute) {
     imageBoxFilledRGB(image, 5, 0, 11, 14, & white);
     imageBoxFilledRGB(image, 4, 1, 4, 13, & white);
     imageBoxFilledRGB(image, 3, 2, 3, 12, & white);
@@ -332,10 +337,12 @@ int main() {
     initialize_alsa("default");
     uint8_t previousCharging = 0;
     uint8_t previousPercent = 0;
-    uint8_t previousStatus = 0;
+    uint8_t previousStatus = shared_data->STATUS;
     battery.indicatorVoltage = 3300;
     uint8_t showBrightness = 0;
-
+    isMute = shared_data->STATUS & 0b10000000;
+    brightness = shared_data->STATUS & 0b00000111;
+    drawMute(& muteLayer);
     while (1) {
 
       //read the battery voltage from memory
@@ -362,15 +369,25 @@ int main() {
         }
 
         if (previousStatus != shared_data->STATUS) {
-          brightness = shared_data->STATUS & 0b00000111;
-          isMute = shared_data->STATUS & 0b10000000; // maybe bitshift and make boolean
+          if (brightness != (shared_data->STATUS & 0b00000111)) {
+            brightness = shared_data->STATUS & 0b00000111;
+            //printf("%d\n", brightness);
+            showBrightness = 10;
+            if (brightness == 0b00000000) {
+              clearLayer( & brightnessLayer); // do this to remove the other 7 squares when it cycles back to 1 square
+            }
+            drawBrightness( & brightnessLayer);
 
-          //printf("%d\n", brightness);
-          showBrightness = 1;
-          if (brightness == 0b00000000) {
-            clearLayer( & brightnessLayer); // do this to remove the other 7 squares when it cycles back to 1 square
           }
-          drawBrightness( & brightnessLayer);
+          if (isMute != (shared_data->STATUS & 0b10000000)) {
+            isMute = shared_data->STATUS & 0b10000000; // maybe bitshift and make boolean
+            //if (isMute){
+              drawMute(& muteLayer);
+            //} else {
+              //clearLayer( & muteLayer);
+          //  }
+
+          }
           previousStatus = shared_data->STATUS;
         }
 
@@ -383,8 +400,7 @@ int main() {
         }
 
         if (showBrightness) {
-          showBrightness++;
-          showBrightness = showBrightness & 0b00111111;
+          showBrightness--;
           if (!showBrightness){
             clearLayer( & brightnessLayer);
           }
