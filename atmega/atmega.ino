@@ -42,7 +42,7 @@ struct I2C_Structure {
   uint8_t buttonB; // button status
   uint8_t SENSE_SYS;
   uint8_t SENSE_BAT;
-  uint8_t STATUS; // 3 bits for brightness level, 1 for mute status, 1 for power switch, 1 for hold switch, 1 for left switch
+  uint8_t STATUS = 0; // 3 bits for brightness level, 1 for mute status, 1 for power switch, 1 for hold switch, 1 for left switch
   uint8_t JOY_LX;
   uint8_t JOY_LY;
   uint8_t JOY_RX;
@@ -79,7 +79,7 @@ void setup() {
   setPinLow(ONEWIRE_LCD);
   setPinLow(PWM_LED_ORANGE); // will probably do PWM instead
   setPinLow(EN_5V0);
-  setPinHigh(EN_AMP);
+  setPinLow(EN_AMP);
   //setPinLow(AUDIO_GAIN_0);
   setPinLow(SPI_SHIFT_LOAD);
   setPinLow(DETECT_RPI);
@@ -197,11 +197,16 @@ void detectMuteButton() {
       // invert EN_AUDIO
       if (muteButtonPressed == 1) {
         if (readPin(EN_AUDIO)) {
-          I2C_data.STATUS &= B01111111;  // Clear bit 7
+          I2C_data.STATUS |= B10000000;  // Set bit 7
+          setPinAsOutput(EN_AMP);
+          delay(100);// Figure out whether 100ms is needed. It might not take that long to eliminate the pop
           setPinLow(EN_AUDIO);
         } else {
-          I2C_data.STATUS |= B10000000;  // Set bit 7
+          
+          I2C_data.STATUS &= B01111111;  // Clear bit 7
           setPinHigh(EN_AUDIO);
+          delay(100);
+          setPinAsInput(EN_AMP);
         }
         muteButtonPressed = 0;
       }
@@ -228,11 +233,14 @@ void detectRPi() {
 }
 
 void enterSleep() {
+  setPinAsOutput(EN_AMP);
+  delay(100); 
   setPinLow(EN_AUDIO);
   setPinLow(ONEWIRE_LCD);
 }
 
 void wakeFromSleep() {
+  setPinAsInput(EN_AMP);
   delay(500);
   setPinHigh(EN_AUDIO);
   initializeBacklight(); // re-initialize and enable backlight
