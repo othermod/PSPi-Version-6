@@ -97,7 +97,7 @@ display_default_lcd=1
 dpi_group=2
 dpi_mode=87
 dpi_output_format=503863
-dpi_timings=800 0 40 48 88 480 0 13 3 32 0 0 0 60 0 32000000 6
+dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
 
 #dtoverlay=audio,pins_12_45
 #dtoverlay=audio,pins_40_41
