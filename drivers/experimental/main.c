@@ -6,6 +6,8 @@
 #include <fcntl.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
+#include <sys/reboot.h>
+#include <linux/reboot.h>
 
 // Define your data structure
 typedef struct {
@@ -117,6 +119,11 @@ int main() {
 
         // Copy data to shared memory
         *shared_data = controller_data;
+
+        if ((controller_data.STATUS >> 4) & 1) {
+          reboot(LINUX_REBOOT_CMD_POWER_OFF);
+          break;
+        }
 
         // Wait for 16ms before reading again
         usleep(16000);
