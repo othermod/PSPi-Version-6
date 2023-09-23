@@ -307,6 +307,23 @@ int is_pi4() {
     return 0;
 }
 
+void set_all_cpus_governor(int mode) {
+    const char* governor = mode ? "powersave" : "ondemand";
+
+    for (int i = 0; i < 4; i++) {
+        char path[100];
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
+
+        FILE* file = fopen(path, "w");
+        if (file == NULL) {
+            perror("Failed to open the governor file");
+            exit(1);
+        }
+
+        fprintf(file, "%s", governor);
+        fclose(file);
+    }
+}
 
 int main() {
   //check for Pi4, and adjust color order
@@ -384,6 +401,7 @@ int main() {
     uint8_t showBrightness = 0;
     isMute = shared_data->STATUS & 0b10000000;
     brightness = shared_data->STATUS & 0b00000111;
+    bool governor = 0;
     drawMute(& muteLayer);
     while (1) {
 
@@ -411,6 +429,7 @@ int main() {
         }
 
         if (previousStatus != shared_data->STATUS) {
+          //see whether brightness changed
           if (brightness != (shared_data->STATUS & 0b00000111)) {
             brightness = shared_data->STATUS & 0b00000111;
             //printf("%d\n", brightness);
@@ -421,6 +440,7 @@ int main() {
             drawBrightness( & brightnessLayer);
 
           }
+          //see whether mute status changed
           if (isMute != (shared_data->STATUS & 0b10000000)) {
             isMute = shared_data->STATUS & 0b10000000; // maybe bitshift and make boolean
             //if (isMute){
@@ -428,7 +448,11 @@ int main() {
             //} else {
               //clearLayer( & muteLayer);
           //  }
-
+          }
+          //see whether powersave status changed
+          if (governor != (shared_data->STATUS & 0b01000000)) {
+            governor = shared_data->STATUS & 0b01000000; // maybe bitshift and make boolean
+              set_all_cpus_governor(governor);
           }
           previousStatus = shared_data->STATUS;
         }
