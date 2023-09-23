@@ -162,8 +162,10 @@ bool isMute = 0;
 // create colors ( format is: red, green, blue, opacity)
 static RGBA8_T clearColor = { 0,    0,    0,    0};
 static RGBA8_T green =      { 0,    255,  0,    255};
-static RGBA8_T red =        { 255,  0,    0,    255};
-static RGBA8_T orange =     { 255,  127,  0,    255};
+RGBA8_T red =               { 255,  0,    0,    255};
+static RGBA8_T backwardRed =        { 0,  0,    255,    255};
+RGBA8_T orange =     { 255,  127,  0,    255};
+static RGBA8_T backwardOrange =     { 0,  127,  255,    255};
 static RGBA8_T white =      { 255,  255,  255,  255};
 static RGBA8_T black =      { 0,    0,    0,    255};
 
@@ -271,7 +273,47 @@ void clearLayer(IMAGE_LAYER_T * layer) {
   changeSourceAndUpdateImageLayer(layer);
 }
 
+int is_pi4() {
+    FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
+    if (cpuinfo == NULL) {
+        perror("Failed to open /proc/cpuinfo");
+        exit(EXIT_FAILURE);
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), cpuinfo)) {
+        if (strncmp(line, "Revision", 8) == 0) {
+            char *revision = strtok(line, ":");
+            revision = strtok(NULL, ":"); // this will get the value part
+
+            if (revision) {
+                // Removing any leading whitespace
+                while (*revision == ' ' || *revision == '\t') {
+                    ++revision;
+                }
+
+                // Here are some revision codes for Pi4/CM4
+                // This is not exhaustive and may need updates if new revisions appear
+                if (strstr(revision, "c031") || strstr(revision, "b031") ||
+                    strstr(revision, "c03112") || strstr(revision, "d03114")) {
+                    fclose(cpuinfo);
+                    return 1;
+                }
+            }
+        }
+    }
+
+    fclose(cpuinfo);
+    return 0;
+}
+
+
 int main() {
+  //check for Pi4, and adjust color order
+  if (is_pi4()) {
+     red =  backwardRed;
+     orange =  backwardOrange;
+  }
   int shm_fd;
   ControllerData *shared_data;
 
