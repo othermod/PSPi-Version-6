@@ -47,6 +47,7 @@ struct I2C_Structure {
   uint8_t JOY_LY;
   uint8_t JOY_RX;
   uint8_t JOY_RY;
+  uint8_t CRC8;
 
 };
 
@@ -202,7 +203,7 @@ void detectMuteButton() {
           delay(100);// Figure out whether 100ms is needed. It might not take that long to eliminate the pop
           setPinLow(EN_AUDIO);
         } else {
-          
+
           I2C_data.STATUS &= B01111111;  // Clear bit 7
           setPinHigh(EN_AUDIO);
           delay(100);
@@ -234,7 +235,7 @@ void detectRPi() {
 
 void enterSleep() {
   setPinAsOutput(EN_AMP);
-  delay(100); 
+  delay(100);
   setPinLow(EN_AUDIO);
   setPinLow(ONEWIRE_LCD);
 }
@@ -246,9 +247,34 @@ void wakeFromSleep() {
   initializeBacklight(); // re-initialize and enable backlight
 }
 
-void requestEvent(){
-  Wire.write((char*) &I2C_data, sizeof(I2C_data)); // send the data to the Pi
+uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
+    uint8_t crc = 0;
+    uint8_t poly = 0x07; // Corresponds to the polynomial x^8 + x^2 + x + 1
+
+    for (uint8_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (uint8_t j = 0; j < 8; j++) {
+            if (crc & 0x80) {
+                crc = (crc << 1) ^ poly;
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+    return crc;
 }
+
+
+void requestEvent() {
+  // Compute the CRC-8 value for the data excluding the CRC8 byte itself using the direct method
+  I2C_data.CRC8 = computeCRC8_direct((const uint8_t*) &I2C_data, sizeof(I2C_data) - 1);
+  
+  // Send the data, including the computed CRC8 value, to the Raspberry Pi
+  Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
+}
+
+
+
 
 void readAnalogInputs(){
   I2C_data.JOY_RX=(analogRead(JOY_RX_PIN) >> 2); // read the ADCs, and reduce from 10 to 8 bits
