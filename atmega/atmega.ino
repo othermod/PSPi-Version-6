@@ -42,7 +42,7 @@ struct I2C_Structure {
   uint8_t buttonB; // button status
   uint8_t SENSE_SYS;
   uint8_t SENSE_BAT;
-  uint8_t STATUS = 0; // 3 bits for brightness level, 1 for mute status, 1 for power switch, 1 for hold switch, 1 for left switch
+  uint8_t STATUS = 0; // MUTE|LEFT_SWITCH|HOLD|POWER|UNUSED(use for mode?)|BRIGHTNESS|BRIGHTNESS|BRIGHTNESS
   uint8_t JOY_LX;
   uint8_t JOY_LY;
   uint8_t JOY_RX;
@@ -214,6 +214,30 @@ void detectMuteButton() {
     }
 }
 
+void detectLeftSwitch() {
+  if (readPin(LEFT_SWITCH)) {
+      I2C_data.STATUS &= B10111111;  // Clear bit 6
+    } else {
+      I2C_data.STATUS |= B01000000;  // Set bit 6
+    }
+}
+
+void detectHoldSwitch() {
+  if (readPin(BTN_HOLD)) {
+      I2C_data.STATUS &= B11011111;  // Clear bit 5
+    } else {
+      I2C_data.STATUS |= B00100000;  // Set bit 5
+    }
+}
+
+void detectPowerButton() {
+  if (readPin(BTN_SD)) {
+      I2C_data.STATUS &= B11101111;  // Clear bit 4
+    } else {
+      I2C_data.STATUS |= B00010000;  // Set bit 4
+    }
+}
+
 void detectRPi() {
   // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
   // Handle Raspberry Pi not detected
@@ -264,17 +288,13 @@ uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
-
 void requestEvent() {
   // Compute the CRC-8 value for the data excluding the CRC8 byte itself using the direct method
   I2C_data.CRC8 = computeCRC8_direct((const uint8_t*) &I2C_data, sizeof(I2C_data) - 1);
-  
+
   // Send the data, including the computed CRC8 value, to the Raspberry Pi
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
 }
-
-
-
 
 void readAnalogInputs(){
   I2C_data.JOY_RX=(analogRead(JOY_RX_PIN) >> 2); // read the ADCs, and reduce from 10 to 8 bits
@@ -294,6 +314,9 @@ void loop() {
     readAnalogInputs();
     readShiftRegisterInputs();
     detectMuteButton();
+    detectLeftSwitch();
+    detectHoldSwitch();
+    detectPowerButton();
 
 
   }

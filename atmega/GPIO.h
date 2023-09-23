@@ -14,7 +14,7 @@
 #define SPI_SHIFT_LOAD D,3
 #define BTN_SD D,4
 #define BTN_HOLD D,5
-#define LEFT_SWITCH B,6
+#define LEFT_SWITCH D,6
 #define EN_AUDIO D,7
 
 // Define all of the analog pins
