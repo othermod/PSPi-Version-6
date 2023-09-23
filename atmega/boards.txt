@@ -1065,13 +1065,21 @@ atmega328a_nb.build.variant=arduino:standard
 atmega328a_nb.build.board=atmega328p
 
 ##############################################################
- 
+
 atmega8a_nb.name=ATmega8A (8MHz Internal, No bootloader)
+
+atmega8a_nb.upload.maximum_size=8192
+atmega8a_nb.upload.maximum_data_size=1024
 
 atmega8a_nb.build.mcu=atmega8a
 atmega8a_nb.build.f_cpu=8000000L
 atmega8a_nb.build.core=arduino:arduino
 atmega8a_nb.build.variant=arduino:standard
 atmega8a_nb.build.board=atmega8a
+
+# These directives are for extracting memory usage info
+atmega8a_nb.recipe.size.regex=^(?:\.text|\.data|\.bootloader)\s+([0-9]+).*
+atmega8a_nb.recipe.size.regex.data=^(?:\.data|\.bss)\s+([0-9]+).*
+atmega8a_nb.recipe.size.regex.eeprom=^\.eeprom\s+([0-9]+).*
 
 ##############################################################
