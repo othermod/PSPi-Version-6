@@ -320,10 +320,30 @@ int is_pi4() {
     return 0;
 }
 
+int get_cpu_count() {
+    FILE* file = fopen("/proc/cpuinfo", "r");
+    if (file == NULL) {
+        perror("Failed to open /proc/cpuinfo");
+        exit(1);
+    }
+
+    int count = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        if (strncmp(line, "processor", 9) == 0) {
+            count++;
+        }
+    }
+
+    fclose(file);
+    return count;
+}
+
 void set_all_cpus_governor(int mode) {
     const char* governor = mode ? "powersave" : "ondemand";
+    int cpu_count = get_cpu_count();
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < cpu_count; i++) {
         char path[100];
         snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
 
@@ -337,6 +357,7 @@ void set_all_cpus_governor(int mode) {
         fclose(file);
     }
 }
+
 
 int main() {
   //check for Pi4, and adjust color order
@@ -451,7 +472,7 @@ int main() {
         if (previousStatus != shared_data->STATUS) {
           //see whether brightness changed
           if (brightness != (shared_data->STATUS & 0b00000111)) {
-            brightness = shared_data->STATUS & 0b00000111;
+            brightness = shared_data->STATUS & 0b00000111; // bitshift and make boolean, or not needed?
             //printf("%d\n", brightness);
             showBrightness = 10;
             if (brightness == 0b00000000) {
@@ -462,7 +483,7 @@ int main() {
           }
           //see whether mute status changed
           if (isMute != (shared_data->STATUS & 0b10000000)) {
-            isMute = shared_data->STATUS & 0b10000000; // maybe bitshift and make boolean
+            isMute = shared_data->STATUS & 0b10000000;
             //if (isMute){
               drawMute(& muteLayer);
             //} else {
@@ -470,8 +491,9 @@ int main() {
           //  }
           }
           //see whether powersave status changed
+          // perhaps the left switch and hold switch should activate powersave
           if (governor != (shared_data->STATUS & 0b01000000)) {
-            governor = shared_data->STATUS & 0b01000000; // maybe bitshift and make boolean
+            governor = shared_data->STATUS & 0b01000000;
               set_all_cpus_governor(governor);
           }
           previousStatus = shared_data->STATUS;
