@@ -63,6 +63,9 @@ void initialize_alsa(const char* card) {
     }
 }
 
+#define MIN_VOLUME -5000
+#define MAX_VOLUME 400
+uint8_t volume;
 int change_volume(int operation, long change_value) {
     long minv, maxv, outvol;
 
@@ -76,27 +79,29 @@ int change_volume(int operation, long change_value) {
 
     if (operation == VOL_INCREASE) {
         outvol += change_value;
-        if (outvol > maxv) {
-            outvol = maxv;
+        if (outvol > MAX_VOLUME) {
+            outvol = MAX_VOLUME;
         }
     } else if (operation == VOL_DECREASE) {
         outvol -= change_value;
-        if (outvol < minv) {
-            outvol = minv;
+        if (outvol < MIN_VOLUME) {
+            outvol = MIN_VOLUME;
         }
     } else {
         fprintf(stderr, "Invalid operation\n");
         return -1;
     }
 
+    // Calculate the volume percentage as an unsigned integer
+    volume = (unsigned int) (((float)(outvol - MIN_VOLUME) / (MAX_VOLUME - MIN_VOLUME)) * 100);
+
+    // Print the outvol and volume values
+    //printf("Volume level: %ld\n", outvol);
+    //printf("Volume percentage: %u%%\n", volume);
+
     snd_mixer_selem_set_playback_volume_all(elem, outvol);
 
     return 0;
-}
-
-void update_gamepad() {
-  change_volume(VOL_INCREASE, 200);
-  change_volume(VOL_DECREASE, 200);
 }
 
 typedef struct {
@@ -258,6 +263,14 @@ void drawMute(IMAGE_LAYER_T * muteLayer) {
   changeSourceAndUpdateImageLayer(muteLayer);
 }
 
+
+void drawVolume(IMAGE_LAYER_T * volumeLayer) {
+  IMAGE_T * image = & (volumeLayer -> image);
+    imageBoxFilledRGB(image,0, 0, 109, 20, & black);
+    imageBoxFilledRGB(image,volume+4, 4, volume+5, 16, & white);
+  changeSourceAndUpdateImageLayer(volumeLayer);
+}
+
 void drawBrightness(IMAGE_LAYER_T * brightnessLayer) {
   IMAGE_T * image = & (brightnessLayer -> image);
   for (size_t i = 0; i <= brightness; i++) {
@@ -375,6 +388,10 @@ int main() {
   initImageLayer( & brightnessLayer, info.width, info.height, VC_IMAGE_RGBA16);
   createResourceImageLayer( & brightnessLayer, layer);
 
+  IMAGE_LAYER_T volumeLayer;
+  initImageLayer( & volumeLayer, 109, 20, VC_IMAGE_RGBA16);
+  createResourceImageLayer( & volumeLayer, layer);
+
   IMAGE_LAYER_T muteLayer;
   initImageLayer( & muteLayer,
     15, // battery image width
@@ -387,6 +404,7 @@ int main() {
   int xOffset = info.width - 31;
   int yOffset = 0;
   addElementImageLayerOffset( & batteryLayer, xOffset, yOffset, display, update);
+  addElementImageLayerOffset( & volumeLayer, 100, 450, display, update);
   addElementImageLayerOffset( & brightnessLayer, 0, 0, display, update);
   xOffset = info.width - 46;
   addElementImageLayerOffset( & muteLayer, xOffset, yOffset, display, update);
@@ -399,6 +417,7 @@ int main() {
     uint8_t previousStatus = shared_data->STATUS;
     battery.indicatorVoltage = 3300;
     uint8_t showBrightness = 0;
+    uint8_t showVolume = 0;
     isMute = shared_data->STATUS & 0b10000000;
     brightness = shared_data->STATUS & 0b00000111;
     bool governor = 0;
@@ -459,10 +478,14 @@ int main() {
 
         if ((shared_data->buttonB >> 5) & 1) {
           change_volume(VOL_INCREASE, 100);
+          drawVolume( & volumeLayer);
+          showVolume = 10;
         }
 
         if ((shared_data->buttonB >> 6) & 1) {
           change_volume(VOL_DECREASE, 100);
+          drawVolume( & volumeLayer);
+          showVolume = 10;
         }
 
         if (showBrightness) {
@@ -472,15 +495,23 @@ int main() {
           }
         }
 
+        if (showVolume) {
+          showVolume--;
+          if (!showVolume){
+            clearLayer( & volumeLayer);
+          }
+        }
+
         previousPercent = battery.percent;
         previousCharging = battery.chargeIndicator;
-        usleep(100000);
+        usleep(50000);
     }
 
     snd_mixer_close(handle);
     destroyImageLayer( & batteryLayer);
     destroyImageLayer( & brightnessLayer);
     destroyImageLayer( & muteLayer);
+    destroyImageLayer( & volumeLayer);
     result = vc_dispmanx_display_close(display);
     assert(result == 0);
     munmap(shared_data, sizeof(ControllerData));
