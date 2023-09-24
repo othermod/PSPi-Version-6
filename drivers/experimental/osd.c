@@ -420,7 +420,8 @@ int main() {
     uint8_t showVolume = 0;
     isMute = shared_data->STATUS & 0b10000000;
     brightness = shared_data->STATUS & 0b00000111;
-    bool governor = 0;
+    bool governor = shared_data->STATUS & 0b01000000; // make sure the correct governor is set when the program starts
+    set_all_cpus_governor(governor);
     drawMute(& muteLayer);
     while (1) {
 
