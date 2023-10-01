@@ -36,7 +36,11 @@ int setup_uinput_device(int uinput_fd) {
     uidev.absflat[ABS_Y] = 20;
     uidev.absfuzz[ABS_Y] = 20;
 
-    write(uinput_fd, &uidev, sizeof(uidev));
+    ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
+    if (ret < 0) {
+        perror("Failed to write to uinput device in setup_uinput_device");
+        return -1;
+    }
 
     ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
     for(int i = 0; i < 16; i++) {
@@ -91,7 +95,11 @@ void update_controller_data(ControllerData *shared_data, ControllerData *last_da
         events[event_count].value = 0;
         event_count++;
 
-        write(uinput_fd, events, sizeof(struct input_event) * event_count);
+        ssize_t ret = write(uinput_fd, events, sizeof(struct input_event) * event_count);
+        if (ret < 0) {
+            perror("Failed to write events in update_controller_data");
+            // Handle error as appropriate
+        }
     }
 
     memcpy(last_data, shared_data, sizeof(ControllerData));
