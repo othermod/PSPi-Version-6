@@ -2,6 +2,7 @@
 1. The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
 2. Add volume osd indicator
 3. is two-way communication possible now? would it need to be in main.c?
+4. switch to coulomb counting after the percent is estimated initially
 */
 #include <fcntl.h>
 #include <unistd.h>
@@ -358,7 +359,6 @@ void set_all_cpus_governor(int mode) {
     }
 }
 
-
 int main() {
   //check for Pi4, and adjust color order
   if (is_pi4()) {
@@ -436,14 +436,18 @@ int main() {
     uint8_t previousCharging = 0;
     uint8_t previousPercent = 0;
     uint8_t previousStatus = shared_data->STATUS;
-    battery.indicatorVoltage = 3300;
-    uint8_t showBrightness = 0;
+        uint8_t showBrightness = 0;
     uint8_t showVolume = 0;
     isMute = shared_data->STATUS & 0b10000000;
     brightness = shared_data->STATUS & 0b00000111;
     bool governor = shared_data->STATUS & 0b01000000; // make sure the correct governor is set when the program starts
     set_all_cpus_governor(governor);
     drawMute(& muteLayer);
+    //uint8_t report = 0;
+    // set initial battery condition
+    battery.voltageSYSx16 = shared_data->SENSE_SYS * 16;
+    battery.voltageBATx16 = shared_data->SENSE_SYS * 16;
+    battery.indicatorVoltage = battery.voltageSYSx16 * 3000 / 1024;
     while (1) {
 
       //read the battery voltage from memory
@@ -453,7 +457,7 @@ int main() {
       calculateAmperage();
       calculateVoltage();
 
-        battery.percent = 100 - (4010 - battery.indicatorVoltage) / 8.5;
+        battery.percent = 100 - (4025 - battery.indicatorVoltage) / 8;
         if (battery.percent < 0) {
           battery.percent = 0;
         } else if (battery.percent > 100) {
@@ -463,7 +467,7 @@ int main() {
           battery.chargeIndicator = DISCHARGING; }
         if (battery.finalAmperage >= 0) {
           battery.chargeIndicator = CHARGING;}
-        if ((battery.indicatorVoltage > 4000) & (battery.finalAmperage > -40)) {
+        if ((battery.indicatorVoltage > 4050) & (battery.finalAmperage > -40)) {
           battery.chargeIndicator = CHARGED;}
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
           drawBattery(& batteryLayer); // make sure this is only done if something changes
@@ -527,6 +531,12 @@ int main() {
 
         previousPercent = battery.percent;
         previousCharging = battery.chargeIndicator;
+        //if (!report){
+          //printf("Indicator Voltage: %d\n", battery.indicatorVoltage);
+          //printf("Percent: %d\n", battery.percent);
+          //printf("Charge Rate: %d\n", battery.finalAmperage);
+        //}
+        //report = report + 16;
         usleep(50000);
     }
 
