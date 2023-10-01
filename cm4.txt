@@ -106,7 +106,7 @@ dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
 dtparam=ant2
 
 #improve PWM audio quality
-disable_audio_dither=1
+#disable_audio_dither=1
 audio_pwm_mode=2
 
 #use power LED for other things
@@ -117,10 +117,10 @@ audio_pwm_mode=2
 #dtoverlay=gpio-shutdown,gpio_pin=44,debounce=100
 
 #enable USB
-#dtoverlay=dwc2,dr_mode=host
+dtoverlay=dwc2,dr_mode=host
 
 #reduce I2C speed to avoid clock bug in Raspberry Pi I2C
-#dtparam=i2c_baudrate=10000
+dtparam=i2c_baudrate=25000
 
 #disable WiFi and Bluetooth
 #dtoverlay=pi3-disable-wifi
