@@ -1,6 +1,3 @@
-Of course, I'll integrate that section back into the README for clarity.
-
----
 
 # ATmega8A Setup for PSPi Version 6
 
@@ -80,7 +77,3 @@ Your PSPi Version 6 board should now be set up and ready to use with the ATmega8
 ## Upcoming Interface
 
 Stay tuned for an upcoming interface that will eliminate the need for soldering wires to the PSPi board. This new interface will simplify the setup process, making it easier and quicker to get your PSPi Version 6 board up and running with the ATmega8A microcontroller.
-
----
-
-I've added the configuration section back into the README for a clearer guide.
