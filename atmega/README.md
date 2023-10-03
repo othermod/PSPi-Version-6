@@ -21,7 +21,7 @@ Before you can flash the ATmega8, you'll need to solder wires to the specified c
 
 **Instructions:**
 
-![SPI Attachment Points](/images/spi.jpg)
+![SPI Attachment Points](/atmega/images/spi.jpg)
 
 - Power off your Raspberry Pi and PSPi board.
 - Using your soldering iron, carefully solder jumper wires to the PSPi board's SPI attachment points:
