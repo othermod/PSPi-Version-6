@@ -42,7 +42,7 @@ struct I2C_Structure {
   uint8_t buttonB; // button status
   uint8_t SENSE_SYS;
   uint8_t SENSE_BAT;
-  uint8_t STATUS = 0; // MUTE|LEFT_SWITCH|HOLD|POWER|UNUSED(use for mode?)|BRIGHTNESS|BRIGHTNESS|BRIGHTNESS
+  uint8_t STATUS = 0; // MUTE|LEFT_SWITCH|HOLD|POWER|(unused)|BRIGHTNESS|BRIGHTNESS|BRIGHTNESS
   uint8_t JOY_LX;
   uint8_t JOY_LY;
   uint8_t JOY_RX;
@@ -166,7 +166,7 @@ void readShiftRegisterInputs(){
   setPinHigh(SPI_SHIFT_LOAD);
 
   // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
-  // Flip every bit so that 1 means pressed. This will also be used in the the dimming/low lower function.
+  // Flip every bit so that 1 means pressed. This will also be used in the dimming/low power function.
   registerInputs1 = ~SPI.transfer(0);
   registerInputs2 = ~SPI.transfer(0);
 
@@ -190,52 +190,52 @@ void detectDisplayButton() {
     }
 }
 
-void detectMuteButton() {
-  // Handle Display button being pressed
+void detectButtons() {
   if (BTN_MUTE) {
-      muteButtonPressed = 1;
-    } else {
-      // invert EN_AUDIO
-      if (muteButtonPressed == 1) {
-        if (readPin(EN_AUDIO)) {
-          I2C_data.STATUS |= B10000000;  // Set bit 7
-          setPinAsOutput(EN_AMP);
-          delay(100);// Figure out whether 100ms is needed. It might not take that long to eliminate the pop
-          setPinLow(EN_AUDIO);
-        } else {
+    muteButtonPressed = 1;
+  } else {
+    // invert EN_AUDIO
+    if (muteButtonPressed == 1) {
+      if (readPin(EN_AUDIO)) {
+        I2C_data.STATUS |= B10000000; // Set bit 7
+        setPinAsOutput(EN_AMP);
+        delay(100); // Figure out whether 100ms is needed. It might not take that long to eliminate the pop
+        setPinLow(EN_AUDIO);
+      } else {
 
-          I2C_data.STATUS &= B01111111;  // Clear bit 7
-          setPinHigh(EN_AUDIO);
-          delay(100);
-          setPinAsInput(EN_AMP);
-        }
-        muteButtonPressed = 0;
+        I2C_data.STATUS &= B01111111; // Clear bit 7
+        setPinHigh(EN_AUDIO);
+        delay(100);
+        setPinAsInput(EN_AMP);
       }
     }
-}
 
-void detectLeftSwitch() {
   if (readPin(LEFT_SWITCH)) {
-      I2C_data.STATUS &= B10111111;  // Clear bit 6
-    } else {
-      I2C_data.STATUS |= B01000000;  // Set bit 6
-    }
-}
+    I2C_data.STATUS &= B10111111; // Clear bit 6
+  } else {
+    I2C_data.STATUS |= B01000000; // Set bit 6
+  }
 
-void detectHoldSwitch() {
   if (readPin(BTN_HOLD)) {
-      I2C_data.STATUS &= B11011111;  // Clear bit 5
-    } else {
-      I2C_data.STATUS |= B00100000;  // Set bit 5
-    }
-}
+    I2C_data.STATUS &= B11011111; // Clear bit 5
+  } else {
+    I2C_data.STATUS |= B00100000; // Set bit 5
+    while (!readPin(BTN_HOLD)){
 
-void detectPowerButton() {
-  if (readPin(BTN_SD)) {
-      I2C_data.STATUS &= B11101111;  // Clear bit 4
-    } else {
-      I2C_data.STATUS |= B00010000;  // Set bit 4
+      // need to also enter sleep mode and do something visual to indicate it. pwm on power led?
+      // scan inputs less often or never to reduce power usage
+      // scan adc so low battery led turns on when battery is low, and so pi can shutdown
     }
+
+
+  }
+
+  if (readPin(BTN_SD)) {
+    I2C_data.STATUS &= B11101111; // Clear bit 4
+  } else {
+    I2C_data.STATUS |= B00010000; // Set bit 4
+  }
+
 }
 
 void detectRPi() {
