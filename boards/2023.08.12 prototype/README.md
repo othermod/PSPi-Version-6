@@ -4,6 +4,12 @@
 - When ordering the PCB, you may encounter a designator error for U22. This is just a component library error for the board outline and can be safely ignored.
 - The PSPi 6 mainboard needs double-sided assembly, which is pricey. The CM4 carrier also needs both sides be placed, but it is not too difficult to solder the GPIO header, SD card, and switch if you want to save some money. The headphone board only needs single sided assembly.
 
+## Project Files
+Access the editable schematics and PCBs on EasyEDA using the links below:
+- [PSPi Prototype](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy)
+- [CM4 Carrier Interface](https://oshwlab.com/adamseamster/pspi-version-6-cm4-interface)
+- [Headphone Board](https://oshwlab.com/adamseamster/pspi-6-headphone-board)
+
 ## Hardware Bugs and Manual Fixes
 
 ### Bug 1: [Headphone/Speaker Switching]
