@@ -13,6 +13,11 @@
 #include "LCD_Timings.h"
 #include "GPIO.h"
 
+// Buffer and flag for received I2C data
+volatile byte receivedData[3];
+volatile byte receivedCRC;
+volatile bool dataReceived = false;
+
 #define I2C_ADDRESS 0x10
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
@@ -93,7 +98,8 @@ void setup() {
   setPinHigh(BTN_HOLD);
 
   Wire.begin(I2C_ADDRESS);  // join i2c bus
-  Wire.onRequest(requestEvent); // register event
+  Wire.onRequest(requestEvent); // send data to rpi
+  Wire.onReceive(receiveEvent); // receive data from rpi
   SPI.begin();
   SPI.setBitOrder(MSBFIRST); // can this be removed?
   (SPI_MODE0); // can this be removed?
@@ -175,7 +181,7 @@ void readShiftRegisterInputs(){
   I2C_data.buttonB = registerInputs2;
 }
 
-void detectDisplayButton() {
+void detectDisplayButton() { // add hold detection
   // Handle Display button being pressed
   if (!readPin(BTN_DISPLAY)) {
       displayButtonPressed = 1;
@@ -208,7 +214,9 @@ void detectButtons() {
         delay(100);
         setPinAsInput(EN_AMP);
       }
+      muteButtonPressed = 0;
     }
+  }
 
   if (readPin(LEFT_SWITCH)) {
     I2C_data.STATUS &= B10111111; // Clear bit 6
@@ -239,22 +247,30 @@ void detectButtons() {
 }
 
 void detectRPi() {
-  // some of the stuff below can be added to sleep and unsleep functions, and be used for this and sleep
-  // Handle Raspberry Pi not detected
-  if (!readPin(DETECT_RPI)) { // rpi isnt detected
-    if (!detectTimeout){ // if the timeout sequence hasnt started yet, begin it by killing audio and lcd
-      enterSleep();
+    if (readPin(DETECT_RPI)) {  // Raspberry Pi is detected
+        if (detectTimeout) {  // if the pi is detected during the timeout
+            wakeFromSleep();
+            detectTimeout = 0;
+        }
+    } else {  // Raspberry Pi is not detected
+        if (!detectTimeout) {  // if the timeout sequence hasn't started yet
+            enterSleep();
+        }
+        detectTimeout++;
+        if (detectTimeout > 500) {  // if the timeout reaches 5 seconds
+            setPinLow(EN_5V0);
+            delay(10000); // sleep to prevent anything other than poweroff from occuring
+        }
     }
-    detectTimeout++;
-    if (detectTimeout > 500) {  // if the timeout reaches 5 seconds, kill power
-      setPinLow(EN_5V0);
-    }
-  } else {
-    if (detectTimeout){ // if the pi is detected during the timeout, enable audio and LCD
-      wakeFromSleep();
-      detectTimeout = 0;
-    }
-  }
+}
+
+
+void idleI2C() { // disable audio until i2c data is active and when i2c goes idle
+
+}
+
+void powerSave() { // not sure whether this is a function or just a variable. dim the lcd (maybe kill audio) after a minute if no buttons are pressed (use registerInputs)
+
 }
 
 void enterSleep() {
@@ -266,7 +282,7 @@ void enterSleep() {
 
 void wakeFromSleep() {
   setPinAsInput(EN_AMP);
-  delay(500);
+  delay(100);
   setPinHigh(EN_AUDIO);
   initializeBacklight(); // re-initialize and enable backlight
 }
@@ -288,12 +304,27 @@ uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
+void lowBattery() {
+
+}
+
 void requestEvent() {
-  // Compute the CRC-8 value for the data excluding the CRC8 byte itself using the direct method
+  // Compute the CRC-8 value for the data, excluding the CRC8 byte itself
   I2C_data.CRC8 = computeCRC8_direct((const uint8_t*) &I2C_data, sizeof(I2C_data) - 1);
 
   // Send the data, including the computed CRC8 value, to the Raspberry Pi
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
+}
+
+void receiveEvent(int numBytes) {
+  if (numBytes == 4) {  // Ensure we're receiving the expected 4 bytes
+    receivedData[0] = Wire.read();
+    receivedData[1] = Wire.read();
+    receivedData[2] = Wire.read();
+    receivedCRC = Wire.read();  // Read the CRC byte
+
+    dataReceived = true;  // Set the flag to notify the main loop
+  }
 }
 
 void readAnalogInputs(){
@@ -313,11 +344,12 @@ void loop() {
     readArduinoInputs();
     readAnalogInputs();
     readShiftRegisterInputs();
-    detectMuteButton();
-    detectLeftSwitch();
-    detectHoldSwitch();
-    detectPowerButton();
-
-
+    detectButtons();
+    if (dataReceived) { // if data was received from the rpi
+      if (computeCRC8_direct(receivedData, 3) == receivedCRC) { // verify the data is valid
+      //processReceivedData();
+    }
+    dataReceived = false;  // Clear the flag after processing
+  }
   }
 }
