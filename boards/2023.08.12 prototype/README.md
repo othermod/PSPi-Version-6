@@ -6,19 +6,19 @@
 
 ## Hardware Bugs and Manual Fixes
 
-### Bug 1: [Description of Bug 1]
-- **Issue**: [Detailed description of the issue, how it manifests, and any error codes or symptoms]
-- **Fix**: [Steps to manually fix the bug, including soldering instructions, components needed, and any cautionary advice]
+### Bug 1: [Headphone/Speaker Switching]
+- **Issue**: [The speakers should disable only when headphones are plugged in, but they stay disabled at all times]
+- **Fix**: [Solder two 10k resistors in the positions shown below]
 - **Photos/Drawings**: [Include photos or drawings to visualize the fix]
 
-### Bug 2: [Description of Bug 2]
-- **Issue**: [Detailed description of the issue, how it manifests, and any error codes or symptoms]
-- **Fix**: [Steps to manually fix the bug, including soldering instructions, components needed, and any cautionary advice]
+### Bug 2: [Activity LED Not working on CM4]
+- **Issue**: [The activity LED works on the Pi Zero, but not on the CM4]
+- **Fix**: [Remove D? and replace with a 0 ohm (or at least <1k ohm) resistor, as shown below]
 - **Photos/Drawings**: [Include photos or drawings to visualize the fix]
 
-### Bug 3: [Description of Bug 3]
-- **Issue**: [Detailed description of the issue, how it manifests, and any error codes or symptoms]
-- **Fix**: [Steps to manually fix the bug, including soldering instructions, components needed, and any cautionary advice]
+### Bug 3: [Audio Hiss on CM4]
+- **Issue**: [The CM4 has a bug in the PWM audio, and always has a slight hiss. This isn't noticeable on headphones, but the amplifier makes it loud on the speakers]
+- **Fix**: [Solder 100nf capacitors as shown. Solder 1uf capacitors as shown. Replace 220 ohm resistors shown with 100 ohm resistors.]
 - **Photos/Drawings**: [Include photos or drawings to visualize the fix]
 
 ### Additional Resources
