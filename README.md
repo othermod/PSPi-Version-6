@@ -30,11 +30,24 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 | **Firmware for atmega**   | Firmware for the atmega microcontroller used in the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/atmega) |
 | **PCB and Schematics**    | PCB and schematics for the PSPi. | [GitHub](https://github.com/othermod/PSPi-Version-6/tree/main/boards) <br> [EasyEDA](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy)|
 
+### Operating System Images
+
+I provide OS images to get you started quickly. You can download them [here](https://drive.proton.me/urls/04X9SX1KG8#zOBARZruUlqs).
+
+| Operating System | Pi Zero Image Ready | Pi Zero 2W Image Ready | CM4 Image Ready |
+|------------------|---------------------|------------------------|-----------------|
+| RetroPie         | ☑️                   |   ☑️                    |     ☑️           |
+| Lakka            |                     |                        |                 |
+| Ubuntu           |                     |                        |                 |
+| Raspberry Pi OS  |                     |                        |                 |
+| Batocera         |                     |                        |                 |
+
+
 ## Status
 The project is still a work in progress, and although the basic functions are now up and running, there are still a few tweaks and improvements to be made.
 
 ## Contribute
-This project is a one-man-show but any help or input is welcome and appreciated. Whether you have experience with design, coding, testing, or just have some ideas for improvement, your contribution is valuable. You can also contribute by spreading the word and sharing the project with others. Financial contributions are also greatly appreciated to help cover the cost of prototypes and speed up testing and improvements.
+This project is a one-man-show, but any help or input is welcome and appreciated. Whether you have experience with design, coding, testing, or just have some ideas for improvement, your contribution is valuable. You can also contribute by spreading the word and sharing the project with others. Financial contributions are also greatly appreciated to help cover the cost of prototypes and speed up testing and improvements.
 
 ## Follow the Project
 You can follow along with the project on [Discord](https://discord.gg/V96c3JC) for constant updates, or on [YouTube](https://youtube.com/othermod) for occasional updates.
