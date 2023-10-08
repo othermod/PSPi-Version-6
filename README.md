@@ -34,9 +34,9 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 
 I provide OS images to get you started quickly. You can download them [here](https://drive.proton.me/urls/04X9SX1KG8#zOBARZruUlqs).
 
-| Operating System | Pi Zero Image Ready | Pi Zero 2W Image Ready | CM4 Image Ready |
+| Operating System | Zero Image| Zero 2W Image | CM4 Image |
 |------------------|---------------------|------------------------|-----------------|
-| RetroPie         | ☑️                   |   ☑️                    |     ☑️           |
+| RetroPie         | ☑️                   |use Zero for now |     ☑️           |
 | Lakka            |                     |                        |                 |
 | Ubuntu           |                     |                        |                 |
 | Raspberry Pi OS  |                     |                        |                 |
