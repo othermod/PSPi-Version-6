@@ -27,5 +27,9 @@ Access the editable schematics and PCBs on EasyEDA using the links below:
 - **Fix**: [Solder 100nf capacitors as shown. Solder 1uf capacitors as shown. Replace 220 ohm resistors shown with 100 ohm resistors.]
 - **Photos/Drawings**: [Include photos or drawings to visualize the fix]
 
+### Bug 4: [USB Disabled Until Audio Plays]
+- **Issue**: [The USB mux uses the second audio pin to switch between Pi0 and CM4 USB routing. Sometimes this pin starts driven high, and other times it starts driven low. When it starts low, USB won't work until audio plays]
+- **Fix**: [Add a short silent audio wav file to rc.local, so that audio initializes at bootup. This will be corrected in hardware in the production release.]
+
 ### Additional Resources
 - [Links to external resources, datasheets, forums, etc.]
