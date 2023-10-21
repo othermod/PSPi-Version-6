@@ -21,8 +21,10 @@ volatile bool dataReceived = false;
 #define I2C_ADDRESS 0x10
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
+#define LOW_BATTERY_THRESHOLD 70 // 3.3v
+#define GOOD_BATTERY_THRESHOLD 76 // 3.6v
 
-byte brightness = 0b00000001;
+byte brightness = B00000001;
 uint16_t detectTimeout = 0;
 
 byte arduinoInputsB;
@@ -30,8 +32,10 @@ byte arduinoInputsD;
 byte registerInputs1;
 byte registerInputs2;
 
-bool displayButtonPressed = 0;
-bool muteButtonPressed = 0;
+bool displayButtonPressed = false;
+bool muteButtonPressed = false;
+bool batteryLow = false;
+bool forceOrangeLED = false;
 unsigned long previousMillis = 0;
 const long interval = 10; // ms delay between the start of each loop
 uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
@@ -63,13 +67,15 @@ I2C_Structure I2C_data; // create the structure for the I2C data
 void setup() {
   // These and the macros will go away once pin states are verified, and I will just do this once with a single command for each port
   setPinAsInput(BTN_DISPLAY);
-  setPinAsInput(SUPERVISOR);
+  setPinAsInput(BTN_EXTRA_2);
   setPinAsOutput(ONEWIRE_LCD);
   setPinAsOutput(PWM_LED_ORANGE);
   setPinAsInput(SPI_DATA_IN);
   setPinAsOutput(SPI_CLOCK);
   setPinAsOutput(EN_5V0);
   setPinAsOutput(LED_LEFT);
+
+  setPinAsInput(BTN_EXTRA_1);
 
   setPinAsInput(EN_AMP);
   setPinAsInput(DETECT_RPI);
@@ -92,10 +98,11 @@ void setup() {
   setPinLow(LED_LEFT);
   setPinLow(EN_AUDIO);
   setPinHigh(BTN_DISPLAY);
-  setPinHigh(SUPERVISOR);
+  setPinHigh(BTN_EXTRA_2);
   setPinHigh(LEFT_SWITCH);
   setPinHigh(BTN_SD);
   setPinHigh(BTN_HOLD);
+  setPinHigh(BTN_EXTRA_1);
 
   Wire.begin(I2C_ADDRESS);  // join i2c bus
   Wire.onRequest(requestEvent); // send data to rpi
@@ -155,9 +162,8 @@ void sendByte(byte dataByte) {
 }
 
 void readArduinoInputs() {
-  // Probably a better idea to store all the pins into a variable and cycle through them to check statuses
   // scan the GPIOs that are used for input
-  // also, do these pins benefit from debouncing?
+  // do these pins benefit from debouncing?
   arduinoInputsB = PINB;
   arduinoInputsD = PIND;
   //can put these in main or here. just do it after inputs are scanned
@@ -233,6 +239,8 @@ void detectButtons() {
       // need to also enter sleep mode and do something visual to indicate it. pwm on power led?
       // scan inputs less often or never to reduce power usage
       // scan adc so low battery led turns on when battery is low, and so pi can shutdown
+      // should these things be here, and it just stays in a while loop, or should it be in the main loop and the atmega enters a different mode?
+      // only voltage and the one input need to be scanned, I think
     }
 
 
@@ -304,8 +312,22 @@ uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
-void lowBattery() {
+void setLowBatteryLED() { // add code elsewhere to control batteryLow
+  (batteryLow || forceOrangeLED) ? setPinHigh(PWM_LED_ORANGE) : setPinLow(PWM_LED_ORANGE);
+}
 
+void processReceivedData() {
+  if (receivedData[0] == 0x20) { // this command sets the WiFi LED high or low
+    (receivedData[1]) ? setPinHigh(LED_LEFT) : setPinLow(LED_LEFT);
+  }
+  if (receivedData[0] == 0x21) { // this command is LED_ON and LED_OFF. It just sets flag that determines whether the LED stays orange. It must always turn orange when the battery is low. LED may also PWM pulse when I2C data goes idle?
+    forceOrangeLED = receivedData[1];
+    setLowBatteryLED();
+  }
+  if (receivedData[0] == 0x22) { // this command is DISPLAY_ON and DISPLAY_OFF. will also need something to override display off when a button is pressed, in case the pi doesnt sent it for some reason
+
+  }
+  dataReceived = false;
 }
 
 void requestEvent() {
@@ -327,16 +349,35 @@ void receiveEvent(int numBytes) {
   }
 }
 
-void readAnalogInputs(){
-  I2C_data.JOY_RX=(analogRead(JOY_RX_PIN) >> 2); // read the ADCs, and reduce from 10 to 8 bits
-  I2C_data.JOY_RY=(analogRead(JOY_RY_PIN) >> 2);
-  I2C_data.SENSE_SYS=(analogRead(SENSE_SYS_PIN)); // don't bitshift this. it is never above 100
-  I2C_data.SENSE_BAT=(analogRead(SENSE_BAT_PIN)); // don't bitshift this. it is never above 100
-  I2C_data.JOY_LX=(analogRead(JOY_LX_PIN) >> 2);
-  I2C_data.JOY_LY=(analogRead(JOY_LY_PIN) >> 2);
+void readAnalogInputs() {
+  I2C_data.JOY_RX = (analogRead(JOY_RX_PIN) >> 2);
+  I2C_data.JOY_RY = (analogRead(JOY_RY_PIN) >> 2);
+  I2C_data.SENSE_SYS = (analogRead(SENSE_SYS_PIN));
+  I2C_data.SENSE_BAT = (analogRead(SENSE_BAT_PIN));
+  // handle low battery LED
+  if (batteryLow) {
+    if (I2C_data.SENSE_SYS > GOOD_BATTERY_THRESHOLD) {
+      batteryLow = true;
+      setLowBatteryLED();
+    }
+  } else {
+    if (I2C_data.SENSE_SYS < LOW_BATTERY_THRESHOLD) {
+      batteryLow = false;
+      setLowBatteryLED();
+      }
+    }
+
+
+  I2C_data.JOY_LX = (analogRead(JOY_LX_PIN) >> 2);
+  I2C_data.JOY_LX = (I2C_data.JOY_LX & B11111110) | readPin(BTN_EXTRA_1); // use LSB for value of extra button 1, to avoid having to send an extra byte for button data
+
+  I2C_data.JOY_LY = (analogRead(JOY_LY_PIN) >> 2);
+  I2C_data.JOY_LY = (I2C_data.JOY_LY & B11111110) | readPin(BTN_EXTRA_2); // use LSB for value of extra button 2
 }
 
+
 void loop() {
+  // the functions run, on average, every 10 milliseconds
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     // save the last time the loop was executed
@@ -347,9 +388,10 @@ void loop() {
     detectButtons();
     if (dataReceived) { // if data was received from the rpi
       if (computeCRC8_direct(receivedData, 3) == receivedCRC) { // verify the data is valid
-      //processReceivedData();
+      processReceivedData();
     }
     dataReceived = false;  // Clear the flag after processing
   }
   }
+  delay(1); //sleep for a millisecond
 }
