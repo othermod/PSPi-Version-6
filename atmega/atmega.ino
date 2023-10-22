@@ -8,7 +8,7 @@
 */
 
 #include <Wire.h>
-#include <SPI.h>
+//#include <SPI.h>
 #include "Pin_Macros.h"
 #include "LCD_Timings.h"
 #include "GPIO.h"
@@ -21,7 +21,7 @@ volatile bool dataReceived = false;
 #define I2C_ADDRESS 0x10
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
-#define LOW_BATTERY_THRESHOLD 70 // 3.3v
+#define LOW_BATTERY_THRESHOLD 68 // 3.3v
 #define GOOD_BATTERY_THRESHOLD 76 // 3.6v
 
 byte brightness = B00000001;
@@ -34,8 +34,11 @@ byte registerInputs2;
 
 bool displayButtonPressed = false;
 bool muteButtonPressed = false;
+bool isMute = false;
+bool idleI2C = true;
 bool batteryLow = false;
 bool forceOrangeLED = false;
+
 unsigned long previousMillis = 0;
 const long interval = 10; // ms delay between the start of each loop
 uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
@@ -65,6 +68,15 @@ I2C_Structure I2C_data; // create the structure for the I2C data
 #define BTN_MUTE I2C_data.buttonA & B00000001
 
 void setup() {
+
+
+  Wire.begin(I2C_ADDRESS);  // join i2c bus
+  Wire.onRequest(requestEvent); // send data to rpi
+  Wire.onReceive(receiveEvent); // receive data from rpi
+  //SPI.begin();
+  //SPI.setBitOrder(MSBFIRST); // can this be removed?
+  //(SPI_MODE0); // can this be removed?
+
   // These and the macros will go away once pin states are verified, and I will just do this once with a single command for each port
   setPinAsInput(BTN_DISPLAY);
   setPinAsInput(BTN_EXTRA_2);
@@ -95,7 +107,7 @@ void setup() {
   //setPinLow(AUDIO_GAIN_0);
   setPinLow(SPI_SHIFT_LOAD);
   setPinLow(DETECT_RPI);
-  setPinLow(LED_LEFT);
+  setPinHigh(LED_LEFT);
   setPinLow(EN_AUDIO);
   setPinHigh(BTN_DISPLAY);
   setPinHigh(BTN_EXTRA_2);
@@ -104,17 +116,11 @@ void setup() {
   setPinHigh(BTN_HOLD);
   setPinHigh(BTN_EXTRA_1);
 
-  Wire.begin(I2C_ADDRESS);  // join i2c bus
-  Wire.onRequest(requestEvent); // send data to rpi
-  Wire.onReceive(receiveEvent); // receive data from rpi
-  SPI.begin();
-  SPI.setBitOrder(MSBFIRST); // can this be removed?
-  (SPI_MODE0); // can this be removed?
   delay(500);
   setPinHigh(EN_5V0);
 
   // this disables the backlight and audio until the Pi is detected
-  enterSleep();
+  disableDisplay();
   // this ensures that the backlight will enable as soon as the Pi is detected at boot
   // this may go away if I use a different GPIO from the CM4 that stays low for a few seconds
   // check to see what happens when reboots occur
@@ -166,9 +172,26 @@ void readArduinoInputs() {
   // do these pins benefit from debouncing?
   arduinoInputsB = PINB;
   arduinoInputsD = PIND;
-  //can put these in main or here. just do it after inputs are scanned
-  detectRPi();
-  detectDisplayButton();
+}
+
+uint8_t bitBangSPIReadByte() {
+    uint8_t data = 0;
+
+    for (uint8_t i = 0; i < 8; i++) {
+        // Set clock low
+        setPinLow(SPI_CLOCK);
+        // Allow some time for data to settle. Depending on your setup, you might not need this delay.
+        delayMicroseconds(1);
+        // Read the bit and shift it into our data byte
+        if (readPin(SPI_DATA_IN)) {
+            data |= (1 << (7 - i)); // Read MSB first
+        }
+        // Set clock high to signal end of bit read
+        setPinHigh(SPI_CLOCK);
+        // Again, provide a small delay if necessary.
+        delayMicroseconds(1);
+    }
+    return data;
 }
 
 void readShiftRegisterInputs(){
@@ -179,27 +202,11 @@ void readShiftRegisterInputs(){
 
   // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
   // Flip every bit so that 1 means pressed. This will also be used in the dimming/low power function.
-  registerInputs1 = ~SPI.transfer(0);
-  registerInputs2 = ~SPI.transfer(0);
-
-    //add debouncing
-  I2C_data.buttonA = registerInputs1;
-  I2C_data.buttonB = registerInputs2;
-}
-
-void detectDisplayButton() { // add hold detection
-  // Handle Display button being pressed
-  if (!readPin(BTN_DISPLAY)) {
-      displayButtonPressed = 1;
-    } else {
-      // increase the brightness when the Display button is released
-      if (displayButtonPressed == 1) {
-        brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
-        displayButtonPressed = 0;
-        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
-        setBrightness(brightness);
-      }
-    }
+  // add debouncing?
+  //I2C_data.buttonA = ~SPI.transfer(0);
+  //I2C_data.buttonB = ~SPI.transfer(0);
+  I2C_data.buttonA = ~bitBangSPIReadByte();
+  I2C_data.buttonB = ~bitBangSPIReadByte();
 }
 
 void detectButtons() {
@@ -208,17 +215,14 @@ void detectButtons() {
   } else {
     // invert EN_AUDIO
     if (muteButtonPressed == 1) {
-      if (readPin(EN_AUDIO)) {
+      if (isMute == false) {
         I2C_data.STATUS |= B10000000; // Set bit 7
-        setPinAsOutput(EN_AMP);
-        delay(100); // Figure out whether 100ms is needed. It might not take that long to eliminate the pop
-        setPinLow(EN_AUDIO);
+        isMute = true;
+        setMuteStatus();
       } else {
-
         I2C_data.STATUS &= B01111111; // Clear bit 7
-        setPinHigh(EN_AUDIO);
-        delay(100);
-        setPinAsInput(EN_AMP);
+        isMute = false;
+        setMuteStatus();
       }
       muteButtonPressed = 0;
     }
@@ -242,8 +246,6 @@ void detectButtons() {
       // should these things be here, and it just stays in a while loop, or should it be in the main loop and the atmega enters a different mode?
       // only voltage and the one input need to be scanned, I think
     }
-
-
   }
 
   if (readPin(BTN_SD)) {
@@ -252,47 +254,39 @@ void detectButtons() {
     I2C_data.STATUS |= B00010000; // Set bit 4
   }
 
+  // Handle Display button being pressed
+  if (!readPin(BTN_DISPLAY)) {
+      displayButtonPressed = 1;
+    } else {
+      // increase the brightness when the Display button is released
+      if (displayButtonPressed == 1) {
+        brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
+        displayButtonPressed = 0;
+        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
+        setBrightness(brightness);
+      }
+    }
+    //can put these in main or here. just do it after inputs are scanned
+    detectRPi();
 }
 
 void detectRPi() {
     if (readPin(DETECT_RPI)) {  // Raspberry Pi is detected
         if (detectTimeout) {  // if the pi is detected during the timeout
-            wakeFromSleep();
+            enableDisplay();
             detectTimeout = 0;
         }
     } else {  // Raspberry Pi is not detected
         if (!detectTimeout) {  // if the timeout sequence hasn't started yet
-            enterSleep();
+            disableDisplay();
         }
-        detectTimeout++;
+
         if (detectTimeout > 500) {  // if the timeout reaches 5 seconds
             setPinLow(EN_5V0);
-            delay(10000); // sleep to prevent anything other than poweroff from occuring
+        } else {
+          detectTimeout++;
         }
     }
-}
-
-
-void idleI2C() { // disable audio until i2c data is active and when i2c goes idle
-
-}
-
-void powerSave() { // not sure whether this is a function or just a variable. dim the lcd (maybe kill audio) after a minute if no buttons are pressed (use registerInputs)
-
-}
-
-void enterSleep() {
-  setPinAsOutput(EN_AMP);
-  delay(100);
-  setPinLow(EN_AUDIO);
-  setPinLow(ONEWIRE_LCD);
-}
-
-void wakeFromSleep() {
-  setPinAsInput(EN_AMP);
-  delay(100);
-  setPinHigh(EN_AUDIO);
-  initializeBacklight(); // re-initialize and enable backlight
 }
 
 uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
@@ -312,8 +306,8 @@ uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
-void setLowBatteryLED() { // add code elsewhere to control batteryLow
-  (batteryLow || forceOrangeLED) ? setPinHigh(PWM_LED_ORANGE) : setPinLow(PWM_LED_ORANGE);
+void setOrangeLED() {
+  (batteryLow || forceOrangeLED) ? setPinLow(PWM_LED_ORANGE) : setPinHigh(PWM_LED_ORANGE);
 }
 
 void processReceivedData() {
@@ -322,7 +316,7 @@ void processReceivedData() {
   }
   if (receivedData[0] == 0x21) { // this command is LED_ON and LED_OFF. It just sets flag that determines whether the LED stays orange. It must always turn orange when the battery is low. LED may also PWM pulse when I2C data goes idle?
     forceOrangeLED = receivedData[1];
-    setLowBatteryLED();
+    setOrangeLED();
   }
   if (receivedData[0] == 0x22) { // this command is DISPLAY_ON and DISPLAY_OFF. will also need something to override display off when a button is pressed, in case the pi doesnt sent it for some reason
 
@@ -336,6 +330,7 @@ void requestEvent() {
 
   // Send the data, including the computed CRC8 value, to the Raspberry Pi
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
+  idleI2C = false;
 }
 
 void receiveEvent(int numBytes) {
@@ -343,8 +338,7 @@ void receiveEvent(int numBytes) {
     receivedData[0] = Wire.read();
     receivedData[1] = Wire.read();
     receivedData[2] = Wire.read();
-    receivedCRC = Wire.read();  // Read the CRC byte
-
+    receivedData[3] = Wire.read();
     dataReceived = true;  // Set the flag to notify the main loop
   }
 }
@@ -355,18 +349,17 @@ void readAnalogInputs() {
   I2C_data.SENSE_SYS = (analogRead(SENSE_SYS_PIN));
   I2C_data.SENSE_BAT = (analogRead(SENSE_BAT_PIN));
   // handle low battery LED
-  if (batteryLow) {
+  if (batteryLow == true) {
     if (I2C_data.SENSE_SYS > GOOD_BATTERY_THRESHOLD) {
-      batteryLow = true;
-      setLowBatteryLED();
+      batteryLow = false;
+      setOrangeLED();
     }
   } else {
     if (I2C_data.SENSE_SYS < LOW_BATTERY_THRESHOLD) {
-      batteryLow = false;
-      setLowBatteryLED();
+      batteryLow = true;
+      setOrangeLED();
       }
     }
-
 
   I2C_data.JOY_LX = (analogRead(JOY_LX_PIN) >> 2);
   I2C_data.JOY_LX = (I2C_data.JOY_LX & B11111110) | readPin(BTN_EXTRA_1); // use LSB for value of extra button 1, to avoid having to send an extra byte for button data
@@ -375,6 +368,27 @@ void readAnalogInputs() {
   I2C_data.JOY_LY = (I2C_data.JOY_LY & B11111110) | readPin(BTN_EXTRA_2); // use LSB for value of extra button 2
 }
 
+void setMuteStatus () {
+  if (isMute || idleI2C) {
+    // turn off the amplifier, then disable power to audio
+    setPinAsOutput(EN_AMP);
+    delay(1); // tinker with this value, may only need to be a few milli or even microseconds
+    setPinLow(EN_AUDIO);
+  } else {
+    // enable power to audio, then turn on the amplifier
+    setPinAsInput(EN_AMP);
+    delay(1);
+    setPinHigh(EN_AUDIO);
+  }
+}
+
+void disableDisplay() {
+  setPinLow(ONEWIRE_LCD);
+}
+
+void enableDisplay() {
+  initializeBacklight(); // re-initialize and enable backlight
+}
 
 void loop() {
   // the functions run, on average, every 10 milliseconds
@@ -386,12 +400,10 @@ void loop() {
     readAnalogInputs();
     readShiftRegisterInputs();
     detectButtons();
-    if (dataReceived) { // if data was received from the rpi
-      if (computeCRC8_direct(receivedData, 3) == receivedCRC) { // verify the data is valid
-      processReceivedData();
-    }
-    dataReceived = false;  // Clear the flag after processing
   }
+  if (dataReceived) { // if data was received from the rpi
+  processReceivedData(); // process the data
+  dataReceived = false;  // Clear the flag after processing
   }
   delay(1); //sleep for a millisecond
 }
