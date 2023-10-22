@@ -16,7 +16,6 @@ dtoverlay=vc4-fkms-v3d
 max_framebuffers=2
 
 [all]
-#dtoverlay=vc4-fkms-v3d
 gpu_mem_256=128
 gpu_mem_512=256
 gpu_mem_1024=256
@@ -80,7 +79,7 @@ dtoverlay=gpio-poweroff,gpiopin=4,active_low="y"
 
 disable_splash=1
 
-#CM4 stuff
-#dtoverlay=dwc2,dr_mode=host
-#dtoverlay=disable-pcie
-#hdmi_force_hotplug=1
+arm_freq_min=500
+over_voltage=-2
+core_freq_min=200
+dtparam=i2c_baudrate=25000
