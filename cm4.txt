@@ -29,13 +29,8 @@
 #sdtv_mode=2
 
 #uncomment to overclock the arm. 700 MHz is the default.
-arm_freq=1500
 arm_freq_min=300
 over_voltage=-2
-
-# this stabilizes the I2C clock. without this, it breaks momentarily when the clock changes
-core_freq=250
-core_freq_min=250
 
 # Uncomment some or all of these to enable the optional hardware interfaces
 dtparam=i2c_arm=on
@@ -108,13 +103,6 @@ dtparam=ant2
 #improve PWM audio quality
 #disable_audio_dither=1
 audio_pwm_mode=2
-
-#use power LED for other things
-#dtparam=pwr_led_activelow
-#dtparam=pwr_led_activelow=off
-
-#shut down when power button is pressed
-#dtoverlay=gpio-shutdown,gpio_pin=44,debounce=100
 
 #enable USB
 dtoverlay=dwc2,dr_mode=host
