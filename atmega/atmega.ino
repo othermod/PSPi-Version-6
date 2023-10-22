@@ -21,7 +21,7 @@ volatile bool dataReceived = false;
 #define I2C_ADDRESS 0x10
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
-#define LOW_BATTERY_THRESHOLD 68 // 3.3v
+#define LOW_BATTERY_THRESHOLD 68 // 3.2v
 #define GOOD_BATTERY_THRESHOLD 76 // 3.6v
 
 byte brightness = B00000001;
@@ -35,14 +35,14 @@ byte registerInputs2;
 bool displayButtonPressed = false;
 bool muteButtonPressed = false;
 bool isMute = false;
-bool idleI2C = true;
+bool idleI2C = true; // the atmega starts with audio muted until i2c is accessed, so it avoids popping sounds
+bool sleepMode = false;
+uint8_t idleI2Ccounter = 0;
 bool batteryLow = false;
 bool forceOrangeLED = false;
 
 unsigned long previousMillis = 0;
 const long interval = 10; // ms delay between the start of each loop
-uint8_t debouncePortB[8] = {0}; // button stays pressed for a few cycles to debounce and to make sure the button press isn't missed
-uint8_t debouncePortD[8] = {0};
 
 // define the structure layout for transmitting I2C data to the Raspberry Pi
 // the first 4 bytes must be read continuously.
@@ -101,13 +101,13 @@ void setup() {
   // SPI_DATA_IN is controlled by SPI
   // SPI_CLOCK is controlled by SPI
   setPinLow(ONEWIRE_LCD);
-  setPinLow(PWM_LED_ORANGE); // will probably do PWM instead
+  setPinHigh(PWM_LED_ORANGE); // will probably do PWM instead
   setPinLow(EN_5V0);
   setPinLow(EN_AMP);
   //setPinLow(AUDIO_GAIN_0);
   setPinLow(SPI_SHIFT_LOAD);
   setPinLow(DETECT_RPI);
-  setPinHigh(LED_LEFT);
+  setPinLow(LED_LEFT);
   setPinLow(EN_AUDIO);
   setPinHigh(BTN_DISPLAY);
   setPinHigh(BTN_EXTRA_2);
@@ -209,7 +209,17 @@ void readShiftRegisterInputs(){
   I2C_data.buttonB = ~bitBangSPIReadByte();
 }
 
+//create functions for each thing
 void detectButtons() {
+  detectMute();
+  detectLeftSwitch();
+  detectHoldSwitch();
+  detectShutdownButton();
+  detectDisplayButton();
+  detectRPi();
+}
+
+void detectMute() {
   if (BTN_MUTE) {
     muteButtonPressed = 1;
   } else {
@@ -227,33 +237,49 @@ void detectButtons() {
       muteButtonPressed = 0;
     }
   }
+}
 
+void detectLeftSwitch() {
   if (readPin(LEFT_SWITCH)) {
     I2C_data.STATUS &= B10111111; // Clear bit 6
   } else {
     I2C_data.STATUS |= B01000000; // Set bit 6
   }
+}
 
-  if (readPin(BTN_HOLD)) {
-    I2C_data.STATUS &= B11011111; // Clear bit 5
+void detectHoldSwitch() {
+  if (sleepMode) {
+    // check whether we should exit sleep mode
+    if (readPin(BTN_HOLD)) {
+      // exit sleep mode
+      I2C_data.STATUS &= B11011111; // Clear bit 5 // this lets the Pi know whether the hold switch is down
+      sleepMode = false;
+      // now need to deal with the possibility that the power switch is accidentally pressed. just adding a small delay before getting back to scanning all inputs
+      // really need to just ignore the power button alone for a second or two, but a delay will work for now
+      delay(500);
+      enableDisplay();
+      setMuteStatus();
+    }
   } else {
-    I2C_data.STATUS |= B00100000; // Set bit 5
-    while (!readPin(BTN_HOLD)){
-
-      // need to also enter sleep mode and do something visual to indicate it. pwm on power led?
-      // scan inputs less often or never to reduce power usage
-      // scan adc so low battery led turns on when battery is low, and so pi can shutdown
-      // should these things be here, and it just stays in a while loop, or should it be in the main loop and the atmega enters a different mode?
-      // only voltage and the one input need to be scanned, I think
+    // check whether we should enter sleep mode
+    if (!readPin(BTN_HOLD)) {
+      I2C_data.STATUS |= B00100000; // Set bit 5
+      sleepMode = true;
+      disableDisplay();
+      setMuteStatus();
     }
   }
+}
 
+void detectShutdownButton() {
   if (readPin(BTN_SD)) {
     I2C_data.STATUS &= B11101111; // Clear bit 4
   } else {
     I2C_data.STATUS |= B00010000; // Set bit 4
   }
+}
 
+void detectDisplayButton() {
   // Handle Display button being pressed
   if (!readPin(BTN_DISPLAY)) {
       displayButtonPressed = 1;
@@ -266,8 +292,6 @@ void detectButtons() {
         setBrightness(brightness);
       }
     }
-    //can put these in main or here. just do it after inputs are scanned
-    detectRPi();
 }
 
 void detectRPi() {
@@ -330,7 +354,11 @@ void requestEvent() {
 
   // Send the data, including the computed CRC8 value, to the Raspberry Pi
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
-  idleI2C = false;
+  if (idleI2C) {
+    idleI2C = false;
+    setMuteStatus();
+  }
+  idleI2Ccounter = 0;
 }
 
 void receiveEvent(int numBytes) {
@@ -368,8 +396,9 @@ void readAnalogInputs() {
   I2C_data.JOY_LY = (I2C_data.JOY_LY & B11111110) | readPin(BTN_EXTRA_2); // use LSB for value of extra button 2
 }
 
-void setMuteStatus () {
-  if (isMute || idleI2C) {
+void setMuteStatus() {
+  // mute the audio whenever any of the conditions is true
+  if (isMute || idleI2C || sleepMode) {
     // turn off the amplifier, then disable power to audio
     setPinAsOutput(EN_AMP);
     delay(1); // tinker with this value, may only need to be a few milli or even microseconds
@@ -396,14 +425,31 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     // save the last time the loop was executed
     previousMillis = currentMillis;
-    readArduinoInputs();
-    readAnalogInputs();
-    readShiftRegisterInputs();
-    detectButtons();
+    // when in sleep mode, only scan analog (for battery) and scan for hold switch
+    // still transmit some things (maybe just battery, so pi knows to emergency shutdown)
+    readArduinoInputs(); // this always happens
+    readAnalogInputs(); // this always happens, prob need to set all 4 joysticks to center point (and dont forget extra buttons)
+    if (sleepMode) {
+      I2C_data.buttonA = B00000000; // buttons are set to unpressed at all times when in sleep mode
+      I2C_data.buttonB = B00000000;
+      detectHoldSwitch();
+    } else {
+      readShiftRegisterInputs(); // this doesn't happen when the hold switch is down
+      detectButtons(); // this doesn't happen when the hold switch is down
+    }
+
+    if (idleI2Ccounter < 25) {
+      idleI2Ccounter++;
+      if (idleI2Ccounter == 25) {  // if no i2c for 250 milliseconds, mute the audio
+        idleI2C = true;
+        setMuteStatus();
+      }
+    }
   }
+
   if (dataReceived) { // if data was received from the rpi
-  processReceivedData(); // process the data
-  dataReceived = false;  // Clear the flag after processing
+    processReceivedData(); // process the data
+    dataReceived = false;  // Clear the flag after processing
   }
   delay(1); //sleep for a millisecond
 }
