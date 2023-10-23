@@ -1,4 +1,9 @@
 //compile with gcc -O3 main.c -o main -lrt
+/*TODO
+Add the ability to send 4 bytes of data to the atmega to configure things (command, data, data, crc)
+The first command will be to turn the wifi led on when wifi is connected. Maybe add blinking LED when on but not connected?
+Will need to add bool WIFI to the shared memory, so the OSD can draw an image
+*/
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -52,26 +57,6 @@ uint8_t computeCRC8(const char *data, uint8_t length) {
     return crc;
 }
 
-/*
-uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
-    uint8_t crc = 0;
-    uint8_t poly = 0x07; // Corresponds to the polynomial x^8 + x^2 + x + 1
-
-    for (uint8_t i = 0; i < length; i++) {
-        crc ^= data[i];
-        for (uint8_t j = 0; j < 8; j++) {
-            if (crc & 0x80) {
-                crc = (crc << 1) ^ poly;
-            } else {
-                crc <<= 1;
-            }
-        }
-    }
-    return crc;
-}
-*/
-
-
 int main() {
     int i2c_fd;
     ControllerData controller_data;
@@ -107,7 +92,6 @@ int main() {
 }
 
         // Check CRC-8
-        //uint8_t computedCRC = computeCRC8((char*) &controller_data, sizeof(ControllerData) - 1);
         uint8_t computedCRC = computeCRC8((const uint8_t*) &controller_data, sizeof(ControllerData) - 1);
 
         if (computedCRC != controller_data.CRC8) {
@@ -119,7 +103,7 @@ int main() {
 
         // Copy data to shared memory
         *shared_data = controller_data;
-
+        // issue shutdown
         if ((controller_data.STATUS >> 4) & 1) {
           reboot(LINUX_REBOOT_CMD_POWER_OFF);
           break;
