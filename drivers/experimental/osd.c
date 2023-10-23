@@ -110,7 +110,7 @@ typedef struct {
     uint8_t buttonB;
     uint8_t SENSE_SYS;
     uint8_t SENSE_BAT;
-    uint8_t STATUS;
+    uint8_t STATUS; // MUTE|LEFT_SWITCH|HOLD|POWER|(unused)|BRIGHTNESS|BRIGHTNESS|BRIGHTNESS
     uint8_t JOY_LX;
     uint8_t JOY_LY;
     uint8_t JOY_RX;
@@ -287,38 +287,25 @@ void clearLayer(IMAGE_LAYER_T * layer) {
   changeSourceAndUpdateImageLayer(layer);
 }
 
-int is_pi4() {
-    FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
-    if (cpuinfo == NULL) {
-        perror("Failed to open /proc/cpuinfo");
-        exit(EXIT_FAILURE);
+int is_pi4_or_cm4() {
+    FILE *fp;
+    char revcode[32];
+
+    fp = popen("cat /proc/cpuinfo | awk '/Revision/ {print $3}'", "r");
+    if (fp == NULL)
+        exit(1);
+    fgets(revcode, sizeof(revcode), fp);
+    pclose(fp);
+
+    int code = strtol(revcode, NULL, 16);
+    int new = (code >> 23) & 0x1;
+    int model = (code >> 4) & 0xff;
+
+    if (new && (model == 0x11 || model == 0x14)) {
+        return 1;  // It's either a 4B or CM4
     }
 
-    char line[256];
-    while (fgets(line, sizeof(line), cpuinfo)) {
-        if (strncmp(line, "Revision", 8) == 0) {
-            char *revision = strtok(line, ":");
-            revision = strtok(NULL, ":"); // this will get the value part
-
-            if (revision) {
-                // Removing any leading whitespace
-                while (*revision == ' ' || *revision == '\t') {
-                    ++revision;
-                }
-
-                // Here are some revision codes for Pi4/CM4
-                // This is not exhaustive and may need updates if new revisions appear
-                if (strstr(revision, "c031") || strstr(revision, "b031") ||
-                    strstr(revision, "c03112") || strstr(revision, "d03114")) {
-                    fclose(cpuinfo);
-                    return 1;
-                }
-            }
-        }
-    }
-
-    fclose(cpuinfo);
-    return 0;
+    return 0;  // Not a 4B or CM4
 }
 
 int get_cpu_count() {
@@ -361,7 +348,7 @@ void set_all_cpus_governor(int mode) {
 
 int main() {
   //check for Pi4, and adjust color order
-  if (is_pi4()) {
+  if (is_pi4_or_cm4()) {
      red =  backwardRed;
      orange =  backwardOrange;
   }
@@ -443,7 +430,6 @@ int main() {
     bool governor = shared_data->STATUS & 0b01000000; // make sure the correct governor is set when the program starts
     set_all_cpus_governor(governor);
     drawMute(& muteLayer);
-    //uint8_t report = 0;
     // set initial battery condition
     battery.voltageSYSx16 = shared_data->SENSE_SYS * 16;
     battery.voltageBATx16 = shared_data->SENSE_SYS * 16;
@@ -531,12 +517,7 @@ int main() {
 
         previousPercent = battery.percent;
         previousCharging = battery.chargeIndicator;
-        //if (!report){
-          //printf("Indicator Voltage: %d\n", battery.indicatorVoltage);
-          //printf("Percent: %d\n", battery.percent);
-          //printf("Charge Rate: %d\n", battery.finalAmperage);
-        //}
-        //report = report + 16;
+
         usleep(50000);
     }
 
