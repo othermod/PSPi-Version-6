@@ -21,7 +21,7 @@ I'm using only RetroPie during development, and will create images for the other
 
 Note: OS compatibility varies across different Raspberry Pi models.
 
-## 2. Pi Compatibility:
+## 2. Compatibility:
 - **Supported PSP Cases:** Works with the original PSP 1000 shell only.
 - **Supported Raspberry Pi Models**:
     - Compatible with all 40-pin Raspberry Pi versions.
@@ -47,7 +47,7 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - Real-time battery status and charge levels displayed on the OSD.
     - Auto power-off feature for battery levels below 3.08v.
 - **Charging and Power Supply**:
-    - USB or barrel jack charging at 1.35 amps, capable of supporting external devices.
+    - USB or barrel jack charging at 1.35 amps, capable of passing power through to external USB devices.
     - Efficient charging using a switching regulator with minimal heat generation.
     - Ensures a stable 5.0v supply to the Raspberry Pi.
     - Includes a miniUSB port for powering external USB devices when the system is on.
@@ -75,8 +75,8 @@ Note: OS compatibility varies across different Raspberry Pi models.
 
 ## Resources
 
-- [**Code for Raspberry Pi**](https://github.com/othermod/PSPi-Version-6/tree/main/drivers): Essential code for integrating the Raspberry Pi with the PSPi system.
-- [**Firmware for Atmega**](https://github.com/othermod/PSPi-Version-6/tree/main/atmega): Firmware to empower the Atmega8a microcontroller within the PSPi.
+- [**Code for Raspberry Pi**](https://github.com/othermod/PSPi-Version-6/tree/main/drivers): Essential code for integrating the Raspberry Pi and Atmega with the PSPi system.
+- [**Firmware for Atmega**](https://github.com/othermod/PSPi-Version-6/tree/main/atmega): Firmware for the Atmega8a microcontroller within the PSPi.
 - [**PCB and Schematics**](https://github.com/othermod/PSPi-Version-6/tree/main/boards): Hardware design files and schematics for the PSPi. Also available on [EasyEDA](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy).
 
 ## Ordering
