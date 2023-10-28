@@ -22,7 +22,7 @@ volatile bool dataReceived = false;
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
 #define EMERGENCY_SHUTOFF_THRESHOLD 1050 // 3.076v (1050 * 3000 / 1024)
-#define LOW_BATTERY_THRESHOLD 1085 // 3.178v (1085 * 3000 / 1024)
+#define LOW_BATTERY_THRESHOLD 1095 // 3.208v (1095 * 3000 / 1024)
 #define GOOD_BATTERY_THRESHOLD 1216 // 3.562v (1216 * 3000 / 1024)
 
 byte brightness = B00000001;
