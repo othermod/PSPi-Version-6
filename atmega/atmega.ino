@@ -21,13 +21,16 @@ volatile bool dataReceived = false;
 #define I2C_ADDRESS 0x10
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
-#define LOW_BATTERY_THRESHOLD 68 // 3.2v
-#define GOOD_BATTERY_THRESHOLD 76 // 3.6v
+#define EMERGENCY_SHUTOFF_THRESHOLD 1050 // 3.076v (1050 * 3000 / 1024)
+#define LOW_BATTERY_THRESHOLD 1085 // 3.178v (1085 * 3000 / 1024)
+#define GOOD_BATTERY_THRESHOLD 1216 // 3.562v (1216 * 3000 / 1024)
 
 byte brightness = B00000001;
-uint16_t detectTimeout = 0;
+uint16_t detectRPiTimeout = 0;
+uint16_t senseSYSAverage = GOOD_BATTERY_THRESHOLD; // keeps the battery LED from starting orange
+uint16_t senseBATAverage;
 
-byte arduinoInputsB;
+byte arduinoInputsB; // these arent currently used. remove?
 byte arduinoInputsD;
 byte registerInputs1;
 byte registerInputs2;
@@ -125,7 +128,7 @@ void setup() {
   // this may go away if I use a different GPIO from the CM4 that stays low for a few seconds
   // check to see what happens when reboots occur
   // enable audio after i2c activity begins
-  detectTimeout++;
+  detectRPiTimeout++;
 }
 
 void initializeBacklight() {
@@ -167,7 +170,7 @@ void sendByte(byte dataByte) {
   interrupts(); // enable interrupts again
 }
 
-void readArduinoInputs() {
+void readArduinoInputs() { // these arent currently used. remove?
   // scan the GPIOs that are used for input
   // do these pins benefit from debouncing?
   arduinoInputsB = PINB;
@@ -200,7 +203,7 @@ void readShiftRegisterInputs(){
   delayMicroseconds(5); // give some time to setup, you may not need this
   setPinHigh(SPI_SHIFT_LOAD);
 
-  // Use hardware SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Will add debouncing once all other basic functions work.
+  // Use bitbanged SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Was using hardware, but it was taking control of MOSI.
   // Flip every bit so that 1 means pressed. This will also be used in the dimming/low power function.
   // add debouncing?
   //I2C_data.buttonA = ~SPI.transfer(0);
@@ -296,19 +299,19 @@ void detectDisplayButton() {
 
 void detectRPi() {
     if (readPin(DETECT_RPI)) {  // Raspberry Pi is detected
-        if (detectTimeout) {  // if the pi is detected during the timeout
+        if (detectRPiTimeout) {  // if the pi is detected during the timeout
             enableDisplay();
-            detectTimeout = 0;
+            detectRPiTimeout = 0;
         }
     } else {  // Raspberry Pi is not detected
-        if (!detectTimeout) {  // if the timeout sequence hasn't started yet
+        if (!detectRPiTimeout) {  // if the timeout sequence hasn't started yet
             disableDisplay();
         }
 
-        if (detectTimeout > 500) {  // if the timeout reaches 5 seconds
+        if (detectRPiTimeout > 500) {  // if the timeout reaches 5 seconds
             setPinLow(EN_5V0);
         } else {
-          detectTimeout++;
+          detectRPiTimeout++;
         }
     }
 }
@@ -354,6 +357,8 @@ void requestEvent() {
 
   // Send the data, including the computed CRC8 value, to the Raspberry Pi
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
+
+  // check to see whether audio was muted due to idle i2c. if so, re-enable audio
   if (idleI2C) {
     idleI2C = false;
     setMuteStatus();
@@ -372,28 +377,30 @@ void receiveEvent(int numBytes) {
 }
 
 void readAnalogInputs() {
-  I2C_data.JOY_RX = (analogRead(JOY_RX_PIN) >> 2);
-  I2C_data.JOY_RY = (analogRead(JOY_RY_PIN) >> 2);
-  I2C_data.SENSE_SYS = (analogRead(SENSE_SYS_PIN));
-  I2C_data.SENSE_BAT = (analogRead(SENSE_BAT_PIN));
-  // handle low battery LED
-  if (batteryLow == true) {
-    if (I2C_data.SENSE_SYS > GOOD_BATTERY_THRESHOLD) {
+  I2C_data.JOY_RX = analogRead(JOY_RX_PIN) >> 2;
+  I2C_data.JOY_RY = analogRead(JOY_RY_PIN) >> 2;
+  I2C_data.JOY_LX = analogRead(JOY_LX_PIN) >> 2;
+  I2C_data.JOY_LY = analogRead(JOY_LY_PIN) >> 2;
+  I2C_data.JOY_LX = (I2C_data.JOY_LX & B11111110) | readPin(BTN_EXTRA_1); // add the extra buttons
+  I2C_data.JOY_LY = (I2C_data.JOY_LY & B11111110) | readPin(BTN_EXTRA_2);
+
+  senseSYSAverage = senseSYSAverage - (senseSYSAverage >> 4) + analogRead(SENSE_SYS_PIN);  // create an average of 16 readings
+  senseBATAverage = senseBATAverage - (senseBATAverage >> 4) + analogRead(SENSE_BAT_PIN);
+
+  I2C_data.SENSE_SYS = senseSYSAverage >> 3; // bitshift i2c data by 3, since it will fit into a byte
+  I2C_data.SENSE_BAT = senseBATAverage >> 3;
+
+  if (batteryLow) {
+    if (senseSYSAverage > GOOD_BATTERY_THRESHOLD) {
       batteryLow = false;
       setOrangeLED();
     }
   } else {
-    if (I2C_data.SENSE_SYS < LOW_BATTERY_THRESHOLD) {
+    if (senseSYSAverage < LOW_BATTERY_THRESHOLD) {
       batteryLow = true;
       setOrangeLED();
-      }
     }
-
-  I2C_data.JOY_LX = (analogRead(JOY_LX_PIN) >> 2);
-  I2C_data.JOY_LX = (I2C_data.JOY_LX & B11111110) | readPin(BTN_EXTRA_1); // use LSB for value of extra button 1, to avoid having to send an extra byte for button data
-
-  I2C_data.JOY_LY = (analogRead(JOY_LY_PIN) >> 2);
-  I2C_data.JOY_LY = (I2C_data.JOY_LY & B11111110) | readPin(BTN_EXTRA_2); // use LSB for value of extra button 2
+  }
 }
 
 void setMuteStatus() {

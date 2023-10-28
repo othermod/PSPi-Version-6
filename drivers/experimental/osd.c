@@ -139,8 +139,8 @@ Battery_Structure battery;
 
 void calculateAmperage() {
 
-  battery.voltageSYSx16 = battery.voltageSYSx16 - (battery.voltageSYSx16 / 16) + readVoltageSYS;
-  battery.voltageBATx16 = battery.voltageBATx16 - (battery.voltageBATx16 / 16) + readVoltageBAT;
+  battery.voltageSYSx16 = battery.voltageSYSx16 - (battery.voltageSYSx16 / 8) + readVoltageSYS;
+  battery.voltageBATx16 = battery.voltageBATx16 - (battery.voltageBATx16 / 8) + readVoltageBAT;
   if (battery.voltageSYSx16 > battery.voltageBATx16) {
     battery.isCharging = 0;
   } else {
@@ -431,8 +431,8 @@ int main() {
     set_all_cpus_governor(governor);
     drawMute(& muteLayer);
     // set initial battery condition
-    battery.voltageSYSx16 = shared_data->SENSE_SYS * 16;
-    battery.voltageBATx16 = shared_data->SENSE_SYS * 16;
+    battery.voltageSYSx16 = shared_data->SENSE_SYS * 8;
+    battery.voltageBATx16 = shared_data->SENSE_SYS * 8;
     battery.indicatorVoltage = battery.voltageSYSx16 * 3000 / 1024;
     while (1) {
 
