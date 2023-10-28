@@ -63,6 +63,10 @@ Note: OS compatibility varies across different Raspberry Pi models.
 
 ## 6. Input/Output and Controls:
 - **Microcontroller:** Atmega8a manages buttons, joysticks, battery, and LCD brightness, limiting the number of calculations done on the Pi.
+- **Solder Pads:**
+    - **Additional Inputs:** The board includes pads for 2 additional analog axes (a single joystick) and two additional buttons.
+    - **I2C:** The board includes pads for SDA and SCL, enabling the use of additional I2C devices.
+    - **Touch:** Includes the connections necessary to use a touch panel. More details will come at a later time.
 - **Energy Efficiency:** Left switch is programmable, and used to cycle between high power and power efficiency modes.
 - **Sleep Mode:** Hold switch activates a locked sleep mode, disabling audio, input, and the LCD.
 - **LED Indicators**:
