@@ -47,10 +47,10 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - Real-time battery status and charge levels displayed on the OSD.
     - Auto power-off feature for battery levels below 3.08v.
 - **Charging and Power Supply**:
-    - USB or barrel jack charging at 1.35 amps, capable of passing power through to external USB devices.
+    - Charge using the miniUSB or barrel jack (at up to 1.35 amps)
+    - The miniUSB is capable of providing power to external USB devices when the system is on, and also of passing power through from the barrel jack.
     - Efficient charging using a switching regulator with minimal heat generation.
     - Ensures a stable 5.0v supply to the Raspberry Pi.
-    - Includes a miniUSB port for powering external USB devices when the system is on.
 - **Efficiency**:
     - Designed to consume minimal power.
     - 4 - 8 hours of playtime when using a Raspberry Pi Zero. Up to 18 hours when the system is idle.
