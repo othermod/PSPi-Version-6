@@ -93,6 +93,20 @@ This project is a one-man-show, but any help or input is welcome and appreciated
 - [**Discord**](https://discord.gg/V96c3JC): Join for the latest discussions and updates.
 - [**YouTube**](https://youtube.com/othermod): Subscribe for video updates and demonstrations.
 
+## License
+
+The hardware is licensed under Creative Commons (CC BY-SA).
+
+##### You are free to:
+
+- **Share:** Copy and redistribute the material in any medium or format.
+- **Adapt:** Remix, transform, and build upon the material for any purpose, even commercially.
+
+##### Under the following terms:
+
+- **Attribution:** You must give appropriate credit and indicate if changes were made.
+- **ShareAlike:** If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+
 ## Contact
 
 Feel free to [reach out](https://linktr.ee/othermod) if you have any thoughts, suggestions, or ideas.
