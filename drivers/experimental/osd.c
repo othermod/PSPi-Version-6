@@ -31,6 +31,7 @@
 #define DISCHARGING 0
 #define CHARGING 1
 #define CHARGED 2
+#define DISABLE_WIFI true
 
 uint8_t brightness = 0;
 bool governor;
@@ -448,11 +449,18 @@ int main() {
       if (shared_data->STATUS & 0b00100000) { //if hold switch is down
           set_all_cpus_governor(1); // set governor to powersave
           system("killall -STOP retroarch");
+          if (DISABLE_WIFI) {
+            system("ifconfig wlan0 down");
+          }
           while (shared_data->STATUS & 0b00100000){ // dont do anything until hold switch is up
-            usleep(1000000); //sleep for a second
+            usleep(1000000); //sleep for a second.
           }
           set_all_cpus_governor(governor&gov); // get governors whatever mode it was previously in
+          // need to reset the battery % when returning from sleep.
           system("killall -CONT retroarch");
+          if (DISABLE_WIFI) {
+            system("ifconfig wlan0 up");
+          }
       }
 
       //read the battery voltage from memory
