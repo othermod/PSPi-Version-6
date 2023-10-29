@@ -12,24 +12,25 @@ Access the editable schematics and PCBs on EasyEDA using the links below:
 
 ## Hardware Bugs and Manual Fixes
 
-### Bug 1: [Headphone/Speaker Switching]
-- **Issue**: [The speakers should disable only when headphones are plugged in, but they stay disabled at all times]
-- **Fix**: [Solder two 10k resistors in the positions shown below]
-- **Photos/Drawings**: [Include photos or drawings to visualize the fix]
-
-### Bug 2: [Activity LED Not working on CM4]
-- **Issue**: [The activity LED works on the Pi Zero, but not on the CM4]
-- **Fix**: [Remove D? and replace with a 0 ohm (or at least <1k ohm) resistor, as shown below]
-- **Photos/Drawings**: [Include photos or drawings to visualize the fix]
-
-### Bug 3: [Audio Hiss on CM4]
+### Bug 1: [Audio Hiss on CM4]
 - **Issue**: [The CM4 has a bug in the PWM audio, and always has a slight hiss. This isn't noticeable on headphones, but the amplifier makes it loud on the speakers]
-- **Fix**: [Solder 100nf capacitors as shown. Solder 1uf capacitors as shown. Replace 220 ohm resistors shown with 100 ohm resistors.]
+- **Fix**: [Replace C21 and C25 with 1uF capacitors. Replace R20 and R29 with 100 Ohm resistors. Solder 2 100nF capacitors, one between the right pad of C14 and GND and one between the left pad of C33 and GND.]
+- **Photos/Drawings**: [Include photos or drawings to visualize the fix]
+
+### Bug 2: [Headphone/Speaker Switching]
+- **Issue**: [The speakers should disable only when headphones are plugged in, but they stay disabled at all times]
+- **Fix**: [Solder two 10k resistors. One between the left pad of C43 and the top pad of C25, the other between the left pad of C42 and the bottom pad of C21]
+- **Photos/Drawings**: [Include photos or drawings to visualize the fix]
+
+### Bug 3: [Activity LED Not working on CM4]
+- **Issue**: [The activity LED works on the Pi Zero, but not on the CM4]
+- **Fix**: [Remove Q7 and replace with a 0 Ohm (or at least <1K Ohm) resistor. The resistor should connect across the top and right pads where Q7 was positioned]
 - **Photos/Drawings**: [Include photos or drawings to visualize the fix]
 
 ### Bug 4: [USB Disabled Until Audio Plays]
 - **Issue**: [The USB mux uses the second audio pin to switch between Pi0 and CM4 USB routing. Sometimes this pin starts driven high, and other times it starts driven low. When it starts low, USB won't work until audio plays]
 - **Fix**: [Add a short silent audio wav file to rc.local, so that audio initializes at bootup. This will be corrected in hardware in the production release.]
 
-### Additional Resources
-- [Links to external resources, datasheets, forums, etc.]
+### Bug 5: [Flickering Charge LED During Charging]
+- **Issue**: [The Charge IC pulses the LED quickly, and it causes the green and orange LEDs to show simultaneously]
+- **Fix**: [Remove R5 (2K Ohm) and replace it with a 100K Ohm resistor]
