@@ -54,7 +54,7 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - The miniUSB provides power to external devices only when the PSPi is powered on, with one exception. If the barrel jack is plugged in, the power from the barrel jack will pass through directly to the miniUSB port. This is useful when a USB device needs extra power.
     - Internal boost IC provides a stable 5.0v supply to the Raspberry Pi.
 
-## 5. Audio Features:
+## 5. Audio:
 - **Audio Quality:** PWM audio signal processed through a low-noise buffer and filters for enhanced quality.
 - **Headphone Integration:** Automatic speaker muting upon headphone connection.
 - **Volume and Mute Controls:** Adjustable via buttons, with immediate feedback displayed on the OSD.
@@ -69,7 +69,7 @@ Note: OS compatibility varies across different Raspberry Pi models.
 - **Power Switch:**
     - Sliding upward momentarily powers the PSPi on.
     - When on, another momentary press will shut the OS down and power the PSPi off.
-    - Holding it upward will force the PSPi to power off.
+    - Holding it upward for 3-5 seconds will force the PSPi to power off.
     - Placing it into the Hold position will activate a locked sleep mode, disabling audio, input, and the LCD. More details below.
 - **LED Indicators**:
     - SD and eMMC activity indicator is above the left switch.
@@ -89,7 +89,6 @@ Note: OS compatibility varies across different Raspberry Pi models.
   - The ATmega microcontroller will turn off the screen and cut power to the audio circuits, ensuring a significant reduction in power consumption.
   - The controls are locked to prevent any accidental inputs during sleep mode.
   - The Raspberry Pi detects that the device is entering sleep mode, pauses the drivers, and switches the CPU governor to powersave mode. If RetroArch is running, it will also be paused to save resources.
-  - The ATmega microcontroller will restore power to the screen and audio circuits, and unlock the controls, bringing the device back to its active state.
   - This will also disable WiFi, if it's configured to do that.
   - This feature is particularly useful for preserving battery life during extended gaming sessions, allowing you to take breaks without needing to shut down the device completely. Pick up right where you left off, while minimizing power consumption during breaks.
 - **Mute:** Kills power to the audio circuits, reducing power usage.
@@ -98,6 +97,26 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - It gives 4 - 8 hours of playtime when using a Raspberry Pi Zero, and up to 18 hours when the system is idle.
     - You'll get 2 - 4 hours of playtime when using a Raspberry Pi CM4, and more when idle.
 - **Code Efficiency:** All functionalities are programmed in C for optimal performance.
+
+## Items Needed to Complete the Project
+- **Genuine PSP 1000:**
+  - The best option is to use a complete PSP 1000 series. The PSP mainboard, headphone board, and disc drive are not needed, but many other internal parts are, such as:
+    - The shell. The aftermarket ones are not good quality, so the best option is to use a genuine shell.
+    - WiFi antenna. The CM4 uses the same antenna connector, and the PSP's stock antenna works well with it.
+    - LCD bracket. The metal bracket holds the LCD and retains the back cover.
+    - Control panel on LCD bracket. This has many of the buttons, such as Display, Mute, and Volume.
+    - Power board. The board in the right of the shell, that has the power switch and LEDs.
+    - D-pad. There is a plastic brace and film for the d-pad controls.
+    - Rubber membranes for buttons.
+    - Shoulder buttons and membrane.
+    - Internal speakers for audio.
+- **PSPi 6 Required Parts:**
+  - If using only a 40-pin Raspberry Pi, such as a Pi Zero 2W, then you need the PSPi 6 board itself. The Raspberry Pi boards plug directly into it.
+  - If you intend to use this on the go, you need a battery with a JST PH 2.0mm connector
+  - Aftermarket LCD.
+- **PSPi 6 Optional Parts:**
+  - PSPi 6 CM4 Carrier. This is an adapter board that allows you to use a Raspberry Pi CM4 on the PSPi.
+  - PSPi 6 Headphone Board. This allows you to use headphones with the PSPi.
 
 ## Resources
 
