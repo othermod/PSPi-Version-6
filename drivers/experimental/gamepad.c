@@ -58,18 +58,22 @@ void update_controller_data(ControllerData *shared_data, ControllerData *last_da
     struct input_event events[18];
     int event_count = 0;
 
-    for(int i = 0; i < 8; i++) {
-        if (((shared_data->buttonA >> i) & 1) != ((last_data->buttonA >> i) & 1)) {
+    // Combine buttonA and buttonB into a single uint16_t
+    uint16_t combinedButtons = (shared_data->buttonB << 8) | shared_data->buttonA;
+    uint16_t lastCombinedButtons = (last_data->buttonB << 8) | last_data->buttonA;
+
+    // Check if the home button is pressed (7th bit of buttonB / 15th bit of combinedButtons)
+    // If home is pressed, set the select button (1st bit of buttonA / 1st bit of combinedButtons) high
+    if (combinedButtons & (1 << 15)) {
+        combinedButtons |= (1 << 1);
+    }
+
+    // Check button states and generate events
+    for(int i = 0; i < 16; i++) {
+        if (((combinedButtons >> i) & 1) != ((lastCombinedButtons >> i) & 1)) {
             events[event_count].type = EV_KEY;
             events[event_count].code = BTN_TRIGGER_HAPPY1 + i;
-            events[event_count].value = (shared_data->buttonA >> i) & 1;
-            event_count++;
-        }
-
-        if (((shared_data->buttonB >> i) & 1) != ((last_data->buttonB >> i) & 1)) {
-            events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_TRIGGER_HAPPY9 + i;
-            events[event_count].value = (shared_data->buttonB >> i) & 1;
+            events[event_count].value = (combinedButtons >> i) & 1;
             event_count++;
         }
     }
@@ -89,6 +93,7 @@ void update_controller_data(ControllerData *shared_data, ControllerData *last_da
         event_count++;
     }
 
+    // Write events to uinput device
     if(event_count > 0) {
         events[event_count].type = EV_SYN;
         events[event_count].code = 0;
@@ -102,7 +107,15 @@ void update_controller_data(ControllerData *shared_data, ControllerData *last_da
         }
     }
 
+    // Update last_data
     memcpy(last_data, shared_data, sizeof(ControllerData));
+
+    // Update last_data to reflect the virtual button press
+    if (combinedButtons & (1 << 1)) {
+        last_data->buttonA |= (1 << 1);
+    } else {
+        last_data->buttonA &= ~(1 << 1);
+    }
 }
 
 int main() {
