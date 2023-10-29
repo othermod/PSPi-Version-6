@@ -51,10 +51,6 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - The miniUSB is capable of providing power to external USB devices when the system is on, and also of passing power through from the barrel jack.
     - Efficient charging using a switching regulator with minimal heat generation.
     - Ensures a stable 5.0v supply to the Raspberry Pi.
-- **Efficiency**:
-    - Designed to consume minimal power.
-    - 4 - 8 hours of playtime when using a Raspberry Pi Zero. Up to 18 hours when the system is idle.
-    - 2 - 4 hours of playtime when using a Raspberry Pi CM4.
 
 ## 5. Audio Features:
 - **Audio Quality:** PWM audio signal processed through a low-noise buffer and filters for enhanced quality.
@@ -67,15 +63,35 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - **Additional Inputs:** The board includes pads for 2 additional analog axes (a single joystick) and two additional buttons.
     - **I2C:** The board includes pads for SDA and SCL, enabling the use of additional I2C devices.
     - **Touch:** Includes the connections necessary to use a touch panel. More details will come at a later time.
-- **Energy Efficiency:** Left switch is programmable, and used to cycle between high power and power efficiency modes.
-- **Sleep Mode:** Hold switch activates a locked sleep mode, disabling audio, input, and the LCD.
+- **Left Switch:** Left switch is programmable, and used to cycle between high power and power efficiency modes.
+- **Hold Switch:** Hold switch activates a locked sleep mode, disabling audio, input, and the LCD. Below is a detailed explanation of how the sleep mode operates:
 - **LED Indicators**:
     - SD and eMMC activity indicator is above the left switch.
     - WiFi connection status indicator is below the left switch (programmable).
     - Power status is indicated by the right LED. Normal status is a green LED, which turns orange for charging or low battery.
-- **Code Efficiency:** All functionalities are programmed in C for optimal performance.
 - **RTC (Real-Time Clock):**
   - The PSPi 6 board includes an RTC chip to keep track of the time and date, even when the system is powered off.
+
+## 7. Efficiency and Power Saving
+- **Power Save Mode:**
+  - The left switch puts the Raspberry Pi into a lower power mode using the governor.
+  - It changes the color of the battery outline when the left switch is down, to show the powersave status.
+  - This will also disable WiFi, depending on whether it's configured to do that.
+- **Sleep Mode:**
+  - The Raspberry Pi doesn't have a sleep mode, but this is the next best thing.
+  - Enter by sliding the power switch to the hold position (down), exit by sliding the switch back to the up position.
+  - The ATmega microcontroller will turn off the screen and cut power to the audio circuits, ensuring a significant reduction in power consumption.
+  - The controls are locked to prevent any accidental inputs during sleep mode.
+  - The Raspberry Pi detects that the device is entering sleep mode, pauses the drivers, and switches the CPU governor to powersave mode. If RetroArch is running, it will also be paused to save resources.
+  - The ATmega microcontroller will restore power to the screen and audio circuits, and unlock the controls, bringing the device back to its active state.
+  - This will also disable WiFi, if it's configured to do that.
+  - This feature is particularly useful for preserving battery life during extended gaming sessions, allowing you to take breaks without needing to shut down the device completely. Pick up right where you left off, while minimizing power consumption during breaks.
+- **Mute:** Kills power to the audio circuits, reducing power usage.
+- **Component Selection**:
+    - The board uses as many of the Raspberry Pi's integrated features as possible, helping it to consume minimal power.
+    - It gives 4 - 8 hours of playtime when using a Raspberry Pi Zero, and up to 18 hours when the system is idle.
+    - You'll get 2 - 4 hours of playtime when using a Raspberry Pi CM4, and more when idle.
+- **Code Efficiency:** All functionalities are programmed in C for optimal performance.
 
 ## Resources
 
