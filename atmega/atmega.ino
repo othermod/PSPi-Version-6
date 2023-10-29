@@ -1,21 +1,10 @@
-/* TODO
-1. Forced poweroff will be more gentle if the arduino detects the power button being held and kills 5v after 2 seconds, and then kills all power. It can mute&kill audio too
-2. Mute audio as soon as I2C communication stops?
-3. Mute audio before enabling and disabling the audio LDO
-4. Set up 30-50ms button debouncing.
-5. Allow receiving of commands over I2C (dimming, mute)?
-6. Allow button combos to change behaviors? Dim/kill lcd
-*/
-
 #include <Wire.h>
 //#include <SPI.h>
 #include "Pin_Macros.h"
 #include "LCD_Timings.h"
-#include "GPIO.h"
 
 // Buffer and flag for received I2C data
 volatile byte receivedData[3];
-volatile byte receivedCRC;
 volatile bool dataReceived = false;
 
 #define I2C_ADDRESS 0x10
@@ -24,22 +13,20 @@ volatile bool dataReceived = false;
 #define EMERGENCY_SHUTOFF_THRESHOLD 1050 // 3.076v (1050 * 3000 / 1024)
 #define LOW_BATTERY_THRESHOLD 1095 // 3.208v (1095 * 3000 / 1024)
 #define GOOD_BATTERY_THRESHOLD 1216 // 3.562v (1216 * 3000 / 1024)
+#define BTN_MUTE I2C_data.buttonA & B00000001
 
 byte brightness = B00000001;
 uint16_t detectRPiTimeout = 0;
 uint16_t senseSYSAverage = GOOD_BATTERY_THRESHOLD; // keeps the battery LED from starting orange
 uint16_t senseBATAverage;
-
-byte arduinoInputsB; // these arent currently used. remove?
-byte arduinoInputsD;
 byte registerInputs1;
 byte registerInputs2;
 
 bool displayButtonPressed = false;
 bool muteButtonPressed = false;
 bool isMute = false;
-bool idleI2C = true; // the atmega starts with audio muted until i2c is accessed, so it avoids popping sounds
-bool sleepMode = false;
+bool isIdleI2C = true; // the atmega starts with audio muted until i2c is accessed, so it avoids popping sounds
+bool isSleeping = false;
 uint8_t idleI2Ccounter = 0;
 bool batteryLow = false;
 bool forceOrangeLED = false;
@@ -47,11 +34,6 @@ bool forceOrangeLED = false;
 unsigned long previousMillis = 0;
 const long interval = 10; // ms delay between the start of each loop
 
-// define the structure layout for transmitting I2C data to the Raspberry Pi
-// the first 4 bytes must be read continuously.
-// STATUS is read at whatever interval is needed
-// left joystick can be read less often
-// right joystick is only read when it is enabled
 struct I2C_Structure {
   uint8_t buttonA; // button status
   uint8_t buttonB; // button status
@@ -68,71 +50,28 @@ struct I2C_Structure {
 
 I2C_Structure I2C_data; // create the structure for the I2C data
 
-#define BTN_MUTE I2C_data.buttonA & B00000001
-
 void setup() {
-
-
   Wire.begin(I2C_ADDRESS);  // join i2c bus
   Wire.onRequest(requestEvent); // send data to rpi
   Wire.onReceive(receiveEvent); // receive data from rpi
-  //SPI.begin();
-  //SPI.setBitOrder(MSBFIRST); // can this be removed?
-  //(SPI_MODE0); // can this be removed?
 
-  // These and the macros will go away once pin states are verified, and I will just do this once with a single command for each port
-  setPinAsInput(BTN_DISPLAY);
-  setPinAsInput(BTN_EXTRA_2);
-  setPinAsOutput(ONEWIRE_LCD);
-  setPinAsOutput(PWM_LED_ORANGE);
-  setPinAsInput(SPI_DATA_IN);
-  setPinAsOutput(SPI_CLOCK);
-  setPinAsOutput(EN_5V0);
-  setPinAsOutput(LED_LEFT);
-
-  setPinAsInput(BTN_EXTRA_1);
-
-  setPinAsInput(EN_AMP);
-  setPinAsInput(DETECT_RPI);
-
-  setPinAsOutput(SPI_SHIFT_LOAD);
-  setPinAsInput(BTN_SD);
-  setPinAsInput(BTN_HOLD);
-  setPinAsInput(LEFT_SWITCH);
-  setPinAsOutput(EN_AUDIO);
-
-  // SPI_DATA_IN is controlled by SPI
-  // SPI_CLOCK is controlled by SPI
-  setPinLow(ONEWIRE_LCD);
-  setPinHigh(PWM_LED_ORANGE); // will probably do PWM instead
-  setPinLow(EN_5V0);
-  setPinLow(EN_AMP);
-  //setPinLow(AUDIO_GAIN_0);
-  setPinLow(SPI_SHIFT_LOAD);
-  setPinLow(DETECT_RPI);
-  setPinLow(LED_LEFT);
-  setPinLow(EN_AUDIO);
-  setPinHigh(BTN_DISPLAY);
-  setPinHigh(BTN_EXTRA_2);
-  setPinHigh(LEFT_SWITCH);
-  setPinHigh(BTN_SD);
-  setPinHigh(BTN_HOLD);
-  setPinHigh(BTN_EXTRA_1);
+  // Port B Configuration
+  DDRB  = B11111110;  // 7: LED_LEFT, 6: EN_5V0, 5: SPI_CLOCK, 4: SPI_DATA_IN, 3: PWM_LED_ORANGE, 2: ONEWIRE_LCD, 1: BTN_EXTRA_2, 0: BTN_DISPLAY
+  PORTB = B00101011;  // 7: LED_LEFT (low), 6: EN_5V0 (low), 5: SPI_CLOCK (high), 4: SPI_DATA_IN (low), 3: PWM_LED_ORANGE (high), 2: ONEWIRE_LCD (low), 1: BTN_EXTRA_2 (high), 0: BTN_DISPLAY (high)
+  // Port D Configuration
+  DDRD  = B00001000;  // 7: EN_AUDIO, 6: LEFT_SWITCH, 5: BTN_HOLD, 4: BTN_SD, 3: SPI_SHIFT_LOAD, 2: BTN_EXTRA_1, 1: DETECT_RPI, 0: EN_AMP
+  PORTD = B01110100;  // 7: EN_AUDIO (low), 6: LEFT_SWITCH (high), 5: BTN_HOLD (high), 4: BTN_SD (high), 3: SPI_SHIFT_LOAD (low), 2: BTN_EXTRA_1 (high), 1: DETECT_RPI (low), 0: EN_AMP (low)
 
   delay(500);
   setPinHigh(EN_5V0);
 
   // this disables the backlight and audio until the Pi is detected
   disableDisplay();
-  // this ensures that the backlight will enable as soon as the Pi is detected at boot
-  // this may go away if I use a different GPIO from the CM4 that stays low for a few seconds
-  // check to see what happens when reboots occur
-  // enable audio after i2c activity begins
   detectRPiTimeout++;
 }
 
 void initializeBacklight() {
-  // Startup sequence for EasyScale mode
+  // Startup sequence for EasyScale
   setPinLow(ONEWIRE_LCD); // LOW
   delayMicroseconds(toff); // lcd has to be off this long to reset before initializing
   // both of these must occur within 1000 microseconds of resetting the chip
@@ -170,16 +109,8 @@ void sendByte(byte dataByte) {
   interrupts(); // enable interrupts again
 }
 
-void readArduinoInputs() { // these arent currently used. remove?
-  // scan the GPIOs that are used for input
-  // do these pins benefit from debouncing?
-  arduinoInputsB = PINB;
-  arduinoInputsD = PIND;
-}
-
 uint8_t bitBangSPIReadByte() {
     uint8_t data = 0;
-
     for (uint8_t i = 0; i < 8; i++) {
         // Set clock low
         setPinLow(SPI_CLOCK);
@@ -189,10 +120,8 @@ uint8_t bitBangSPIReadByte() {
         if (readPin(SPI_DATA_IN)) {
             data |= (1 << (7 - i)); // Read MSB first
         }
-        // Set clock high to signal end of bit read
-        setPinHigh(SPI_CLOCK);
-        // Again, provide a small delay if necessary.
-        delayMicroseconds(1);
+        setPinHigh(SPI_CLOCK); // Set clock high to signal end of bit read
+        delayMicroseconds(1); // Again, provide a small delay if necessary.
     }
     return data;
 }
@@ -205,9 +134,6 @@ void readShiftRegisterInputs(){
 
   // Use bitbanged SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Was using hardware, but it was taking control of MOSI.
   // Flip every bit so that 1 means pressed. This will also be used in the dimming/low power function.
-  // add debouncing?
-  //I2C_data.buttonA = ~SPI.transfer(0);
-  //I2C_data.buttonB = ~SPI.transfer(0);
   I2C_data.buttonA = ~bitBangSPIReadByte();
   I2C_data.buttonB = ~bitBangSPIReadByte();
 }
@@ -251,12 +177,12 @@ void detectLeftSwitch() {
 }
 
 void detectHoldSwitch() {
-  if (sleepMode) {
+  if (isSleeping) {
     // check whether we should exit sleep mode
     if (readPin(BTN_HOLD)) {
       // exit sleep mode
       I2C_data.STATUS &= B11011111; // Clear bit 5 // this lets the Pi know whether the hold switch is down
-      sleepMode = false;
+      isSleeping = false;
       // now need to deal with the possibility that the power switch is accidentally pressed. just adding a small delay before getting back to scanning all inputs
       // really need to just ignore the power button alone for a second or two, but a delay will work for now
       delay(500);
@@ -267,7 +193,7 @@ void detectHoldSwitch() {
     // check whether we should enter sleep mode
     if (!readPin(BTN_HOLD)) {
       I2C_data.STATUS |= B00100000; // Set bit 5
-      sleepMode = true;
+      isSleeping = true;
       disableDisplay();
       setMuteStatus();
     }
@@ -309,7 +235,7 @@ void detectRPi() {
         }
 
         if (detectRPiTimeout > 500) {  // if the timeout reaches 5 seconds
-            setPinLow(EN_5V0);
+           setPinLow(EN_5V0);
         } else {
           detectRPiTimeout++;
         }
@@ -359,8 +285,8 @@ void requestEvent() {
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
 
   // check to see whether audio was muted due to idle i2c. if so, re-enable audio
-  if (idleI2C) {
-    idleI2C = false;
+  if (isIdleI2C) {
+    isIdleI2C = false;
     setMuteStatus();
   }
   idleI2Ccounter = 0;
@@ -405,7 +331,7 @@ void readAnalogInputs() {
 
 void setMuteStatus() {
   // mute the audio whenever any of the conditions is true
-  if (isMute || idleI2C || sleepMode) {
+  if (isMute || isIdleI2C || isSleeping) {
     // turn off the amplifier, then disable power to audio
     setPinAsOutput(EN_AMP);
     delay(1); // tinker with this value, may only need to be a few milli or even microseconds
@@ -434,12 +360,10 @@ void loop() {
     previousMillis = currentMillis;
     // when in sleep mode, only scan analog (for battery) and scan for hold switch
     // still transmit some things (maybe just battery, so pi knows to emergency shutdown)
-    readArduinoInputs(); // this always happens
     readAnalogInputs(); // this always happens, prob need to set all 4 joysticks to center point (and dont forget extra buttons)
-    if (sleepMode) {
-      I2C_data.buttonA = B00000000; // buttons are set to unpressed at all times when in sleep mode
-      I2C_data.buttonB = B00000000;
+    if (isSleeping) {
       detectHoldSwitch();
+      delay(100); // sleep for longer
     } else {
       readShiftRegisterInputs(); // this doesn't happen when the hold switch is down
       detectButtons(); // this doesn't happen when the hold switch is down
@@ -448,7 +372,7 @@ void loop() {
     if (idleI2Ccounter < 25) {
       idleI2Ccounter++;
       if (idleI2Ccounter == 25) {  // if no i2c for 250 milliseconds, mute the audio
-        idleI2C = true;
+        isIdleI2C = true;
         setMuteStatus();
       }
     }
