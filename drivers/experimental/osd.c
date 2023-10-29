@@ -33,6 +33,8 @@
 #define CHARGED 2
 
 uint8_t brightness = 0;
+bool governor;
+bool gov;
 
 snd_mixer_t *handle;
 snd_mixer_elem_t* elem;
@@ -168,6 +170,7 @@ bool isMute = 0;
 // create colors ( format is: red, green, blue, opacity)
 static RGBA8_T clearColor = { 0,    0,    0,    0};
 static RGBA8_T green =      { 0,    255,  0,    255};
+static RGBA8_T blue =      { 0,    127,  255,    255};
 RGBA8_T red =               { 255,  0,    0,    255};
 static RGBA8_T backwardRed =        { 0,  0,    255,    255};
 RGBA8_T orange =     { 255,  127,  0,    255};
@@ -187,8 +190,14 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
     batteryColor = & red;
   }
   // draw the battery outline and fill with color
-  imageBoxFilledRGB(image, 1, 0, 30, 14, & white);
-  imageBoxFilledRGB(image, 0, 4, 2, 10, & white);
+  RGBA8_T * outlineColor;
+  outlineColor = & white;
+  if (governor&&gov) {
+    outlineColor = & blue;
+  }
+
+  imageBoxFilledRGB(image, 1, 0, 30, 14, outlineColor);
+  imageBoxFilledRGB(image, 0, 4, 2, 10, outlineColor);
   imageBoxFilledRGB(image, 2, 1, 29, 13, & black);
   imageBoxFilledRGB(image, 1, 5, 3, 9, & black);
 
@@ -427,7 +436,7 @@ int main() {
     uint8_t showVolume = 0;
     isMute = shared_data->STATUS & 0b10000000;
     brightness = shared_data->STATUS & 0b00000111;
-    bool governor = shared_data->STATUS & 0b01000000; // make sure the correct governor is set when the program starts
+    governor = shared_data->STATUS & 0b01000000; // make sure the correct governor is set when the program starts
     set_all_cpus_governor(governor);
     drawMute(& muteLayer);
     // set initial battery condition
@@ -456,6 +465,11 @@ int main() {
         if ((battery.indicatorVoltage > 4050) & (battery.finalAmperage > -40)) {
           battery.chargeIndicator = CHARGED;}
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
+          gov = 1;
+          if (battery.chargeIndicator) { // if plugged in (charging or charged)
+             gov = 0;
+          }
+          set_all_cpus_governor(gov);
           drawBattery(& batteryLayer); // make sure this is only done if something changes
         }
 
@@ -485,6 +499,7 @@ int main() {
           if (governor != (shared_data->STATUS & 0b01000000)) {
             governor = shared_data->STATUS & 0b01000000;
               set_all_cpus_governor(governor);
+              drawBattery(& batteryLayer);
           }
           previousStatus = shared_data->STATUS;
         }
