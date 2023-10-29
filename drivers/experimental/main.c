@@ -109,6 +109,10 @@ int main() {
           break;
         }
 
+        if (controller_data.STATUS & 0b00100000) {
+          usleep(100000); // sleep a lot longer when the hold switch is down
+        }
+
         // Wait for 16ms before reading again
         usleep(16000);
     }

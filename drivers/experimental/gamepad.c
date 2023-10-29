@@ -128,6 +128,10 @@ int main() {
     shared_data = mmap(0, sizeof(ControllerData), PROT_READ, MAP_SHARED, shm_fd, 0);
 
     while(1) {
+      while (shared_data->STATUS & 0b00100000) {
+        usleep(100000); //sleep a lot when the hold switch is down (sleep mode)
+      }
+
         if(memcmp(shared_data, &last_data, sizeof(ControllerData)) == 0) {
             usleep(16000);
             continue;

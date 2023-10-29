@@ -445,6 +445,16 @@ int main() {
     battery.indicatorVoltage = battery.voltageSYSx16 * 3000 / 1024;
     while (1) {
 
+      if (shared_data->STATUS & 0b00100000) { //if hold switch is down
+          set_all_cpus_governor(1); // set governor to powersave
+          system("killall -STOP retroarch");
+          while (shared_data->STATUS & 0b00100000){ // dont do anything until hold switch is up
+            usleep(1000000); //sleep for a second
+          }
+          set_all_cpus_governor(governor&gov); // get governors whatever mode it was previously in
+          system("killall -CONT retroarch");
+      }
+
       //read the battery voltage from memory
       readVoltageSYS = shared_data->SENSE_SYS * 3000 / 1024;
       readVoltageBAT = shared_data->SENSE_BAT * 3000 / 1024;
