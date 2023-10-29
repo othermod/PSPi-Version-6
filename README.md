@@ -42,15 +42,17 @@ Note: OS compatibility varies across different Raspberry Pi models.
 ## 4. Power Management:
 - **Power On/Off:** Controlled via a momentary push switch, featuring graceful startup and shutdown procedures.
 - **Forced Power Off:** Can be achieved by holding the power button for 3-5 seconds.
-- **Battery Management**:
-    - Supports various 3.7v batteries with JST PH 2.0mm connector.
-    - Real-time battery status and charge levels displayed on the OSD.
-    - Auto power-off feature for battery levels below 3.08v.
-- **Charging and Power Supply**:
-    - Charge using the miniUSB or barrel jack (at up to 1.35 amps)
-    - The miniUSB is capable of providing power to external USB devices when the system is on, and also of passing power through from the barrel jack.
+- **Charging and Battery Management**:
+    - Supports 3.7v batteries with a JST PH 2.0mm connector.
+    - Charge using the miniUSB or barrel jack (at up to 1.35 amps).
     - Efficient charging using a switching regulator with minimal heat generation.
-    - Ensures a stable 5.0v supply to the Raspberry Pi.
+    - Real-time battery status and charge levels displayed on the OSD.
+    - Auto shutdown when the battery is depleted.
+    - Auto forced power-off when the battery voltage drops below 3.08v.
+- **Power Supply and USB**:
+    - The board works using only external power when no battery is installed.
+    - The miniUSB provides power to external devices only when the PSPi is powered on, with one exception. If the barrel jack is plugged in, the power from the barrel jack will pass through directly to the miniUSB port. This is useful when a USB device needs extra power.
+    - Internal boost IC provides a stable 5.0v supply to the Raspberry Pi.
 
 ## 5. Audio Features:
 - **Audio Quality:** PWM audio signal processed through a low-noise buffer and filters for enhanced quality.
@@ -63,8 +65,12 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - **Additional Inputs:** The board includes pads for 2 additional analog axes (a single joystick) and two additional buttons.
     - **I2C:** The board includes pads for SDA and SCL, enabling the use of additional I2C devices.
     - **Touch:** Includes the connections necessary to use a touch panel. More details will come at a later time.
-- **Left Switch:** Left switch is programmable, and used to cycle between high power and power efficiency modes.
-- **Hold Switch:** Hold switch activates a locked sleep mode, disabling audio, input, and the LCD. Below is a detailed explanation of how the sleep mode operates:
+- **Left Switch:** Used to cycle between high power and power efficiency modes (programmable).
+- **Power Switch:**
+    - Sliding upward momentarily powers the PSPi on.
+    - When on, another momentary press will shut the OS down and power the PSPi off.
+    - Holding it upward will force the PSPi to power off.
+    - Placing it into the Hold position will activate a locked sleep mode, disabling audio, input, and the LCD. More details below.
 - **LED Indicators**:
     - SD and eMMC activity indicator is above the left switch.
     - WiFi connection status indicator is below the left switch (programmable).
