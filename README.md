@@ -71,7 +71,10 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - When on, another momentary press will shut the OS down and power the PSPi off.
     - Holding it upward for 3-5 seconds will force the PSPi to power off.
     - Placing it into the Hold position will activate a locked sleep mode, disabling audio, input, and the LCD. More details below.
-- **LED Indicators**:
+- **Display Button:**
+    - Pressing the Display button will cycle the backlight through 8 brightness levels.
+    - Holding the Display button for 2 seconds will set the current brightness level to the default brightness at bootup.
+- **LED Indicators:**
     - SD and eMMC activity indicator is above the left switch.
     - WiFi connection status indicator is below the left switch (programmable).
     - Power status is indicated by the right LED. Normal status is a green LED, which turns orange for charging or low battery.
@@ -110,6 +113,7 @@ Note: OS compatibility varies across different Raspberry Pi models.
     - Rubber membranes for buttons.
     - Shoulder buttons and membrane.
     - Internal speakers for audio.
+    - Joystick and rubber interface.
 - **PSPi 6 Required Parts:**
   - If using only a 40-pin Raspberry Pi, such as a Pi Zero 2W, then you need the PSPi 6 board itself. The Raspberry Pi boards plug directly into it.
   - If you intend to use this on the go, you need a battery with a JST PH 2.0mm connector
