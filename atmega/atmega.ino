@@ -1,5 +1,5 @@
 #include <Wire.h>
-//#include <SPI.h>
+#include <EEPROM.h>
 #include "Pin_Macros.h"
 #include "LCD_Timings.h"
 
@@ -8,6 +8,8 @@ volatile byte receivedData[3];
 volatile bool dataReceived = false;
 
 #define I2C_ADDRESS 0x10
+#define BRIGHTNESS_ADDRESS 0
+
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
 #define EMERGENCY_SHUTOFF_THRESHOLD 1050 // 3.076v (1050 * 3000 / 1024)
@@ -22,7 +24,7 @@ uint16_t senseBATAverage;
 byte registerInputs1;
 byte registerInputs2;
 
-bool displayButtonPressed = false;
+uint16_t displayButtonPressed = 0;
 bool muteButtonPressed = false;
 bool isMute = false;
 bool isIdleI2C = true; // the atmega starts with audio muted until i2c is accessed, so it avoids popping sounds
@@ -54,6 +56,13 @@ void setup() {
   Wire.begin(I2C_ADDRESS);  // join i2c bus
   Wire.onRequest(requestEvent); // send data to rpi
   Wire.onReceive(receiveEvent); // receive data from rpi
+
+  byte eepromValue = EEPROM.read(BRIGHTNESS_ADDRESS) & B00011111; // Read and mask the value
+  if ((eepromValue & B00000001) && !(eepromValue & B00000010)) {
+    brightness = eepromValue; // Valid value, update the global variable
+  } else {
+    EEPROM.write(BRIGHTNESS_ADDRESS, brightness); // Invalid value, reset EEPROM
+  }
 
   // Port B Configuration
   DDRB  = B11111110;  // 7: LED_LEFT, 6: EN_5V0, 5: SPI_CLOCK, 4: SPI_DATA_IN, 3: PWM_LED_ORANGE, 2: ONEWIRE_LCD, 1: BTN_EXTRA_2, 0: BTN_DISPLAY
@@ -209,18 +218,34 @@ void detectShutdownButton() {
 }
 
 void detectDisplayButton() {
-  // Handle Display button being pressed
+  // Handle Display button being pressed or held
   if (!readPin(BTN_DISPLAY)) {
-      displayButtonPressed = 1;
-    } else {
-      // increase the brightness when the Display button is released
-      if (displayButtonPressed == 1) {
-        brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
-        displayButtonPressed = 0;
-        I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
-        setBrightness(brightness);
+    if (displayButtonPressed < 200) {
+      displayButtonPressed++;
+      if (displayButtonPressed == 200) { // if pressed for 2 seconds, change the default brightness in eeprom
+        changeDefaultBrightness();
       }
     }
+    } else {
+      if ( displayButtonPressed ) { // if button no longer pressed
+        if (displayButtonPressed < 200) { // if the button wasn't held for 2 seconds
+          // increase the brightness when the Display button is released
+          brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
+          I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
+          setBrightness(brightness);
+        }
+        displayButtonPressed = 0;
+      }
+    }
+}
+
+void changeDefaultBrightness() {
+  setBrightness(31);
+  delay(100);
+  setBrightness(1);
+  delay(100);
+  setBrightness(brightness);
+  EEPROM.write(BRIGHTNESS_ADDRESS, brightness);
 }
 
 void detectRPi() {
