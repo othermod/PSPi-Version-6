@@ -74,6 +74,11 @@ Note: OS compatibility varies across different Raspberry Pi models.
 - **Display Button:**
     - Pressing the Display button will cycle the backlight through 8 brightness levels.
     - Holding the Display button for 2 seconds will set the current brightness level to the default brightness at bootup.
+- **Mute Button:**
+    - A press will mute the speakers and headphones, and disable the audio electronics
+    - Another press will re-enable and unmute the audio
+- **Volume Buttons:**
+    - Press or hold Vol - or + to adjust the volume.
 - **LED Indicators:**
     - SD and eMMC activity indicator is above the left switch.
     - WiFi connection status indicator is below the left switch (programmable).
