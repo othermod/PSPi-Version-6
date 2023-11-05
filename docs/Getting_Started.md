@@ -95,6 +95,6 @@ _Note: OS compatibility may vary across different Raspberry Pi models._
 
 #### Raspberry Pi Compute Module 4 (CM4)
 
-- Broad emulation compatibility, suitable for modern console games.
+- Wider emulation compatibility, plays PlayStation 1 games well.
 - Supports a variety of 32-bit and 64-bit operating systems with robust performance.
 - Battery life will not be as good when using the CM4, and you can expect 2-4 hours, maybe up to 6.
