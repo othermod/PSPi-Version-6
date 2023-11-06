@@ -103,8 +103,8 @@ int main() {
 
         // Copy data to shared memory
         *shared_data = controller_data;
-        // issue shutdown
-        if ((controller_data.STATUS >> 4) & 1) {
+        // issue shutdown when button pressed or when battery is very low
+        if (((controller_data.STATUS >> 4) & 1) || (controller_data.SENSE_SYS < 133)) {
           reboot(LINUX_REBOOT_CMD_POWER_OFF);
           break;
         }
