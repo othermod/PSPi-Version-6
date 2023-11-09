@@ -34,8 +34,8 @@
 #define DISABLE_WIFI true
 
 uint8_t brightness = 0;
-bool governor;
-bool gov;
+bool governorSwitch;
+bool notCharging;
 
 snd_mixer_t *handle;
 snd_mixer_elem_t* elem;
@@ -193,7 +193,7 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
   // draw the battery outline and fill with color
   RGBA8_T * outlineColor;
   outlineColor = & white;
-  if (governor&&gov) {
+  if (governorSwitch&&notCharging) {
     outlineColor = & blue;
   }
 
@@ -338,7 +338,7 @@ int get_cpu_count() {
 }
 
 void set_all_cpus_governor(int mode) {
-    const char* governor = mode ? "powersave" : "ondemand";
+    const char* governorSwitch = mode ? "powersave" : "ondemand";
     int cpu_count = get_cpu_count();
 
     for (int i = 0; i < cpu_count; i++) {
@@ -347,11 +347,11 @@ void set_all_cpus_governor(int mode) {
 
         FILE* file = fopen(path, "w");
         if (file == NULL) {
-            perror("Failed to open the governor file");
+            perror("Failed to open the governorSwitch file");
             exit(1);
         }
 
-        fprintf(file, "%s", governor);
+        fprintf(file, "%s", governorSwitch);
         fclose(file);
     }
 }
@@ -437,8 +437,8 @@ int main() {
     uint8_t showVolume = 0;
     isMute = shared_data->STATUS & 0b10000000;
     brightness = shared_data->STATUS & 0b00000111;
-    governor = shared_data->STATUS & 0b01000000; // make sure the correct governor is set when the program starts
-    set_all_cpus_governor(governor);
+    governorSwitch = shared_data->STATUS & 0b01000000; // make sure the correct governorSwitch is set when the program starts
+    set_all_cpus_governor(governorSwitch);
     drawMute(& muteLayer);
     // set initial battery condition
     battery.voltageSYSx16 = shared_data->SENSE_SYS * 8;
@@ -447,7 +447,7 @@ int main() {
     while (1) {
 
       if (shared_data->STATUS & 0b00100000) { //if hold switch is down
-          set_all_cpus_governor(1); // set governor to powersave
+          set_all_cpus_governor(1); // set governorSwitch to powersave
           system("killall -STOP retroarch");
           if (DISABLE_WIFI) {
             system("ifconfig wlan0 down");
@@ -455,7 +455,7 @@ int main() {
           while (shared_data->STATUS & 0b00100000){ // dont do anything until hold switch is up
             usleep(1000000); //sleep for a second.
           }
-          set_all_cpus_governor(governor&gov); // get governors whatever mode it was previously in
+          set_all_cpus_governor(governorSwitch&notCharging); // get governors whatever mode it was previously in
           // need to reset the battery % when returning from sleep.
           system("killall -CONT retroarch");
           if (DISABLE_WIFI) {
@@ -483,11 +483,11 @@ int main() {
         if ((battery.indicatorVoltage > 4050) & (battery.finalAmperage > -40)) {
           battery.chargeIndicator = CHARGED;}
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
-          gov = 1;
+          notCharging = 1;
           if (battery.chargeIndicator) { // if plugged in (charging or charged)
-             gov = 0;
+             notCharging = 0;
           }
-          set_all_cpus_governor(gov);
+          set_all_cpus_governor(notCharging&&governorSwitch);
           drawBattery(& batteryLayer); // make sure this is only done if something changes
         }
 
@@ -514,9 +514,9 @@ int main() {
           }
           //see whether powersave status changed
           // perhaps the left switch and hold switch should activate powersave
-          if (governor != (shared_data->STATUS & 0b01000000)) {
-            governor = shared_data->STATUS & 0b01000000;
-              set_all_cpus_governor(governor);
+          if (governorSwitch != (shared_data->STATUS & 0b01000000)) {
+            governorSwitch = shared_data->STATUS & 0b01000000;
+              set_all_cpus_governor(governorSwitch);
               drawBattery(& batteryLayer);
           }
           previousStatus = shared_data->STATUS;
