@@ -35,7 +35,7 @@
 
 uint8_t brightness = 0;
 bool governorSwitch;
-bool notCharging;
+bool notCharging = 1;
 
 snd_mixer_t *handle;
 snd_mixer_elem_t* elem;
@@ -516,7 +516,7 @@ int main() {
           // perhaps the left switch and hold switch should activate powersave
           if (governorSwitch != (shared_data->STATUS & 0b01000000)) {
             governorSwitch = shared_data->STATUS & 0b01000000;
-              set_all_cpus_governor(governorSwitch);
+              set_all_cpus_governor(governorSwitch&notCharging);
               drawBattery(& batteryLayer);
           }
           previousStatus = shared_data->STATUS;
