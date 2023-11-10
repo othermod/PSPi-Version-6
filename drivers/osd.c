@@ -193,7 +193,7 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
   // draw the battery outline and fill with color
   RGBA8_T * outlineColor;
   outlineColor = & white;
-  if (governorSwitch&&notCharging) {
+  if (governorSwitch&notCharging) {
     outlineColor = & blue;
   }
 
@@ -487,7 +487,7 @@ int main() {
           if (battery.chargeIndicator) { // if plugged in (charging or charged)
              notCharging = 0;
           }
-          set_all_cpus_governor(notCharging&&governorSwitch);
+          set_all_cpus_governor(governorSwitch&notCharging);
           drawBattery(& batteryLayer); // make sure this is only done if something changes
         }
 
