@@ -1,118 +1,34 @@
-#disable_splash=1
-# For more options and information see
-# http://rpf.io/configtxt
-# Some settings may impact device functionality. See link above for details
-
-# uncomment if you get no picture on HDMI for a default "safe" mode
-#hdmi_safe=1
-
-# uncomment this if your display has a black border of unused pixels visible
-# and your display can output without overscan
-#disable_overscan=1
-
-# uncomment if hdmi display is not detected and composite is being output
-#hdmi_force_hotplug=1
-
-# uncomment to force a specific HDMI mode (this will force VGA)
-#hdmi_group=1
-#hdmi_mode=1
-
-# uncomment to force a HDMI mode rather than DVI. This can make audio work in
-# DMT (computer monitor) modes
-#hdmi_drive=2
-
-# uncomment to increase signal to HDMI, if you have interference, blanking, or
-# no display
-#config_hdmi_boost=4
-
-# uncomment for composite PAL
-#sdtv_mode=2
-
-#uncomment to overclock the arm. 700 MHz is the default.
-arm_freq_min=300
-over_voltage=-2
-
-# Uncomment some or all of these to enable the optional hardware interfaces
-dtparam=i2c_arm=on
-#dtparam=i2s=on
-#dtparam=spi=on
-
-# Additional overlays and parameters are documented /boot/overlays/README
-
-# Enable audio (loads snd_bcm2835)
-dtparam=audio=on
-
-[pi4]
-# Enable DRM VC4 V3D driver on top of the dispmanx display stack
+# Enable DRM VC4 V3D driver
 dtoverlay=vc4-fkms-v3d
 max_framebuffers=1
 
-[all]
-#dtoverlay=vc4-fkms-v3d
-overscan_scale=1
-
-#Set GPIO pins to 24-Bit DPI Mode 7
-#GPIO 0 and 1 needed for DPI Clock and Data Enable
+# Set GPIO pins to 24-Bit DPI Mode 7
+# GPIO 0 and 1 needed for DPI Clock and Data Enable
 gpio=0=a2,np
 gpio=1=a2,np
-#Set GPIO pins 2 and 3 to I2C Mode. These can be used for other things, if needed.
+# Set GPIO pins 2 and 3 to I2C Mode. These can be used for other things, if needed.
 gpio=2=a0,np
 gpio=3=a0,np
-#Set up color pins
-gpio=4=a2,np
-gpio=5=a2,np
-gpio=6=a2,np
-gpio=7=a2,np
-gpio=8=a2,np
-gpio=9=a2,np
-gpio=10=a2,np
-gpio=11=a2,np
-gpio=12=a2,np
-gpio=13=a2,np
-gpio=14=a2,np
-gpio=15=a2,np
-gpio=16=a2,np
-gpio=17=a2,np
-gpio=18=a2,np
-gpio=19=a2,np
-gpio=20=a2,np
-gpio=21=a2,np
-gpio=22=a2,np
-gpio=23=a2,np
-gpio=24=a2,np
-gpio=25=a2,np
-gpio=26=a2,np
-gpio=27=a2,np
+# Set up color pins
+gpio=4-27=a2,np
 
-#Configure DPI signal
-framebuffer_width=800
-framebuffer_height=480
-enable_dpi_lcd=1
-display_default_lcd=1
-dpi_group=2
-dpi_mode=87
-dpi_output_format=503863
 dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
 
-#dtoverlay=audio,pins_12_45
-#dtoverlay=audio,pins_40_41
+# Enable USB
+dtoverlay=dwc2,dr_mode=host
+
+# Disable WiFi and Bluetooth
+#dtoverlay=pi3-disable-wifi
+#dtoverlay=pi3-disable-bt
+
+# Disables pci-e link to prevent warning at boot
+dtoverlay=disable-pcie
 
 #enable external PSP antenna
 dtparam=ant2
 
-#improve PWM audio quality
-#disable_audio_dither=1
-audio_pwm_mode=2
+# Set up CM4 audio pin
+dtoverlay=audiocm4
 
-#enable USB
-dtoverlay=dwc2,dr_mode=host
-
-#reduce I2C speed to avoid clock bug in Raspberry Pi I2C
-dtparam=i2c_baudrate=25000
-
-#disable WiFi and Bluetooth
-#dtoverlay=pi3-disable-wifi
-#dtoverlay=pi3-disable-bt
-
-#disables pci-e link to prevent warning at boot
-dtoverlay=disable-pcie
+arm_freq_min=300
+core_freq_min=200
