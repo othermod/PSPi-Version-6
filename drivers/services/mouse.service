@@ -1,0 +1,11 @@
+[Unit]
+Description=PSPi Mouse Service
+After=main.service
+
+[Service]
+ExecStart=sudo mouse
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

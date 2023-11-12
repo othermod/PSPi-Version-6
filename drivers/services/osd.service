@@ -1,0 +1,11 @@
+[Unit]
+Description=PSPi OSD Service
+After=main.service
+
+[Service]
+ExecStart=sudo osd
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

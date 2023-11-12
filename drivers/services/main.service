@@ -1,0 +1,11 @@
+[Unit]
+Description=PSPi Main Service
+After=network.target
+
+[Service]
+ExecStart=sudo main
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
