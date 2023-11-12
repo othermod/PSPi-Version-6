@@ -1,0 +1,10 @@
+[Unit]
+Description=PSPi Gamepad Service
+After=main.service
+
+[Service]
+ExecStart=sudo gamepad
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
