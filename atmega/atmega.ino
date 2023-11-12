@@ -17,6 +17,11 @@ volatile bool dataReceived = false;
 #define GOOD_BATTERY_THRESHOLD 1216 // 3.562v (1216 * 3000 / 1024)
 #define BTN_MUTE I2C_data.buttonA & B00000001
 
+// I2C Receiving Commands
+#define CMD_SET_WIFI_LED 0x20
+#define CMD_SET_LED_STATE 0x21
+#define CMD_SET_BRIGHTNESS 0x22
+
 byte brightness = B00000001;
 uint16_t detectRPiTimeout = 0;
 uint16_t senseSYSAverage = GOOD_BATTERY_THRESHOLD; // keeps the battery LED from starting orange
@@ -25,6 +30,7 @@ byte registerInputs1;
 byte registerInputs2;
 
 uint16_t displayButtonPressed = 0;
+uint16_t shutdownButtonPressed = 0;
 bool muteButtonPressed = false;
 bool isMute = false;
 bool isIdleI2C = true; // the atmega starts with audio muted until i2c is accessed, so it avoids popping sounds
@@ -46,8 +52,8 @@ struct I2C_Structure {
   uint8_t JOY_LY;
   uint8_t JOY_RX;
   uint8_t JOY_RY;
-  uint8_t CRC8;
-
+  uint8_t CRC16_high; // High byte of 16-bit CRC
+  uint8_t CRC16_low;  // Low byte of 16-bit CRC
 };
 
 I2C_Structure I2C_data; // create the structure for the I2C data
@@ -210,12 +216,16 @@ void detectHoldSwitch() {
 }
 
 void detectShutdownButton() {
+  //make it so that if the button is held for 2 seconds, it kills audio, video, 5v, and then forces the system off
+  // count has to reset if the button is let off before reaching 2 seconds
+  // use shutdownButtonPressed
   if (readPin(BTN_SD)) {
     I2C_data.STATUS &= B11101111; // Clear bit 4
   } else {
     I2C_data.STATUS |= B00010000; // Set bit 4
   }
 }
+
 
 void detectDisplayButton() {
   // Handle Display button being pressed or held
@@ -234,7 +244,7 @@ void detectDisplayButton() {
           I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
           setBrightness(brightness);
         }
-        displayButtonPressed = 0;
+        displayButtonPressed = 0;  // make sure this always resets the counter to 0 when the button is released. looks good at first glance
       }
     }
 }
@@ -245,7 +255,7 @@ void changeDefaultBrightness() {
   setBrightness(1);
   delay(100);
   setBrightness(brightness);
-  EEPROM.write(BRIGHTNESS_ADDRESS, brightness);
+  EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
 }
 
 void detectRPi() {
@@ -267,14 +277,14 @@ void detectRPi() {
     }
 }
 
-uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
-    uint8_t crc = 0;
-    uint8_t poly = 0x07; // Corresponds to the polynomial x^8 + x^2 + x + 1
+uint16_t computeCRC16_CCITT(const uint8_t *data, uint8_t length) {
+    uint16_t crc = 0xFFFF; // Initial value for CRC-16-CCITT
+    uint16_t poly = 0x1021; // Polynomial for CRC-16-CCITT
 
     for (uint8_t i = 0; i < length; i++) {
-        crc ^= data[i];
+        crc ^= ((uint16_t)data[i] << 8);
         for (uint8_t j = 0; j < 8; j++) {
-            if (crc & 0x80) {
+            if (crc & 0x8000) {
                 crc = (crc << 1) ^ poly;
             } else {
                 crc <<= 1;
@@ -284,31 +294,51 @@ uint8_t computeCRC8_direct(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
+
 void setOrangeLED() {
   (batteryLow || forceOrangeLED) ? setPinLow(PWM_LED_ORANGE) : setPinHigh(PWM_LED_ORANGE);
 }
 
 void processReceivedData() {
-  if (receivedData[0] == 0x20) { // this command sets the WiFi LED high or low
-    (receivedData[1]) ? setPinHigh(LED_LEFT) : setPinLow(LED_LEFT);
-  }
-  if (receivedData[0] == 0x21) { // this command is LED_ON and LED_OFF. It just sets flag that determines whether the LED stays orange. It must always turn orange when the battery is low. LED may also PWM pulse when I2C data goes idle?
-    forceOrangeLED = receivedData[1];
-    setOrangeLED();
-  }
-  if (receivedData[0] == 0x22) { // this command is DISPLAY_ON and DISPLAY_OFF. will also need something to override display off when a button is pressed, in case the pi doesnt sent it for some reason
-
+  // Using a switch statement improves readability and makes it easier to add new commands in the future
+  switch (receivedData[0]) {
+    case CMD_SET_WIFI_LED:
+      if (receivedData[1]) {
+        setPinHigh(LED_LEFT);
+      } else {
+        setPinLow(LED_LEFT);
+      }
+      break;
+    case CMD_SET_LED_STATE:
+      forceOrangeLED = receivedData[1];
+      setOrangeLED();
+      break;
+    case CMD_SET_BRIGHTNESS:
+      if (receivedData[1] >= 1 && receivedData[1] <= 8) {
+        brightness = 1 + 4 * (receivedData[1] - 1);
+        setBrightness(brightness);
+      }
+      // If receivedData[1] > 8, do nothing
+      break;
+    default:
+      // Handle unknown command
+      // You might want to add some error handling here, depending on your application's requirements
+      break;
   }
   dataReceived = false;
 }
 
 void requestEvent() {
-  // Compute the CRC-8 value for the data, excluding the CRC8 byte itself
-  I2C_data.CRC8 = computeCRC8_direct((const uint8_t*) &I2C_data, sizeof(I2C_data) - 1);
+  // Temporary variable for CRC calculation
+  uint16_t tempCRC = computeCRC16_CCITT((const uint8_t*) &I2C_data, 9);
 
-  // Send the data, including the computed CRC8 value, to the Raspberry Pi
+  // Split the 16-bit CRC into two 8-bit values and store them in the structure
+  I2C_data.CRC16_high = (uint8_t)(tempCRC >> 8);
+  I2C_data.CRC16_low = (uint8_t)(tempCRC & 0xFF);
+
+  // Send the data, including the CRC bytes, to the Raspberry Pi
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
-
+  
   // check to see whether audio was muted due to idle i2c. if so, re-enable audio
   if (isIdleI2C) {
     isIdleI2C = false;
