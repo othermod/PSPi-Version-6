@@ -71,7 +71,7 @@ void setup() {
   }
 
   // Port B Configuration
-  DDRB  = B11111110;  // 7: LED_LEFT, 6: EN_5V0, 5: SPI_CLOCK, 4: SPI_DATA_IN, 3: PWM_LED_ORANGE, 2: ONEWIRE_LCD, 1: BTN_EXTRA_2, 0: BTN_DISPLAY
+  DDRB  = B11111100;  // 7: LED_LEFT, 6: EN_5V0, 5: SPI_CLOCK, 4: SPI_DATA_IN, 3: PWM_LED_ORANGE, 2: ONEWIRE_LCD, 1: BTN_EXTRA_2, 0: BTN_DISPLAY
   PORTB = B00101011;  // 7: LED_LEFT (low), 6: EN_5V0 (low), 5: SPI_CLOCK (high), 4: SPI_DATA_IN (low), 3: PWM_LED_ORANGE (high), 2: ONEWIRE_LCD (low), 1: BTN_EXTRA_2 (high), 0: BTN_DISPLAY (high)
   // Port D Configuration
   DDRD  = B00001000;  // 7: EN_AUDIO, 6: LEFT_SWITCH, 5: BTN_HOLD, 4: BTN_SD, 3: SPI_SHIFT_LOAD, 2: BTN_EXTRA_1, 1: DETECT_RPI, 0: EN_AMP
@@ -300,7 +300,6 @@ void setOrangeLED() {
 }
 
 void processReceivedData() {
-  // Using a switch statement improves readability and makes it easier to add new commands in the future
   switch (receivedData[0]) {
     case CMD_SET_WIFI_LED:
       if (receivedData[1]) {
@@ -318,15 +317,15 @@ void processReceivedData() {
         brightness = 1 + 4 * (receivedData[1] - 1);
         setBrightness(brightness);
       }
-      // If receivedData[1] > 8, do nothing
       break;
     default:
       // Handle unknown command
-      // You might want to add some error handling here, depending on your application's requirements
+      // Add error handling if required
+
       break;
   }
-  dataReceived = false;
 }
+
 
 void requestEvent() {
   // Temporary variable for CRC calculation
@@ -338,7 +337,7 @@ void requestEvent() {
 
   // Send the data, including the CRC bytes, to the Raspberry Pi
   Wire.write((const uint8_t*) &I2C_data, sizeof(I2C_data));
-  
+
   // check to see whether audio was muted due to idle i2c. if so, re-enable audio
   if (isIdleI2C) {
     isIdleI2C = false;
@@ -358,12 +357,10 @@ void receiveEvent(int numBytes) {
 }
 
 void readAnalogInputs() {
-  I2C_data.JOY_RX = analogRead(JOY_RX_PIN) >> 2;
-  I2C_data.JOY_RY = analogRead(JOY_RY_PIN) >> 2;
   I2C_data.JOY_LX = analogRead(JOY_LX_PIN) >> 2;
   I2C_data.JOY_LY = analogRead(JOY_LY_PIN) >> 2;
-  I2C_data.JOY_LX = (I2C_data.JOY_LX & B11111110) | readPin(BTN_EXTRA_1); // add the extra buttons
-  I2C_data.JOY_LY = (I2C_data.JOY_LY & B11111110) | readPin(BTN_EXTRA_2);
+  I2C_data.JOY_RX = (analogRead(JOY_RX_PIN) >> 2 & B11111110) | (readPin(BTN_EXTRA_1) ? 0 : 1); // right joysticks also contain extra button data
+  I2C_data.JOY_RY = (analogRead(JOY_RY_PIN) >> 2 & B11111110) | (readPin(BTN_EXTRA_2) ? 0 : 1);
 
   senseSYSAverage = senseSYSAverage - (senseSYSAverage >> 4) + analogRead(SENSE_SYS_PIN);  // create an average of 16 readings
   senseBATAverage = senseBATAverage - (senseBATAverage >> 4) + analogRead(SENSE_BAT_PIN);
