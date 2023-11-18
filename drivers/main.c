@@ -6,6 +6,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <stdlib.h>
+#include <string.h>
 
 // Define your data structure
 typedef struct {
@@ -40,7 +41,17 @@ uint16_t computeCRC16_CCITT(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+  int disableCRC = 0;
+
+    // Check command-line arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--nocrc") == 0) {
+            disableCRC = 1;
+            break;
+        }
+    }
+
   int i2c_fd;
   ControllerData controller_data;
 
@@ -75,29 +86,17 @@ int main() {
             continue;
         }
 
-        // Compute CRC-16 for the received data
-        uint16_t computedCRC = computeCRC16_CCITT((const uint8_t*)&controller_data, 9);
-        uint16_t receivedCRC = (controller_data.CRCA << 8) | controller_data.CRCB;
+        // Conditionally perform CRC check
+        if (!disableCRC) {
+            uint16_t computedCRC = computeCRC16_CCITT((const uint8_t*)&controller_data, 9);
+            uint16_t receivedCRC = (controller_data.CRCA << 8) | controller_data.CRCB;
 
-        // Swap bytes of received CRC for comparison
-
-
-        if (computedCRC != receivedCRC) {
-            crcCount++;
-            printf("CRC error detected. Retrying...\n");
-            printf("Computed CRC: %04X, Received CRC: %04X\n", computedCRC, receivedCRC);
-            printf("Data Received:\n");
-            printf("Button A: %d\n", controller_data.buttonA);
-            printf("Button B: %d\n", controller_data.buttonB);
-            printf("SENSE_SYS: %d\n", controller_data.SENSE_SYS);
-            printf("SENSE_BAT: %d\n", controller_data.SENSE_BAT);
-            printf("STATUS: %d\n", controller_data.STATUS);
-            printf("JOY_LX: %d\n", controller_data.JOY_LX);
-            printf("JOY_LY: %d\n", controller_data.JOY_LY);
-            printf("JOY_RX: %d\n", controller_data.JOY_RX);
-            printf("JOY_RY: %d\n", controller_data.JOY_RY);
-            printf("%d errors detected since startup.\n", crcCount);
-            continue;
+            if (computedCRC != receivedCRC) {
+                crcCount++;
+                printf("CRC error detected. Retrying...\n");
+                printf("%d errors detected since startup.\n", crcCount);
+                continue;
+            }
         }
 
         // Copy data to shared memory
