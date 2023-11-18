@@ -166,6 +166,21 @@ void calculateVoltage() {
   }
 }
 
+void calculateBatteryStatus() {
+  battery.percent = 100 - (4025 - battery.indicatorVoltage) / 7.5;
+  if (battery.percent < 0) {
+    battery.percent = 0;
+  } else if (battery.percent > 100) {
+    battery.percent = 100;
+  }
+  if (battery.finalAmperage < -60) {
+    battery.chargeIndicator = DISCHARGING; }
+  if (battery.finalAmperage >= 0) {
+    battery.chargeIndicator = CHARGING;}
+  if ((battery.indicatorVoltage > 4050) & (battery.finalAmperage > -40)) {
+    battery.chargeIndicator = CHARGED;}
+}
+
 bool isMute = 0;
 
 // create colors ( format is: red, green, blue, opacity)
@@ -469,19 +484,10 @@ int main() {
 
       calculateAmperage();
       calculateVoltage();
+      calculateBatteryStatus();
 
-        battery.percent = 100 - (4025 - battery.indicatorVoltage) / 8;
-        if (battery.percent < 0) {
-          battery.percent = 0;
-        } else if (battery.percent > 100) {
-          battery.percent = 100;
-        }
-        if (battery.finalAmperage < -60) {
-          battery.chargeIndicator = DISCHARGING; }
-        if (battery.finalAmperage >= 0) {
-          battery.chargeIndicator = CHARGING;}
-        if ((battery.indicatorVoltage > 4050) & (battery.finalAmperage > -40)) {
-          battery.chargeIndicator = CHARGED;}
+
+
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
           notCharging = 1;
           if (battery.chargeIndicator) { // if plugged in (charging or charged)
