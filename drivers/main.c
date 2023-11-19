@@ -15,7 +15,7 @@
 #define INTERFACE_NAME "wlan0"
 
 bool WiFiEnabled = false;
-bool WiFiConnected = false;
+bool WiFiConnected = false;  // the program needs to set the led as soon as it loads.
 
 // Define your data structure
 typedef struct {
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
         if ((controller_data.STATUS >> 4) & 1) {
           poweroffCounter++;
           if (poweroffCounter > 10) { // need to hold button for a small amount of time to initiate poweroff
-            system("sudo poweroff");
+            system("poweroff");
             break;
           }
         } else {
