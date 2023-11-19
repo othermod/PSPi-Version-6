@@ -2,7 +2,7 @@
 #define BTN_DISPLAY B,0
 #define BTN_EXTRA_2 B,1
 #define ONEWIRE_LCD B,2
-#define PWM_LED_ORANGE B,3
+#define PWM_LED_ORANGE B,3 // not used. using pwm instead of digital
 #define SPI_DATA_IN B,4
 #define SPI_CLOCK B,5
 #define EN_5V0 B,6

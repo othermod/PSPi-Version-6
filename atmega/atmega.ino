@@ -21,6 +21,7 @@ volatile bool dataReceived = false;
 #define CMD_SET_WIFI_LED 0x20
 #define CMD_SET_LED_STATE 0x21
 #define CMD_SET_BRIGHTNESS 0x22
+#define CMD_SET_IDLE_ACTION 0x23
 
 byte brightness = B00000001;
 uint16_t detectRPiTimeout = 0;
@@ -30,10 +31,13 @@ byte registerInputs1;
 byte registerInputs2;
 
 uint16_t displayButtonPressed = 0;
-uint16_t shutdownButtonPressed = 0;
 bool muteButtonPressed = false;
 bool isMute = false;
 bool isIdleI2C = true; // the atmega starts with audio muted until i2c is accessed, so it avoids popping sounds
+
+bool sleepIndicatorDirection = 0;
+uint8_t sleepIndicatorPWM = 255;
+
 bool isSleeping = false;
 uint8_t idleI2Ccounter = 0;
 bool batteryLow = false;
@@ -76,6 +80,18 @@ void setup() {
   // Port D Configuration
   DDRD  = B00001000;  // 7: EN_AUDIO, 6: LEFT_SWITCH, 5: BTN_HOLD, 4: BTN_SD, 3: SPI_SHIFT_LOAD, 2: BTN_EXTRA_1, 1: DETECT_RPI, 0: EN_AMP
   PORTD = B01110100;  // 7: EN_AUDIO (low), 6: LEFT_SWITCH (high), 5: BTN_HOLD (high), 4: BTN_SD (high), 3: SPI_SHIFT_LOAD (low), 2: BTN_EXTRA_1 (high), 1: DETECT_RPI (low), 0: EN_AMP (low)
+  // set up the PWM pin, and set the state to high so it stays green
+  #if defined(__AVR_ATmega8A__)
+    TCCR2 |= (1 << WGM21) | (1 << WGM20);
+    TCCR2 |= (1 << COM21);
+    TCCR2 |= (1 << CS20);
+    OCR2 = 255;
+  #elif defined(__AVR_ATmega328P__)
+    TCCR2A |= (1 << WGM21) | (1 << WGM20);
+    TCCR2A |= (1 << COM2A1);
+    TCCR2B |= (1 << CS20);
+    OCR2A = 255;
+  #endif
 
   delay(500);
   setPinHigh(EN_5V0);
@@ -196,13 +212,14 @@ void detectHoldSwitch() {
     // check whether we should exit sleep mode
     if (readPin(BTN_HOLD)) {
       // exit sleep mode
-      I2C_data.STATUS &= B11011111; // Clear bit 5 // this lets the Pi know whether the hold switch is down
+      I2C_data.STATUS &= B11011111; // Clear bit 5
       isSleeping = false;
-      // now need to deal with the possibility that the power switch is accidentally pressed. just adding a small delay before getting back to scanning all inputs
-      // really need to just ignore the power button alone for a second or two, but a delay will work for now
       delay(500);
       enableDisplay();
       setMuteStatus();
+
+      // disable PWM mode on orange LED
+      setOrangeLED();
     }
   } else {
     // check whether we should enter sleep mode
@@ -211,14 +228,13 @@ void detectHoldSwitch() {
       isSleeping = true;
       disableDisplay();
       setMuteStatus();
+      sleepIndicatorPWM = 255; // start the pwm at full green
     }
   }
 }
 
+
 void detectShutdownButton() {
-  //make it so that if the button is held for 2 seconds, it kills audio, video, 5v, and then forces the system off
-  // count has to reset if the button is let off before reaching 2 seconds
-  // use shutdownButtonPressed
   if (readPin(BTN_SD)) {
     I2C_data.STATUS &= B11101111; // Clear bit 4
   } else {
@@ -294,9 +310,12 @@ uint16_t computeCRC16_CCITT(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
-
 void setOrangeLED() {
-  (batteryLow || forceOrangeLED) ? setPinLow(PWM_LED_ORANGE) : setPinHigh(PWM_LED_ORANGE);
+  #if defined(__AVR_ATmega8A__)
+    (batteryLow || forceOrangeLED) ? OCR2 = 0 : OCR2 = 255;
+  #elif defined(__AVR_ATmega328P__)
+    (batteryLow || forceOrangeLED) ? OCR2A = 0 : OCR2A = 255;
+  #endif
 }
 
 void processReceivedData() {
@@ -318,6 +337,14 @@ void processReceivedData() {
         setBrightness(brightness);
       }
       break;
+    case CMD_SET_IDLE_ACTION:
+      // turn on off ability to dim LCD after being idle for numbee mins (allow setting of the time too with another command)
+      // any button, including display button, should brighten it again
+      // maybe too complicated
+      // byte one is Command
+      //byte 2 is num of minutes to wait (0 turns off dimming)
+      break;
+
     default:
       // Handle unknown command
       // Add error handling if required
@@ -414,8 +441,33 @@ void loop() {
     // still transmit some things (maybe just battery, so pi knows to emergency shutdown)
     readAnalogInputs(); // this always happens, prob need to set all 4 joysticks to center point (and dont forget extra buttons)
     if (isSleeping) {
+
+      // set the PWM duty
+      if (sleepIndicatorDirection == 1) {
+        sleepIndicatorPWM++;
+        if (sleepIndicatorPWM == 255) {
+          sleepIndicatorDirection = 0;
+        }
+      }
+      else {
+        sleepIndicatorPWM--;
+        if (sleepIndicatorPWM == 0) {
+          sleepIndicatorDirection = 1;
+        }
+      }
+      if (batteryLow) { // make sure LED stays orange when battery is low
+        sleepIndicatorPWM = 255;
+      }
+      #if defined(__AVR_ATmega8A__)
+        OCR2 = sleepIndicatorPWM;
+      #elif defined(__AVR_ATmega328P__)
+        OCR2A = sleepIndicatorPWM;
+      #endif
+      if ((sleepIndicatorPWM == 0) | (sleepIndicatorPWM == 255)) {
+        delay(500); // keep LED green or red on for a moment
+      }
       detectHoldSwitch();
-      delay(100); // sleep for longer
+      detectRPi(); // this is needed in case the hold switch is down when the pi is removed or powers off
     } else {
       readShiftRegisterInputs(); // this doesn't happen when the hold switch is down
       detectButtons(); // this doesn't happen when the hold switch is down
