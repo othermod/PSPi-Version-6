@@ -457,7 +457,7 @@ void loop() {
         }
       }
       if (batteryLow) { // make sure LED stays orange when battery is low
-        sleepIndicatorPWM = 255;
+        sleepIndicatorPWM = 0;
       }
       #if defined(__AVR_ATmega8A__)
         OCR2 = sleepIndicatorPWM;
