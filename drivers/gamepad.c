@@ -6,9 +6,10 @@
 #include <linux/uinput.h>
 #include <string.h>
 
+uint8_t dualJoystick = 0;
+
 typedef struct {
-    uint8_t buttonA;
-    uint8_t buttonB;
+    uint16_t buttons; // Combined buttonA and buttonB
     uint8_t SENSE_SYS;
     uint8_t SENSE_BAT;
     uint8_t STATUS;
@@ -35,7 +36,16 @@ int setup_uinput_device(int uinput_fd) {
     uidev.absmax[ABS_Y] = 215;
     uidev.absflat[ABS_Y] = 20;
     uidev.absfuzz[ABS_Y] = 20;
-
+    if (dualJoystick) {
+      uidev.absmin[ABS_RX] = 40;  // Adjust these values as per your needs
+      uidev.absmax[ABS_RX] = 215;
+      uidev.absflat[ABS_RX] = 20;
+      uidev.absfuzz[ABS_RX] = 20;
+      uidev.absmin[ABS_RY] = 40;
+      uidev.absmax[ABS_RY] = 215;
+      uidev.absflat[ABS_RY] = 20;
+      uidev.absfuzz[ABS_RY] = 20;
+    }
     ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
     if (ret < 0) {
         perror("Failed to write to uinput device in setup_uinput_device");
@@ -46,63 +56,105 @@ int setup_uinput_device(int uinput_fd) {
     for(int i = 0; i < 16; i++) {
         ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
     }
+    if (dualJoystick) {
+      ioctl(uinput_fd, UI_SET_KEYBIT, BTN_0);  // New button 1
+      ioctl(uinput_fd, UI_SET_KEYBIT, BTN_1);  // New button 2
+    }
 
     ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
     ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
     ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Y);
+    if (dualJoystick) {
+      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RX);
+      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RY);
+    }
 
     return ioctl(uinput_fd, UI_DEV_CREATE);
 }
+uint16_t prevCombinedButtons;
+void update_controller_data(ControllerData *shared_data, int uinput_fd) {
+    struct input_event event;
+    uint16_t combinedButtons = shared_data->buttons;
 
-void update_controller_data(ControllerData *shared_data, ControllerData *last_data, int uinput_fd) {
-  struct input_event events[18];
-  int event_count = 0;
-
-  // Combine buttonA and buttonB into a single uint16_t variable
-  uint16_t combinedButtons = (shared_data->buttonB << 8) | shared_data->buttonA;
-  uint16_t lastCombinedButtons = (last_data->buttonB << 8) | last_data->buttonA;
-
-  for(int i = 0; i < 16; i++) {
-      if (((combinedButtons >> i) & 1) != ((lastCombinedButtons >> i) & 1)) {
-          events[event_count].type = EV_KEY;
-          events[event_count].code = BTN_TRIGGER_HAPPY1 + i;
-          events[event_count].value = (combinedButtons >> i) & 1;
-          event_count++;
-      }
-  }
-
-    // Update joysticks
-    if(shared_data->JOY_LX != last_data->JOY_LX) {
-        events[event_count].type = EV_ABS;
-        events[event_count].code = ABS_X;
-        events[event_count].value = shared_data->JOY_LX;
-        event_count++;
+    // Check if the Home button was pressed in the last data set (bit position 15)
+    if (prevCombinedButtons & 0b1000000000000000) {
+      // Force the Select button to be pressed in the current data set (set bit position 1 in combinedButtons)
+      combinedButtons |= 0b0000000000000010;
     }
+    prevCombinedButtons = combinedButtons;
 
-    if(shared_data->JOY_LY != last_data->JOY_LY) {
-        events[event_count].type = EV_ABS;
-        events[event_count].code = ABS_Y;
-        events[event_count].value = shared_data->JOY_LY;
-        event_count++;
-    }
+    // Update all button states
+    for(int i = 0; i < 16; i++) {
+        event.type = EV_KEY;
+        event.code = BTN_TRIGGER_HAPPY1 + i;
+        event.value = (combinedButtons >> i) & 1;
 
-    if(event_count > 0) {
-        events[event_count].type = EV_SYN;
-        events[event_count].code = 0;
-        events[event_count].value = 0;
-        event_count++;
-
-        ssize_t ret = write(uinput_fd, events, sizeof(struct input_event) * event_count);
+        // Send the button event to uinput
+        ssize_t ret = write(uinput_fd, &event, sizeof(event));
         if (ret < 0) {
-            perror("Failed to write events in update_controller_data");
+            perror("Failed to write button event in update_controller_data");
             // Handle error as appropriate
         }
     }
 
-    memcpy(last_data, shared_data, sizeof(ControllerData));
+    if (dualJoystick) {
+      // Handle the additional buttons encoded in JOY_RX and JOY_RY
+      uint8_t button_rx = shared_data->JOY_RX & 1; // Extract bit 0
+      uint8_t button_ry = shared_data->JOY_RY & 1; // Extract bit 0
+
+      event.type = EV_KEY;
+      event.code = BTN_0;  // Button from JOY_RX
+      event.value = button_rx;
+      write(uinput_fd, &event, sizeof(event));
+
+      event.code = BTN_1;  // Button from JOY_RY
+      event.value = button_ry;
+      write(uinput_fd, &event, sizeof(event));
+    }
+
+    // Update joystick positions
+    event.type = EV_ABS;
+    event.code = ABS_X;
+    event.value = shared_data->JOY_LX;
+    write(uinput_fd, &event, sizeof(event));
+
+    event.code = ABS_Y;
+    event.value = shared_data->JOY_LY;
+    write(uinput_fd, &event, sizeof(event));
+
+    // Send the SYN event
+    event.type = EV_SYN;
+    event.code = SYN_REPORT;
+    event.value = 0;
+    write(uinput_fd, &event, sizeof(event));
+
+    if (dualJoystick) {
+      event.type = EV_ABS;
+      event.code = ABS_RX;
+      event.value = shared_data->JOY_RX;
+      write(uinput_fd, &event, sizeof(event));
+
+      event.code = ABS_RY;
+      event.value = shared_data->JOY_RY;
+      write(uinput_fd, &event, sizeof(event));
+
+      // Send the SYN event
+      event.type = EV_SYN;
+      event.code = SYN_REPORT;
+      event.value = 0;
+      write(uinput_fd, &event, sizeof(event));
+    }
 }
 
-int main() {
+
+int main(int argc, char *argv[]) {
+  // Check command-line arguments
+  for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "--dual") == 0) {
+          dualJoystick = 1;
+          printf("Dual Joystick Enabled\n");
+      }
+  }
     int uinput_fd;
     ControllerData *shared_data;
     ControllerData last_data;
@@ -125,17 +177,16 @@ int main() {
     shared_data = mmap(0, sizeof(ControllerData), PROT_READ, MAP_SHARED, shm_fd, 0);
 
     while(1) {
-      while (shared_data->STATUS & 0b00100000) {
-        usleep(100000); //sleep a lot when the hold switch is down (sleep mode)
-      }
-
-        if(memcmp(shared_data, &last_data, sizeof(ControllerData)) == 0) {
-            usleep(16000);
-            continue;
+        while (shared_data->STATUS & 0b00100000) {
+            usleep(100000); // Sleep when the hold switch is down (sleep mode)
+        }
+        // Update only when it does not match shared_data
+        if(memcmp(shared_data, &last_data, sizeof(ControllerData)) != 0) {
+          update_controller_data(shared_data, uinput_fd);
+          memcpy(&last_data, shared_data, sizeof(ControllerData));
         }
 
-        update_controller_data(shared_data, &last_data, uinput_fd);
-        usleep(10000);
+        usleep(16666);
     }
 
     ioctl(uinput_fd, UI_DEV_DESTROY);
