@@ -229,6 +229,7 @@ void detectHoldSwitch() {
       disableDisplay();
       setMuteStatus();
       sleepIndicatorPWM = 255; // start the pwm at full green
+      sleepIndicatorDirection = 0;
     }
   }
 }
