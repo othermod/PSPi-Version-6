@@ -7,6 +7,15 @@
 #include <sys/ioctl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <net/if.h>
+#include <linux/rtnetlink.h>
+#include <sys/socket.h>
+
+#define INTERFACE_NAME "wlan0"
+
+bool WiFiEnabled = false;
+bool WiFiConnected = false;
 
 // Define your data structure
 typedef struct {
@@ -48,7 +57,7 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--nocrc") == 0) {
             disableCRC = 1;
-            break;
+            printf("CRC Disabled\n");
         }
     }
 
@@ -78,6 +87,35 @@ int main(int argc, char *argv[]) {
 
     int crcCount = 0;
     int poweroffCounter = 0;
+
+    // Setup for WiFi status checking
+    int ifindex = if_nametoindex(INTERFACE_NAME);
+    if (ifindex == 0) {
+        perror("Error getting interface index");
+        return 1;
+    }
+
+    struct {
+        struct nlmsghdr nlh;
+        struct ifinfomsg ifi;
+    } req;
+
+    char buf[4096];
+    int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+    if (fd == -1) {
+        perror("Error creating socket");
+        return 1;
+    }
+
+    memset(&req, 0, sizeof(req));
+    req.nlh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+    req.nlh.nlmsg_flags = NLM_F_REQUEST;
+    req.nlh.nlmsg_type = RTM_GETLINK;
+    req.ifi.ifi_family = AF_UNSPEC;
+    req.ifi.ifi_index = ifindex;
+
+    uint8_t loop_counter = 0;
+
     while (1) {
         // Read data from i2c device
         if (read(i2c_fd, &controller_data, sizeof(ControllerData)) != sizeof(ControllerData)) {
@@ -116,11 +154,36 @@ int main(int argc, char *argv[]) {
           usleep(100000); // sleep a lot longer when the hold switch is down
         }
 
+        if (!loop_counter) { // its a uint8_t. checks whenever it rolls over. runs every 4 seconds
+            send(fd, &req, req.nlh.nlmsg_len, 0);
+            int len = recv(fd, buf, sizeof(buf), 0);
+            struct nlmsghdr *nh = (struct nlmsghdr *)buf;
+            bool checkConnection = 0;
+
+            if (nh->nlmsg_type == RTM_NEWLINK) {
+                struct ifinfomsg *ifi = NLMSG_DATA(nh);
+                WiFiEnabled = ifi->ifi_flags & IFF_UP;
+                checkConnection = ifi->ifi_flags & IFF_RUNNING;
+                if (checkConnection != WiFiConnected) {
+                  WiFiConnected = checkConnection;
+                  uint8_t i2cData[4];
+                  i2cData[0] = 0x20; // Command byte
+                  i2cData[1] = WiFiConnected ? 1 : 0;// Data byte: 1 for connected, 0 for disconnected
+                  write(i2c_fd, i2cData, 4);
+                  //printf("%s is %s\n", INTERFACE_NAME, WiFiEnabled ? "enabled" : "disabled");
+                  //printf("%s is %s\n", INTERFACE_NAME, WiFiConnected ? "connected" : "disconnected");
+                }
+            }
+        }
+
+        loop_counter++; // Increment counter
+
         // Wait for 16ms before reading again
         usleep(16000);
     }
 
     // Cleanup
+    close(fd);
     close(i2c_fd);
 
     return 0;
