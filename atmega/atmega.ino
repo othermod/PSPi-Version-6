@@ -9,7 +9,7 @@ volatile bool dataReceived = false;
 
 #define I2C_ADDRESS 0x10
 #define BRIGHTNESS_ADDRESS 0
-
+#define MUTE_ADDRESS 4
 
 #define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
 #define EMERGENCY_SHUTOFF_THRESHOLD 1050 // 3.076v (1050 * 3000 / 1024)
@@ -74,6 +74,11 @@ void setup() {
     EEPROM.write(BRIGHTNESS_ADDRESS, brightness); // Invalid value, reset EEPROM
   }
 
+  eepromValue = EEPROM.read(MUTE_ADDRESS); // Read and mask the value
+  if (eepromValue == 1) {
+    isMute = true;
+  }
+
   // Port B Configuration
   DDRB  = B11111100;  // 7: LED_LEFT, 6: EN_5V0, 5: SPI_CLOCK, 4: SPI_DATA_IN, 3: PWM_LED_ORANGE, 2: ONEWIRE_LCD, 1: BTN_EXTRA_2, 0: BTN_DISPLAY
   PORTB = B00101011;  // 7: LED_LEFT (low), 6: EN_5V0 (low), 5: SPI_CLOCK (high), 4: SPI_DATA_IN (low), 3: PWM_LED_ORANGE (high), 2: ONEWIRE_LCD (low), 1: BTN_EXTRA_2 (high), 0: BTN_DISPLAY (high)
@@ -117,6 +122,7 @@ void initializeBacklight() {
 void setBrightness(byte brightness) { // can be 0-31, 0 must be handled correctly
   sendByte(BACKLIGHT_ADDRESS); // just combine this into the sendByte function, since address must be sent?
   sendByte(brightness);
+  I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
   //setPinHigh(ONEWIRE_LCD);
 }
 
@@ -171,7 +177,7 @@ void readShiftRegisterInputs(){
 
 //create functions for each thing
 void detectButtons() {
-  detectMute();
+  detectMuteButton();
   detectLeftSwitch();
   detectHoldSwitch();
   detectShutdownButton();
@@ -179,18 +185,16 @@ void detectButtons() {
   detectRPi();
 }
 
-void detectMute() {
+void detectMuteButton() {
   if (BTN_MUTE) {
     muteButtonPressed = 1;
   } else {
     // invert EN_AUDIO
     if (muteButtonPressed == 1) {
       if (isMute == false) {
-        I2C_data.STATUS |= B10000000; // Set bit 7
         isMute = true;
         setMuteStatus();
       } else {
-        I2C_data.STATUS &= B01111111; // Clear bit 7
         isMute = false;
         setMuteStatus();
       }
@@ -243,36 +247,23 @@ void detectShutdownButton() {
   }
 }
 
-
 void detectDisplayButton() {
-  // Handle Display button being pressed or held
+  // Handle Display button being pressed
   if (!readPin(BTN_DISPLAY)) {
-    if (displayButtonPressed < 200) {
-      displayButtonPressed++;
-      if (displayButtonPressed == 200) { // if pressed for 2 seconds, change the default brightness in eeprom
-        changeDefaultBrightness();
-      }
-    }
+      displayButtonPressed = 1;
     } else {
-      if ( displayButtonPressed ) { // if button no longer pressed
-        if (displayButtonPressed < 200) { // if the button wasn't held for 2 seconds
-          // increase the brightness when the Display button is released
-          brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
-          I2C_data.STATUS = (I2C_data.STATUS & B11111000) | ((brightness >> 2) & B00000111); // store the brightness level for transmission over i2c. there are only 8 levels, so use 3 bits.
-          setBrightness(brightness);
-        }
-        displayButtonPressed = 0;  // make sure this always resets the counter to 0 when the button is released. looks good at first glance
+      // increase the brightness when the Display button is released
+      if (displayButtonPressed) {
+        brightness = (brightness + 4) & B00011111; // &ing the byte should keep the brightness from going past 31. it will return to 00000001 when it passes 31
+        displayButtonPressed = 0;
+        setBrightness(brightness);
       }
     }
 }
 
-void changeDefaultBrightness() {
-  setBrightness(31);
-  delay(100);
-  setBrightness(1);
-  delay(100);
-  setBrightness(brightness);
+void storeBrightnessMute() {
   EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
+  EEPROM.update(MUTE_ADDRESS, isMute);
 }
 
 void detectRPi() {
@@ -287,6 +278,7 @@ void detectRPi() {
         }
 
         if (detectRPiTimeout > 500) {  // if the timeout reaches 5 seconds
+           storeBrightnessMute(); // save the current brightness to eeprom
            setPinLow(EN_5V0);
         } else {
           detectRPiTimeout++;
@@ -416,11 +408,13 @@ void setMuteStatus() {
     setPinAsOutput(EN_AMP);
     delay(1); // tinker with this value, may only need to be a few milli or even microseconds
     setPinLow(EN_AUDIO);
+    I2C_data.STATUS |= B10000000; // Set bit 7
   } else {
     // enable power to audio, then turn on the amplifier
     setPinAsInput(EN_AMP);
     delay(1);
     setPinHigh(EN_AUDIO);
+    I2C_data.STATUS &= B01111111; // Clear bit 7
   }
 }
 
