@@ -163,7 +163,7 @@ uint8_t bitBangSPIReadByte() {
     return data;
 }
 
-void readShiftRegisterInputs(){
+void readShiftRegisterInputs() {
   // Prepare 74HC165D for parallel load
   setPinLow(SPI_SHIFT_LOAD);
   delayMicroseconds(5); // give some time to setup, you may not need this
@@ -280,6 +280,7 @@ void detectRPi() {
         if (detectRPiTimeout > 500) {  // if the timeout reaches 5 seconds
            storeBrightnessMute(); // save the current brightness to eeprom
            setPinLow(EN_5V0);
+           delay(10000); // prevent flicker, guarantee poweroff
         } else {
           detectRPiTimeout++;
         }
