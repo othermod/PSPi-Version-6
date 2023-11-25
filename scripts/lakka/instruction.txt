@@ -1,0 +1,6 @@
+Instructions for creating a shrunk image
+
+copy drivers to /storage/system/
+copy autostart.sh to /storage/.config/
+copy resize.sh to /storage/.config/ once ready to shrink the image
+use pi-shrink to shrink the image
