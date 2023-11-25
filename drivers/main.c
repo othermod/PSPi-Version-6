@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
         // Copy data to shared memory
         *shared_data = controller_data;
         // issue shutdown when button pressed or when battery is very low
-        if ((controller_data.STATUS >> 4) & 1) {
+        if (((controller_data.STATUS >> 4) & 1) | (controller_data.SENSE_SYS <= 128)) {
           poweroffCounter++;
           if (poweroffCounter > 10) { // need to hold button for a small amount of time to initiate poweroff
             system("poweroff");
