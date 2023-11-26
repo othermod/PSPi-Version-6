@@ -21,7 +21,7 @@ volatile bool dataReceived = false;
 #define CMD_SET_WIFI_LED 0x20
 #define CMD_SET_LED_STATE 0x21
 #define CMD_SET_BRIGHTNESS 0x22
-#define CMD_SET_IDLE_ACTION 0x23
+#define CMD_SET_MUTE 0x23
 
 uint8_t shiftRegisterButtonsA = 0;
 uint8_t shiftRegisterButtonsB = 0;
@@ -366,14 +366,14 @@ void processReceivedData() {
         setBrightness(brightness);
       }
       break;
-    case CMD_SET_IDLE_ACTION:
-      // turn on off ability to dim LCD after being idle for numbee mins (allow setting of the time too with another command)
-      // any button, including display button, should brighten it again
-      // maybe too complicated
-      // byte one is Command
-      //byte 2 is num of minutes to wait (0 turns off dimming)
+    case CMD_SET_MUTE:
+      if (receivedData[1]) {
+        isMute = true;
+      } else {
+        isMute = false;
+      }
+      setMuteStatus();
       break;
-
     default:
       // Handle unknown command
       // Add error handling if required
