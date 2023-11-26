@@ -11,7 +11,7 @@ volatile bool dataReceived = false;
 #define BRIGHTNESS_ADDRESS 0
 #define MUTE_ADDRESS 4
 
-#define DEBOUNCE_CYCLES 5 // keep the button pressed for this many loops. can be 0-255. each loop is 10ms
+#define DEBOUNCE_CYCLES B01111111 // keep buttons pressed for 7 loops. each loop is 5ms
 #define EMERGENCY_SHUTOFF_THRESHOLD 1050 // 3.076v (1050 * 3000 / 1024)
 #define LOW_BATTERY_THRESHOLD 1095 // 3.208v (1095 * 3000 / 1024)
 #define GOOD_BATTERY_THRESHOLD 1216 // 3.562v (1216 * 3000 / 1024)
@@ -22,6 +22,11 @@ volatile bool dataReceived = false;
 #define CMD_SET_LED_STATE 0x21
 #define CMD_SET_BRIGHTNESS 0x22
 #define CMD_SET_IDLE_ACTION 0x23
+
+uint8_t shiftRegisterButtonsA = 0;
+uint8_t shiftRegisterButtonsB = 0;
+uint8_t debounceA[] = {0,0,0,0,0,0,0,0};
+uint8_t debounceB[] = {0,0,0,0,0,0,0,0};
 
 byte brightness = B00000001;
 uint16_t detectRPiTimeout = 0;
@@ -44,7 +49,7 @@ bool batteryLow = false;
 bool forceOrangeLED = false;
 
 unsigned long previousMillis = 0;
-const long interval = 10; // ms delay between the start of each loop
+const long interval = 5; // ms delay between the start of each loop
 
 struct I2C_Structure {
   uint8_t buttonA; // button status
@@ -171,9 +176,39 @@ void readShiftRegisterInputs() {
 
   // Use bitbanged SPI to read 2 bytes from the 74HC165D chips and store them for I2C. Was using hardware, but it was taking control of MOSI.
   // Flip every bit so that 1 means pressed. This will also be used in the dimming/low power function.
-  I2C_data.buttonA = ~bitBangSPIReadByte();
-  I2C_data.buttonB = ~bitBangSPIReadByte();
+  shiftRegisterButtonsA = ~bitBangSPIReadByte();
+  shiftRegisterButtonsB = ~bitBangSPIReadByte();
+  debounceButtons();
 }
+
+void debounceButtons() {
+  for (uint8_t i = 0; i < 8; ++i) {
+    bool currentButtonA = shiftRegisterButtonsA & (1 << i);
+    bool currentButtonB = shiftRegisterButtonsB & (1 << i);
+    if (currentButtonA) {
+      debounceA[i] = DEBOUNCE_CYCLES;
+    } else {
+      debounceA[i] = debounceA[i] >> 1;
+    }
+    if (currentButtonB) {
+      debounceB[i] = DEBOUNCE_CYCLES;
+    } else {
+      debounceB[i] = debounceB[i] >> 1;
+    }
+    if (debounceA[i] != 0) {
+      I2C_data.buttonA |= (1 << i); // Set the corresponding bit if the button is debounced as pressed
+    } else {
+      I2C_data.buttonA &= ~(1 << i); // Clear the bit if the button is not pressed
+    }
+    // Repeat for buttonB and debounceB
+    if (debounceB[i] != 0) {
+      I2C_data.buttonB |= (1 << i);
+    } else {
+      I2C_data.buttonB &= ~(1 << i);
+    }
+  }
+}
+
 
 //create functions for each thing
 void detectButtons() {
