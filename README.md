@@ -6,7 +6,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 
 ## Getting Started
 
-Get up and running and get more detailed information on the PSPi 6 [Getting Started](https://github.com/othermod/PSPi-Version-6/wiki) wiki.
+Get up and running and get more detailed information on the PSPi 6 wiki](https://github.com/othermod/PSPi-Version-6/wiki).
 
 ## Compatibility
 
@@ -14,7 +14,7 @@ Get up and running and get more detailed information on the PSPi 6 [Getting Star
 
 **Raspberry Pi Compatibility:** Electrically compatible with all 40-pin Raspberry Pis, with physical fit for the Raspberry Pi Zero, Zero 2W, and CM4 (when using the CM4 Carrier).
 
-**Operating System Compatibility:** Compatible with RetroPie, Lakka, Ubuntu, Raspberry Pi OS, Batocera, Kali, and more. The full list of premade images is on the [Getting Started](https://github.com/othermod/PSPi-Version-6/tree/main/docs/Getting_Started.md) page.
+**Operating System Compatibility:** Compatible with RetroPie, Lakka, Ubuntu, Raspberry Pi OS, Batocera, Kali, and more. The full list of premade images is on the [Operating Systems](https://github.com/othermod/PSPi-Version-6/wiki/Operating-Systems) page.
 
 ## Features Overview
 
@@ -26,7 +26,7 @@ Get up and running and get more detailed information on the PSPi 6 [Getting Star
 For a complete list of features, please visit the [Features](#) page.
 
 ## Items Needed
-To get started with PSPi 6, you'll need various items categorized into Genuine PSP 1000 Series Parts, PSPi 6 Components, and Optional Parts. For a detailed list, refer to the [Getting Started](https://github.com/othermod/PSPi-Version-6/wiki/Components-Required) page.
+To get started with PSPi 6, you'll need various items categorized into Genuine PSP 1000 Series Parts, PSPi 6 Components, and Optional Parts. For a detailed list, refer to the [Components Required](https://github.com/othermod/PSPi-Version-6/wiki/Components-Required) page.
 
 ## Troubleshooting
 Run into a snag? Check out the [Troubleshooting](https://github.com/othermod/PSPi-Version-6/wiki/Troubleshooting) page for common issues and their solutions.
