@@ -6,7 +6,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 
 ## Getting Started
 
-Get up and running and get more detailed information on the PSPi 6 [Getting Started](https://github.com/othermod/PSPi-Version-6/tree/main/docs/Getting_Started.md) page.
+Get up and running and get more detailed information on the PSPi 6 [Getting Started](https://github.com/othermod/PSPi-Version-6/wiki) wiki.
 
 ## Compatibility
 
@@ -26,10 +26,10 @@ Get up and running and get more detailed information on the PSPi 6 [Getting Star
 For a complete list of features, please visit the [Features](#) page.
 
 ## Items Needed
-To get started with PSPi 6, you'll need various items categorized into Genuine PSP 1000 Series Parts, PSPi 6 Components, and Optional Parts. For a detailed list, refer to the [Getting Started](https://github.com/othermod/PSPi-Version-6/tree/main/docs/Getting_Started.md) page.
+To get started with PSPi 6, you'll need various items categorized into Genuine PSP 1000 Series Parts, PSPi 6 Components, and Optional Parts. For a detailed list, refer to the [Getting Started](https://github.com/othermod/PSPi-Version-6/wiki/Components-Required) page.
 
 ## Troubleshooting
-Run into a snag? Check out the [Troubleshooting](https://github.com/othermod/PSPi-Version-6/page/Troubleshooting) page for common issues and their solutions.
+Run into a snag? Check out the [Troubleshooting](https://github.com/othermod/PSPi-Version-6/wiki/Troubleshooting) page for common issues and their solutions.
 
 ## Resources
 - [**Code for Raspberry Pi**](https://github.com/othermod/PSPi-Version-6/tree/main/drivers): Essential code for integrating the Raspberry Pi and Atmega.
