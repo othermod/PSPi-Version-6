@@ -6,7 +6,7 @@ Welcome to the PSPi 6 GitHub repository! This project is a combination of hardwa
 
 ## Getting Started
 
-Get up and running and get more detailed information on the PSPi 6 wiki](https://github.com/othermod/PSPi-Version-6/wiki).
+Get up and running and get more detailed information on the [PSPi 6 wiki](https://github.com/othermod/PSPi-Version-6/wiki).
 
 ## Compatibility
 
