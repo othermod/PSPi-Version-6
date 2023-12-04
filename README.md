@@ -40,7 +40,7 @@ Run into a snag? Check out the [Troubleshooting](https://github.com/othermod/PSP
 You can order the boards directly from the manufacturer; however, the project is ongoing and subject to changes. Boards will also be available on my website upon completion.
 
 ## Status
-PSPi 6 is actively in development. The core features are functional, and I'm working on adding some additional ones.
+PSPi 6 development is done, and I'm now shipping small batches of boards to early adopters while working on guides and documentation.
 
 ## Community and Contributions
 This project is a one-man-show, but any help or input is welcome and appreciated. Whether you are a designer, coder, tester, or just someone with ideas to share, your contributions are highly valued. You can also contribute by spreading the word and sharing the project with others, or by supporting monetarily.
