@@ -1,7 +1,10 @@
-# PSPi 6: 2023.10.22 Production Board Notes and Fixes
+# PSPi 6 PCB 1.0 Notes and Fixes
 
 ## Ordering Notes
-- The PSPi 6 mainboard needs double-sided assembly, which is pricey. The CM4 carrier also needs both sides be placed, but it is not too difficult to solder the GPIO header, SD card, and switch if you want to save some money. The headphone board only needs single sided assembly.
+- All boards in this project are 0.8mm thick. The default size for PCBs is 1.6mm, so make sure to change it.
+- The PSPi 6 mainboard needs double-sided assembly, which is pricey.
+- The CM4 carrier also needs both sides be placed, but it is not too difficult to solder the GPIO header, SD card, and switch if you want to save some money.
+- The headphone board only needs single sided assembly.
 
 ## Components to be Placed Manually
 
@@ -13,9 +16,9 @@ Some components are not available for automatic placement and must be placed man
 
 The following items are also needed:
 1. **M2.5x6mm Standoffs**: [AliExpress Link](https://s.click.aliexpress.com/e/_DBPcEQb)
-2. **M2.5 Washer (0.5mm Thick)**:
-3. **M2.5 Screw (6mm Long)**:
-4. **M2.5 Screw (3.5mm Long)**:
+2. **M2.5 Washer (0.5mm Thick)**: [AliExpress Link](https://s.click.aliexpress.com/e/_DFXVGBT)
+3. **M2.5 Screw (3mm Long)**: [AliExpress Link](https://s.click.aliexpress.com/e/_Dlp9Lxn)
+4. **M2.5 Screw (5mm Long)**: [AliExpress Link](https://s.click.aliexpress.com/e/_Dlp9Lxn)
 5. **Pin Protection 3D Print**
 
 ## Project Files
