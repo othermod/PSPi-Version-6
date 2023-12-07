@@ -27,6 +27,15 @@ Access the editable schematics and PCBs on EasyEDA:
 - [CM4 Carrier Interface](https://oshwlab.com/adamseamster/pspi-version-6-cm4-interface)
 - [Headphone Board](https://oshwlab.com/adamseamster/pspi-6-headphone-board)
 
+## Changes Since Previous PCB
+- Adjusted audio filter to help deal with PWM audio bug on Raspberry Pi 4 and Compute Module 4
+- Fixed headphone/speaker switching bug
+- Inverted activity LED function so it works with CM4
+- USB muxing is no longer dependent on audio pins, and works regardless of whether audio is initialized
+- Adjusted charge indicator so it is either fully orange or fully green, and not in between.
+
+## Current Bugs
+
 ### Bug 1: Power-on When Charging
 - **Issue**: The board will power on as it is plugged in for charging.
 - **Fix**: Replace R1 with a 100k resistor. Add a 100nF capacitor across the two top pads of Q2.
