@@ -3,7 +3,7 @@ Description=PSPi Gamepad Service
 After=main.service
 
 [Service]
-ExecStart=sudo gamepad
+ExecStart=gamepad
 Restart=on-failure
 
 [Install]
