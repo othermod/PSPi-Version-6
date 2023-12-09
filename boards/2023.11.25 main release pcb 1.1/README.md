@@ -35,3 +35,38 @@ Access the editable schematics and PCBs on EasyEDA:
 
 ## Current Bugs
 No known bugs
+
+## Alternate Parts
+
+| Name                   | Manufacturer Part     | Alternate Part 1   | Alternate Part 2   | Alternate Part 3   |
+|:-----------------------|:----------------------|:-------------------|:-------------------|:-------------------|
+| BAT54C,215             | BAT54C,215            |                    |                    |                    |
+| 1uH                    | TMPC0502HP-1R0MG-D    |                    |                    |                    |
+| AO3401A                | AO3401A               |                    |                    |                    |
+| AO3400A                | AO3400A               |                    |                    |                    |
+| FSUSB42MUX             | FSUSB42MUX            |                    |                    |                    |
+| TPS61230DRCR           | TPS61230DRCR          |                    |                    |                    |
+| SN74LVC1G07DBVR        | SN74LVC1G07DBVR       |                    |                    |                    |
+| MSK12C02-HB            | MSK12C02-HB           |                    |                    |                    |
+| B2B-PH-SM4-TB (LF)(SN) | B2B-PH-SM4-TB(LF)(SN) |                    |                    |                    |
+| FH-00369               | FH-00369              |                    |                    |                    |
+| APX803S-26SA-7         | APX803S-26SA-7        |                    |                    |                    |
+| B5819W_C8598           | B5819W SL             |                    |                    |                    |
+| BCM857BS               | BCM857BS-7-F          |                    |                    |                    |
+| ATMEGA8A-AU            | ATMEGA8A-AU           | ATMEGA16/32/64A-AU | ATMEGA168/328P     |                    |
+| SGM2019-3.0YN5G        | SGM2019-3.0YN5G/TR    |                    |                    |                    |
+| PCF8563T/5,518         | PCF8563T/5,518        |                    |                    |                    |
+| IP2312                 | IP2312U_VSET          |                    |                    |                    |
+| SN74LVC1G126DBVR       | SN74LVC1G126DBVR      |                    |                    |                    |
+| TPS61160DRVR           | TPS61160DRVR          |                    |                    |                    |
+| RS0102YH8              | RS0102YH8             |                    |                    |                    |
+| 32.768kHz              | SMD31327681252090     |                    |                    |                    |
+| U213-051N-4BH84        | U213-051N-4BH84       |                    |                    |                    |
+| 2.2uH                  | SWPA3015S2R2MT        |                    |                    |                    |
+| 74HC165D,653           | 74HC165D,653          |                    |                    |                    |
+| TPA2012D2RTJR          | TPA2012D2RTJR         |                    |                    |                    |
+| WF08002-01205          | WF08002-01205         |                    |                    |                    |
+| AFC05-S10FIA-00        | AFC05-S10FIA-00       |                    |                    |                    |
+| AFC05-S24FIA-00        | AFC05-S24FIA-00       |                    |                    |                    |
+| AFC05-S40FIA-00        | AFC05-S40FIA-00       |                    |                    |                    |
+| NRS5010T100MMGF        | NRS5010T100MMGF       |                    |                    |                    |
