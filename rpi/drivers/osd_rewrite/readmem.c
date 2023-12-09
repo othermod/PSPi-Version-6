@@ -43,9 +43,8 @@ int main() {
     }
 
     // Read JOY_LX and JOY_LY values from shared memory and print them
-    printf("buttonA: %u\n", shared_data->buttonA);
-    printf("buttonB: %u\n", shared_data->buttonB);
-    printf("JOY_LY: %u\n", shared_data->STATUS);
+    printf("SENSE_SYS: %u\n", shared_data->SENSE_SYS);
+    printf("CALC: %u\n", shared_data->SENSE_SYS*8*3000/1024);
 
     // Cleanup
     close(shm_fd);
