@@ -66,13 +66,13 @@ remove_services() {
 copy_binaries() {
     echo "Copying binaries from /boot/drivers/bin/ to /usr/share/bin/..."
     # Copy all files from the source directory to the target directory
-    sudo cp -r /boot/drivers/bin/* /usr/share/bin/
+    sudo cp -r /boot/drivers/bin/* /usr/bin/
 }
 
 add_services() {
     echo "Installing and enabling services..."
     # Copy new service files
-    sudo cp services/*${ARCH_SUFFIX}.service /etc/systemd/system/
+    sudo cp /boot/services/* /etc/systemd/system/
     sudo systemctl daemon-reload
 
     # Always enable and start main and osd services
