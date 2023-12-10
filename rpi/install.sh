@@ -1,24 +1,46 @@
 #!/bin/bash
 
-setup_binaries() {
-    echo "Removing old binaries from /usr/local/bin..."
-    rm -f /usr/local/bin/{main,osd,mouse,gamepad}
-
-    echo "Setting up new binaries..."
-    chmod +x rpi/drivers/bin/{main,osd,mouse,gamepad}
-    cp drivers/bin/{main,osd,mouse,gamepad} /usr/local/bin/
-    echo "New binaries are set up and copied to /usr/local/bin."
+detect_architecture() {
+    local arch
+    arch=$(uname -m)
+    case "$arch" in
+        x86_64|aarch64)
+            echo "64-bit architecture detected"
+            ARCH_SUFFIX="_64"
+            ;;
+        *)
+            echo "32-bit architecture detected"
+            ARCH_SUFFIX="_32"
+            ;;
+    esac
 }
 
 lakka_setup() {
-    setup_binaries
-    # Lakka-specific commands here
+    echo "Lakka OS detected. Setting up autostart script..."
+
+    if [ -f "/storage/.config/autostart.sh" ]; then
+        mv "/storage/.config/autostart.sh" "/storage/.config/autostart.old"
+        echo "Renamed existing autostart.sh to autostart.old"
+    fi
+
+    cat << EOF > /storage/.config/autostart.sh
+#!/bin/bash
+/flash/drivers/bin/./main$ARCH_SUFFIX &
+sleep 1
+/flash/drivers/bin/./gamepad$ARCH_SUFFIX &
+/flash/drivers/bin/./osd$ARCH_SUFFIX &
+EOF
+
+    chmod +x /storage/.config/autostart.sh
+    echo "New autostart.sh for Lakka created and configured."
 }
 
+
+
 batocera_setup() {
-    setup_binaries
-    # Batocera-specific commands here
+    echo "batocera"
 }
+
 
 raspbian_setup() {
     remove_services
@@ -94,4 +116,5 @@ detect_os_and_setup_services() {
     esac
 }
 
+detect_architecture
 detect_os_and_setup_services
