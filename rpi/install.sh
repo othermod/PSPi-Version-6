@@ -35,8 +35,6 @@ EOF
     echo "New autostart.sh for Lakka created and configured."
 }
 
-
-
 batocera_setup() {
     echo "batocera"
 }
@@ -44,11 +42,13 @@ batocera_setup() {
 
 raspbian_setup() {
     remove_services
+    copy_binaries
     add_services
 }
 
 retropie_setup() {
     remove_services
+    copy_binaries
     add_services
 }
 
@@ -56,32 +56,39 @@ remove_services() {
     echo "Disabling and removing existing services..."
     # Stop and disable existing services
     for service in main osd mouse gamepad; do
-        sudo systemctl stop $service.service 2>/dev/null || true
-        sudo systemctl disable $service.service 2>/dev/null || true
+        sudo systemctl stop ${service}${ARCH_SUFFIX}.service 2>/dev/null || true
+        sudo systemctl disable ${service}${ARCH_SUFFIX}.service 2>/dev/null || true
     done
     echo "Existing services removed."
+}
+
+
+copy_binaries() {
+    echo "Copying binaries from /boot/drivers/bin/ to /usr/share/bin/..."
+    # Copy all files from the source directory to the target directory
+    sudo cp -r /boot/drivers/bin/* /usr/share/bin/
 }
 
 add_services() {
     echo "Installing and enabling services..."
     # Copy new service files
-    sudo cp services/*.service /etc/systemd/system/
+    sudo cp services/*${ARCH_SUFFIX}.service /etc/systemd/system/
     sudo systemctl daemon-reload
 
     # Always enable and start main and osd services
     for service in main osd; do
-        sudo systemctl enable $service.service
-        sudo systemctl start $service.service
+        sudo systemctl enable ${service}${ARCH_SUFFIX}.service
+        sudo systemctl start ${service}${ARCH_SUFFIX}.service
     done
 
     # User choice for mouse and gamepad services
     for service in mouse gamepad; do
-        read -p "Enable and start the $service service? [y/N]: " enable_service
+        read -p "Enable and start the ${service}${ARCH_SUFFIX} service? [y/N]: " enable_service
         if [ "$enable_service" = "y" ]; then
-            sudo systemctl enable $service.service
-            sudo systemctl start $service.service
+            sudo systemctl enable ${service}${ARCH_SUFFIX}.service
+            sudo systemctl start ${service}${ARCH_SUFFIX}.service
         else
-            echo "Skipping $service service"
+            echo "Skipping ${service}${ARCH_SUFFIX} service"
         fi
     done
 
@@ -89,8 +96,9 @@ add_services() {
 }
 
 
+
 unknown_setup() {
-    echo "Unknown or unsupported OS. Manual service setup may be required."
+    echo "Unknown or unsupported OS. Manual setup may be required."
 }
 
 detect_os_and_setup_services() {

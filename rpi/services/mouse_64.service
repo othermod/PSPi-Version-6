@@ -1,9 +1,9 @@
 [Unit]
 Description=PSPi Mouse Service
-After=main.service
+After=main_64.service
 
 [Service]
-ExecStart=mouse
+ExecStart=mouse_64
 Restart=on-failure
 
 [Install]

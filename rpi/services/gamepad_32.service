@@ -1,9 +1,9 @@
 [Unit]
 Description=PSPi Gamepad Service
-After=main.service
+After=main_32.service
 
 [Service]
-ExecStart=gamepad
+ExecStart=gamepad_32
 Restart=on-failure
 
 [Install]

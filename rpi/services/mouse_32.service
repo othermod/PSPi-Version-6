@@ -1,0 +1,10 @@
+[Unit]
+Description=PSPi Mouse Service
+After=main_32.service
+
+[Service]
+ExecStart=mouse_32
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

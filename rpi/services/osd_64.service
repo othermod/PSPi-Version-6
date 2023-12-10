@@ -1,9 +1,9 @@
 [Unit]
-Description=PSPi Main Service
-After=network.target
+Description=PSPi OSD Service
+After=main_64.service
 
 [Service]
-ExecStart=main
+ExecStart=osd_64
 Restart=on-failure
 
 [Install]
