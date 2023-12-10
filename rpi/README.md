@@ -10,7 +10,7 @@ Before beginning the setup process, ensure you have flashed your desired operati
 4. Copy the `install.sh` script to the root directory of the SD card.
 5. Safely eject the SD card from your computer and insert it into your device.
 
-## Configuring the `config.txt` File
+## Configuring the `config.txt` File - add separate instruction for each os and things to consider
 
 *Instructions for configuring the `config.txt` file to ensure proper booting and video output.*
 
@@ -25,7 +25,7 @@ To set up on Retropie, follow these instructions:
 1. Boot up your device with the Retropie SD card.
 2. When Retropie starts, press F4 to enter the command prompt.
 3. Connect a keyboard to the device.
-4. Run the command `bash /boot/install.sh` to set the drivers to load at bootup.
+4. Run the command `sudo bash /boot/install.sh` to set the drivers to load at bootup.
 
 ## Raspberry Pi OS
 
@@ -34,7 +34,7 @@ To set up on Raspberry Pi OS, follow these instructions:
 1. Boot up your device with the Raspberry Pi OS SD card.
 2. Once started, open the Terminal application.
 3. Connect a keyboard to the device.
-4. Run the command `bash /boot/install.sh` to set the drivers to load at bootup.
+4. Run the command `sudo bash /boot/install.sh` to set the drivers to load at bootup.
 
 ## Lakka
 
