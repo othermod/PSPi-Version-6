@@ -41,12 +41,20 @@ batocera_setup() {
 
 
 raspbian_setup() {
+    enable_i2c
     remove_services
     copy_binaries
     add_services
 }
 
 retropie_setup() {
+    enable_i2c
+    remove_services
+    copy_binaries
+    add_services
+}
+
+ubuntu_setup() {
     remove_services
     copy_binaries
     add_services
@@ -61,6 +69,39 @@ remove_services() {
     done
     echo "Existing services removed."
 }
+
+enable_i2c() {
+    echo "Enabling I2C..."
+    SETTING=on
+    CONFIG=/boot/config.txt
+    BLACKLIST=/etc/modprobe.d/raspi-blacklist.conf
+
+    # Check if the dtparam=i2c_arm line exists and is not commented out
+    if grep -q "^dtparam=i2c_arm=.*" $CONFIG; then
+        # dtparam line exists, ensure it is set to 'on'
+        sed -i "s/^dtparam=i2c_arm=.*/dtparam=i2c_arm=$SETTING/" $CONFIG
+    elif grep -q "^#dtparam=i2c_arm=.*" $CONFIG; then
+        # dtparam line is commented, uncomment and set to 'on'
+        sed -i "s/^#dtparam=i2c_arm=.*/dtparam=i2c_arm=$SETTING/" $CONFIG
+    else
+        # dtparam line does not exist, add it
+        echo "dtparam=i2c_arm=$SETTING" >> $CONFIG
+    fi
+
+    # Handle the blacklist file for I2C
+    if [ -e $BLACKLIST ]; then
+        sed -i "s/^\(blacklist[[:space:]]*i2c[-_]bcm2708\)/#\1/" $BLACKLIST
+    fi
+
+    # Ensure i2c-dev is in /etc/modules
+    if ! grep -q "^i2c[-_]dev" /etc/modules; then
+        echo "i2c-dev" >> /etc/modules
+    fi
+
+    # Enable the I2C device
+    modprobe i2c-dev
+}
+
 
 
 copy_binaries() {
@@ -83,7 +124,7 @@ add_services() {
 
     # User choice for mouse and gamepad services
     for service in mouse gamepad; do
-        read -p "Enable and start the ${service}${ARCH_SUFFIX} service? [y/N]: " enable_service
+        read -p "Enable and start the ${service} service? [y/N]: " enable_service
         if [ "$enable_service" = "y" ]; then
             sudo systemctl enable ${service}${ARCH_SUFFIX}.service
             sudo systemctl start ${service}${ARCH_SUFFIX}.service
@@ -95,8 +136,6 @@ add_services() {
     echo "Services added and started."
 }
 
-
-
 unknown_setup() {
     echo "Unknown or unsupported OS. Manual setup may be required."
 }
@@ -105,16 +144,19 @@ detect_os_and_setup_services() {
     OS=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
     echo "Operating System Detected: $OS"
     case "$OS" in
-        lakka)
-            lakka_setup
-            ;;
         batocera)
             batocera_setup
             ;;
-        retropie)
-            retropie_setup
+        lakka)
+            lakka_setup
             ;;
         raspbian)
+            retropie_setup
+            ;;
+        retropie)
+            raspbian_setup
+            ;;
+        ubuntu)
             raspbian_setup
             ;;
         *)

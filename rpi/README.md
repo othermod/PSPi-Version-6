@@ -6,7 +6,7 @@ Before beginning the setup process, ensure you have flashed your desired operati
 
 1. Insert the flashed SD card into your computer.
 2. Open the SD card folder that appears on your computer.
-3. Copy the `drivers` and `overlays` folders to the root directory of the SD card. There should already be an 'overlays' folder, and you should allow them to merge.
+3. Copy the `drivers`, `overlays`, and `services` folders to the root directory of the SD card. There should already be an 'overlays' folder, and you should allow them to merge.
 4. Copy the `install.sh` script to the root directory of the SD card.
 5. Safely eject the SD card from your computer and insert it into your device.
 
