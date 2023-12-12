@@ -94,9 +94,9 @@ arm_freq_min=300
 core_freq_min=200
 ```
 
-### Configuration for Raspberry Pi Zero and Zero 2 Models
+### Configuration for 40-pin Raspberry Pi Boards (Pi Zero, Zero 2, Pi 3, and Pi 4)
 
-**For Raspberry Pi Zero or Zero 2, include these additional lines just below the General Configuration lines:**
+**For Raspberry Pi Zero, Zero 2, and other Pi boards with the 40-pin header, include these additional lines just below the General Configuration lines:**
 
 ```
 gpu_mem_256=128
