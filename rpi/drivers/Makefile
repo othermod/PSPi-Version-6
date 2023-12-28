@@ -1,41 +1,34 @@
-PREFIX=/usr/local
-BINDIR=$(PREFIX)/bin
+CC = gcc
+CFLAGS = -O3 -lrt
 
-OBJS=osd.o gamepad.o main.o mouse.o
-BIN=osd gamepad main mouse
+# Define the targets for your programs
+PROGRAMS = osd main mouse gamepad
 
-CFLAGS+=-Wall -O3 -g -I./common
-LDFLAGS+=-L/opt/vc/lib/ -lbcm_host -lm -L./lib -lraspidmx -lasound -lrt
+# Define all as the first target
+all: lib $(PROGRAMS)
 
-INCLUDES+=-I/opt/vc/include/ -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux
+# Compile the lib part
+lib:
+	$(MAKE) -C lib
 
-all: $(BIN)
+# Individual program targets
+osd:
+	$(CC) -o osd osd.c $(CFLAGS) -I./common -L./lib -lbcm_host -lraspidmx -lasound
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+main:
+	$(CC) -o main main.c $(CFLAGS)
 
-osd: osd.o
-	$(CC) -o $@ osd.o $(LDFLAGS)
+mouse:
+	$(CC) -o mouse mouse.c $(CFLAGS)
 
-gamepad: gamepad.o
-	$(CC) -o $@ gamepad.o $(LDFLAGS)
+gamepad:
+	$(CC) -o gamepad gamepad.c $(CFLAGS)
 
-main: main.o
-	$(CC) -o $@ main.o $(LDFLAGS)
-
-mouse: mouse.o
-	$(CC) -o $@ mouse.o $(LDFLAGS)
-
-install: $(BIN)
-	@echo "Installing binaries to $(BINDIR)"
-	@mkdir -p $(BINDIR)
-	@cp $(BIN) $(BINDIR)
-	@echo "Installation complete."
-
-uninstall:
-	@echo "Uninstalling binaries from $(BINDIR)"
-	@cd $(BINDIR) && rm -fv $(BIN)
-	@echo "Uninstallation complete."
-
+# Clean target for cleaning up
 clean:
-	rm -f $(OBJS) $(BIN)
+	rm -f common/*.o
+	rm -f lib/*.a
+	$(MAKE) -C lib clean
+	rm -f $(PROGRAMS)
+
+.PHONY: all lib clean
