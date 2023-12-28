@@ -37,8 +37,50 @@ EOF
 
     chmod +x /storage/.config/autostart.sh
     echo "New autostart.sh for Lakka created and configured."
-    echo "Starting drivers"
-    bash /storage/.config/autostart.sh
+    # Check for PSPi-Controller.cfg and rename if it exists
+    if [ -f "/storage/joypads/udev/PSPi-Controller.cfg" ]; then
+        mv "/storage/joypads/udev/PSPi-Controller.cfg" "/storage/joypads/udev/PSPi-Controller.old"
+        echo "Renamed existing PSPi-Controller.cfg to PSPi-Controller.old"
+    fi
+
+    # Create new PSPi-Controller.cfg with specific contents
+    cat << EOF > /storage/joypads/udev/PSPi-Controller.cfg
+input_driver = "udev"
+input_device = "PSPi-Controller"
+input_vendor_id = "4660"
+input_product_id = "22136"
+input_b_btn = "3"
+input_y_btn = "4"
+input_select_btn = "1"
+input_start_btn = "2"
+input_up_btn = "10"
+input_down_btn = "11"
+input_left_btn = "9"
+input_right_btn = "12"
+input_a_btn = "6"
+input_x_btn = "5"
+input_l_btn = "8"
+input_r_btn = "7"
+input_l_x_plus_axis = "+0"
+input_l_x_minus_axis = "-0"
+input_l_y_plus_axis = "+1"
+input_l_y_minus_axis = "-1"
+input_gun_trigger_mbtn = "1"
+EOF
+
+    echo "New PSPi-Controller.cfg for Lakka created and configured."
+    
+    # Modify a line in retroarch.cfg
+    sed -i '/input_quit_gamepad_combo/c\input_quit_gamepad_combo = "4"' /storage/.config/retroarch/retroarch.cfg
+    echo "Modified input_quit_gamepad_combo in retroarch.cfg."
+
+    # Prompt for reboot
+    read -p "Configuration complete. Would you like to reboot now? (yes/no) " answer
+    case $answer in
+        [Yy]* ) reboot;;
+        [Nn]* ) echo "Reboot skipped. Please reboot manually for changes to take effect.";;
+        * ) echo "Invalid response. Please reboot manually for changes to take effect.";;
+    esac
 }
 
 batocera_setup() {
