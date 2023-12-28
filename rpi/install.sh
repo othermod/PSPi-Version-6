@@ -17,10 +17,6 @@ detect_architecture() {
 
 lakka_setup() {
     echo "Lakka OS detected. Setting up autostart script..."
-    echo "Removing existing drivers"
-    killall main$ARCH_SUFFIX
-    killall gamepad$ARCH_SUFFIX
-    killall osd$ARCH_SUFFIX
 
     if [ -f "/storage/.config/autostart.sh" ]; then
         mv "/storage/.config/autostart.sh" "/storage/.config/autostart.old"
@@ -69,7 +65,7 @@ input_gun_trigger_mbtn = "1"
 EOF
 
     echo "New PSPi-Controller.cfg for Lakka created and configured."
-    
+
     # Modify a line in retroarch.cfg
     sed -i '/input_quit_gamepad_combo/c\input_quit_gamepad_combo = "4"' /storage/.config/retroarch/retroarch.cfg
     echo "Modified input_quit_gamepad_combo in retroarch.cfg."
