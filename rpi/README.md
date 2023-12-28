@@ -153,7 +153,7 @@ To set up on Lakka, follow these instructions:
 3. Connect to your Wi-Fi network using the keyboard.
 4. Enable SSH in Lakka's settings.
 5. Using an SSH client on your computer, SSH into the device using `root` as both the username and password.
-6. Run the command `bash /boot/install.sh`. This will set the drivers to load at bootup.
+6. Run the command `bash /flash/install.sh`. This will set the drivers to load at bootup.
 
 ### Batocera
 

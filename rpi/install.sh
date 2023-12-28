@@ -17,6 +17,10 @@ detect_architecture() {
 
 lakka_setup() {
     echo "Lakka OS detected. Setting up autostart script..."
+    echo "Removing existing drivers"
+    killall main$ARCH_SUFFIX
+    killall gamepad$ARCH_SUFFIX
+    killall osd$ARCH_SUFFIX
 
     if [ -f "/storage/.config/autostart.sh" ]; then
         mv "/storage/.config/autostart.sh" "/storage/.config/autostart.old"
@@ -33,6 +37,8 @@ EOF
 
     chmod +x /storage/.config/autostart.sh
     echo "New autostart.sh for Lakka created and configured."
+    echo "Starting drivers"
+    bash /storage/.config/autostart.sh
 }
 
 batocera_setup() {
