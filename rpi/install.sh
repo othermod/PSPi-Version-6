@@ -5,11 +5,11 @@ detect_architecture() {
     arch=$(uname -m)
     case "$arch" in
         x86_64|aarch64)
-            echo "64-bit architecture detected"
+            echo "64-bit OS detected"
             ARCH_SUFFIX="_64"
             ;;
         *)
-            echo "32-bit architecture detected"
+            echo "32-bit OS detected"
             ARCH_SUFFIX="_32"
             ;;
     esac
@@ -39,15 +39,7 @@ batocera_setup() {
     echo "batocera"
 }
 
-
 raspbian_setup() {
-    enable_i2c
-    remove_services
-    copy_binaries
-    add_services
-}
-
-retropie_setup() {
     enable_i2c
     remove_services
     copy_binaries
@@ -102,8 +94,6 @@ enable_i2c() {
     modprobe i2c-dev
 }
 
-
-
 copy_binaries() {
     echo "Copying binaries from /boot/drivers/bin/ to /usr/share/bin/..."
     # Copy all files from the source directory to the target directory
@@ -147,11 +137,14 @@ detect_os_and_setup_services() {
         batocera)
             batocera_setup
             ;;
+        debian)
+            raspbian_setup
+            ;;
         lakka)
             lakka_setup
             ;;
         raspbian)
-            retropie_setup
+            raspbian_setup
             ;;
         retropie)
             raspbian_setup
