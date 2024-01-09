@@ -27,6 +27,7 @@ jobs:
           cd packer-builder-arm
           go mod download
           go build -v .
+          sudo chmod -R +x ./
 
       - name: Build images
         run: |
