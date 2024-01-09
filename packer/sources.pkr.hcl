@@ -1,4 +1,4 @@
-source "arm" "raspios_bookworm_arm64" {
+source "arm" "raspios_cm4_arm64" {
   file_urls             = ["https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2023-12-11/2023-12-11-raspios-bookworm-arm64-lite.img.xz"]
   file_checksum_url     = "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2023-12-11/2023-12-11-raspios-bookworm-arm64-lite.img.xz.sha256"
   file_checksum_type    = "sha256"
@@ -36,7 +36,7 @@ source "arm" "raspios_bookworm_arm64" {
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
-source "arm" "raspios_bookworm_arm" {
+source "arm" "raspios_pizero_arm" {
   file_urls             = ["https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2023-12-11/2023-12-11-raspios-bookworm-armhf-lite.img.xz"]
   file_checksum_url     = "https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2023-12-11/2023-12-11-raspios-bookworm-armhf-lite.img.xz.sha256"
   file_checksum_type    = "sha256"
@@ -78,8 +78,8 @@ source "arm" "lakka_pizero_arm" {
   file_urls             = ["https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz"]
   file_checksum_url     = "https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz.sha256"
   file_checksum_type    = "sha256"
-  file_target_extension = "xz"
-  file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
+  file_target_extension = "gz"
+  file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi 6 Lakka 4.3 32bit Zero.img"
   image_size            = "4G"
@@ -116,8 +116,8 @@ source "arm" "lakka_cm4_arm64" {
   file_urls             = ["https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi4.aarch64-4.3.img.gz"]
   file_checksum_url     = "https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi4.aarch64-4.3.img.gz.sha256"
   file_checksum_type    = "sha256"
-  file_target_extension = "xz"
-  file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
+  file_target_extension = "gz"
+  file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi 6 Lakka 4.3 64bit CM4.img"
   image_size            = "4G"
@@ -154,8 +154,8 @@ source "arm" "retropie_pizero_arm" {
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi2_3_zero2w.img.gz"]
   file_checksum         = "224e64d8820fc64046ba3850f481c87e"
   file_checksum_type    = "md5"
-  file_target_extension = "xz"
-  file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
+  file_target_extension = "gz"
+  file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi 6 RetroPie 4.8 32bit Zero.img"
   image_size            = "4G"
@@ -192,8 +192,8 @@ source "arm" "retropie_cm4_arm" {
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi4_400.img.gz"]
   file_checksum         = "b5daa6e7660a99c246966f3f09b4014b"
   file_checksum_type    = "md5"
-  file_target_extension = "xz"
-  file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
+  file_target_extension = "gz"
+  file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi 6 RetroPie 4.8 32bit CM4.img"
   image_size            = "4G"
