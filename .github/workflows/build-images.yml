@@ -1,9 +1,7 @@
 name: Build Images
 
 on:
-  push:
-    branches:
-      - main
+  push: 
   pull_request:
     branches:
       - main
@@ -25,7 +23,3 @@ jobs:
       - name: Build image
         run: |
           sudo packer build
-
-      
-
-      
