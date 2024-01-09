@@ -7,23 +7,15 @@ set -x
 
 CONFIG=/boot/config.txt
 
-# Disable userconfig
-systemctl stop userconfig
-systemctl disable userconfig
-systemctl mask userconfig
-
 locale=en_US.UTF-8
 layout=us
 raspi-config nonint do_change_locale $locale
 raspi-config nonint do_configure_keyboard $layout
 raspi-config nonint do_hostname pspi6
-# raspi-config nonint do_boot_splash 0
-sed -i "s/dtoverlay=vc4-kms-v3d/dtoverlay=vc4-fkms-v3d/g" $CONFIG
-sed -i "s/camera_auto_detect=1/#camera_auto_detect=1/g" $CONFIG
-sed -i "s/display_auto_detect=1/#display_auto_detect=1/g" $CONFIG
-sed -i "s/max_framebuffers=2/max_framebuffers=1/g" $CONFIG
-sed -i "s/dtoverlay=dwc2/dtoverlay=dwc2,dr_mode=host/g" $CONFIG
 cat <<EOF >> $CONFIG
+# Don't show splash screen
+disable_splash=1
+
 # Enable audio (loads snd_bcm2835)
 dtparam=audio=on
 

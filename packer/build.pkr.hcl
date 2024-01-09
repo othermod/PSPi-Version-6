@@ -58,4 +58,17 @@ build {
   #   execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
   #   inline = ["rm /etc/init.d/resize2fs_once"]
   # }
+
+  # disable the customization dialog, that raspberry pi os will show at boot
+  provisioner "shell" {
+    only = [
+      "source.arm.raspios_pizero_arm",
+      "source.arm.raspios_cm4_arm64"
+    ]
+
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.root}scripts/installers/disable-userconfig.sh"
+    ]
+  }
 }
