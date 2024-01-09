@@ -24,12 +24,12 @@ jobs:
           cd packer-builder-arm
           go mod download
           go build -v .
-
+          echo "{PACKER_PLUGIN_PATH}={$PWD}" >> "$PACKER_PLUGIN_PATH"
 
       - name: Build images
         run: |
           sudo packer build "$GITHUB_WORKSPACE/packer/"
-        env: 
-          PACKER_PLUGIN_PATH: "$GITHUB_WORKSPACE/packer-builder-arm/"
+        # env: 
+          # PACKER_PLUGIN_PATH: "$GITHUB_WORKSPACE/packer-builder-arm"
 
       
