@@ -3,7 +3,7 @@ build {
   sources = [
     "source.arm.raspios_bookworm_arm64",
     "source.arm.raspios_bookworm_arm",
-    "source.arm.llakka_pizero_arm",
+    "source.arm.lakka_pizero_arm",
     "source.arm.lakka_cm4_arm64",
     "source.arm.retropie_pizero_arm",
     "source.arm.retropie_cm4_arm"
