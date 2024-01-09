@@ -1,8 +1,8 @@
 build {
   # specify the build source image
   sources = [
-    "source.arm.raspios_pizero_arm",
-    "source.arm.raspios_cm4_arm64",
+    # "source.arm.raspios_pizero_arm",
+    # "source.arm.raspios_cm4_arm64",
     # "source.arm.lakka_pizero_arm",
     # "source.arm.lakka_cm4_arm64",
     "source.arm.retropie_pizero_arm",
@@ -11,10 +11,6 @@ build {
 
   # Configure raspberry pi
   provisioner "shell" {
-    # only = [
-    #   "source.arm.raspios_pizero_arm",
-    #   "source.arm.raspios_cm4_arm64"
-    # ]
 
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
@@ -30,10 +26,10 @@ build {
 
   # 
   provisioner "shell" {
-    only = [
-      "source.arm.raspios_pizero_arm",
-      "source.arm.raspios_cm4_arm64"
-    ]
+    # only = [
+    #   "source.arm.raspios_pizero_arm",
+    #   "source.arm.raspios_cm4_arm64"
+    # ]
 
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
