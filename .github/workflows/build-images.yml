@@ -30,7 +30,7 @@ jobs:
       - name: Build images
         run: |
           sudo packer build "$GITHUB_WORKSPACE/packer/"
-        working-directory: $GITHUB_WORKSPACE/packer/plugins/packer-builder-arm
+        working-directory: packer/plugins/packer-builder-arm
 
       
 
