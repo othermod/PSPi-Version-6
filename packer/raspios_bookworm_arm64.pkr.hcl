@@ -42,7 +42,7 @@ build {
     "source.arm.raspios_bookworm_arm64"
   ]
 
-  # 
+  # Configure raspberry pi
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
@@ -62,32 +62,6 @@ build {
     scripts = [
       "${path.root}scripts/installers/apt.sh"
     ]
-  }
-
-  # 
-  provisioner "shell" {
-    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts = [
-      "${path.root}scripts/installers/install-cloudinit.sh"
-    ]
-  }
-
-  # disable file system resize, this is already done by packer
-  provisioner "shell" {
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = ["rm /etc/init.d/resize2fs_once"]
-  }
-
-  # disable the customization dialog, that raspberry pi os will show at boot
-  provisioner "shell" {
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = ["rm /usr/lib/systemd/system/userconfig.service"]
-  }
-
-  provisioner "shell" {
-    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    inline            = ["echo 'Reboot VM'", "sudo reboot"]
   }
 
   provisioner "shell" {
@@ -110,5 +84,17 @@ build {
     scripts = [
       "${path.root}scripts/installers/install-pspi6.sh"
     ]
+  }
+
+  # disable file system resize, this is already done by packer
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = ["rm /etc/init.d/resize2fs_once"]
+  }
+
+  # disable the customization dialog, that raspberry pi os will show at boot
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = ["rm /usr/lib/systemd/system/userconfig.service"]
   }
 }

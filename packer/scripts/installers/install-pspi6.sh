@@ -81,6 +81,7 @@ batocera_setup() {
 
 raspbian_setup() {
     enable_i2c
+    copy_config
     copy_binaries
     add_services
 }
@@ -88,6 +89,21 @@ raspbian_setup() {
 ubuntu_setup() {
     copy_binaries
     add_services
+}
+
+copy_config() {
+    echo "Copying config.txt from /packer/temp/config/ to /boot/..."
+    # Copy all files from the source directory to the target directory
+    cp -r /packer/temp/config/* /boot/
+
+    cat <<EOF >> /boot/config.txt
+[board-type=0x14]
+# This applies to CM4 only
+include cm4.txt
+
+[pi0]
+include pi0.txt
+EOF
 }
 
 enable_i2c() {
@@ -137,16 +153,14 @@ add_services() {
     # Always enable and start main and osd services
     for service in main osd; do
         systemctl enable ${service}${ARCH_SUFFIX}.service
-        systemctl start ${service}${ARCH_SUFFIX}.service
     done
 
     # User choice for mouse and gamepad services
     for service in mouse gamepad; do
         systemctl enable ${service}${ARCH_SUFFIX}.service
-        systemctl start ${service}${ARCH_SUFFIX}.service
     done
 
-    echo "Services added and started."
+    echo "Services added."
 }
 
 unknown_setup() {
