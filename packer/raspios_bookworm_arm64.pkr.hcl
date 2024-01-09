@@ -46,7 +46,7 @@ build {
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
-      "${path.root}scripts/installers/ape.sh"
+      "${path.root}scripts/installers/apt.sh"
     ]
   }
 
