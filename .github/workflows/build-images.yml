@@ -12,6 +12,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        
+      - name: Set up Go 1.21
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version: '1.21'
+        id: go
 
       - name: Install apt dependencies
         run: |
@@ -20,18 +26,13 @@ jobs:
 
       - name: Install packer-builder-arm
         run: |
-          # mkdir -p $HOME/.config/packer/plugins
-          # cd $HOME/.config/packer/plugins
-          cd /usr/local/bin
+          mkdir -p $HOME/.config/packer/plugins
+          cd $HOME/.config/packer/plugins
           git clone https://github.com/mkaczanowski/packer-builder-arm
           cd packer-builder-arm
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
-          sudo go mod download
-          sudo go build -v .
+          go mod download
+          go build -v .
+          export PACKER_PLUGIN_PATH=$HOME/.config/packer/plugins
 
       - name: Packer init
         run: |
