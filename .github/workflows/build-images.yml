@@ -20,6 +20,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar
 
-      - name: Build image
+      - name: Build Images
         run: |
-          sudo packer build "$GITHUB_WORKSPACE/"
+          sudo packer build "$GITHUB_WORKSPACE/packer/"
