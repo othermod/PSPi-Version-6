@@ -11,6 +11,11 @@ build {
 
   # Configure raspberry pi
   provisioner "shell" {
+    only = [
+      "source.arm.raspios_pizero_arm",
+      "source.arm.raspios_cm4_arm64"
+    ]
+
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
       "${path.root}scripts/installers/config-pi.sh"
@@ -25,6 +30,11 @@ build {
 
   # 
   provisioner "shell" {
+    only = [
+      "source.arm.raspios_pizero_arm",
+      "source.arm.raspios_cm4_arm64"
+    ]
+    
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
       "${path.root}scripts/installers/apt.sh"
