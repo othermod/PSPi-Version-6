@@ -45,7 +45,9 @@ build {
   # 
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = ["sudo raspi-config nonint do_hostname pspi6"]
+    scripts = [
+      "${path.root}scripts/installers/config-pi.sh"
+    ]
   }
 
   provisioner "shell" {
