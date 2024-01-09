@@ -42,28 +42,34 @@ build {
     "source.arm.raspios_bookworm_arm64"
   ]
 
-  # install and start cloud init
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline          = ["mkdir ${var.image_folder}", "chmod 777 ${var.image_folder}"]
+  }
+
+  # Upload drivers
+  provisioner "file" {
+    source = "${path.root}../rpi/drivers"
+    destination = "${var.temp_folder}/drivers"
+  }
+
+  # Upload overlays
+  provisioner "file" {
+    source = "${path.root}../rpi/overlays"
+    destination = "${var.temp_folder}/overlays"
+  }
+
+  # Upload services
+  provisioner "file" {
+    source = "${path.root}../rpi/services"
+    destination = "${var.temp_folder}/services"
+  }
+
+  # Install pspi6 drivers & services
   provisioner "shell" {
     scripts = [
-      "${path.root}files/usr/local/bin/install-cloud-init.sh"
+      "${path.root}scripts/installers/install-pspi6-drivers.sh"
     ]
-  }
-
-  # configure cloud init (datasource)
-  provisioner "file" {
-    source = "${path.root}files/etc/cloud/cloud.cfg.d/99_datasource.cfg"
-    destination = "/etc/cloud/cloud.cfg.d/99_datasource.cfg"
-  }
-
-  # configure cloud init (users)
-  provisioner "file" {
-    source = "${path.root}files/etc/cloud/cloud.cfg.d/99_user.cfg"
-    destination = "/etc/cloud/cloud.cfg.d/99_user.cfg"
-  }
-
-  # set hostname via dhcp
-  provisioner "shell" {
-    inline = ["echo 'pspi6' > /etc/hostname"]
   }
 
   # disable file system resize, this is already done by packer
