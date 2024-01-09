@@ -12,6 +12,7 @@ layout=us
 raspi-config nonint do_change_locale $locale
 raspi-config nonint do_configure_keyboard $layout
 raspi-config nonint do_hostname pspi6
+raspi-config nonint do_expand_rootfs
 cat <<EOF >> $CONFIG
 # Don't show splash screen
 disable_splash=1
