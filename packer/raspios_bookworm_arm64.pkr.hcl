@@ -45,19 +45,19 @@ build {
   # install and start cloud init
   provisioner "shell" {
     scripts = [
-      "files/usr/local/bin/install-cloud-init.sh"
+      "${path.root}/usr/local/bin/install-cloud-init.sh"
     ]
   }
 
   # configure cloud init (datasource)
   provisioner "file" {
-    source = "files/etc/cloud/cloud.cfg.d/99_datasource.cfg"
+    source = "${path.root}/etc/cloud/cloud.cfg.d/99_datasource.cfg"
     destination = "/etc/cloud/cloud.cfg.d/99_datasource.cfg"
   }
 
   # configure cloud init (users)
   provisioner "file" {
-    source = "files/etc/cloud/cloud.cfg.d/99_user.cfg"
+    source = "${path.root}/etc/cloud/cloud.cfg.d/99_user.cfg"
     destination = "/etc/cloud/cloud.cfg.d/99_user.cfg"
   }
 
