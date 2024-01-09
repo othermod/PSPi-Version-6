@@ -44,5 +44,6 @@ jobs:
       - name: Build images
         run: |
           sudo packer build "$GITHUB_WORKSPACE/packer/"
+        working-directory: "$GITHUB_WORKSPACE/packer-builder-arm/"
 
       
