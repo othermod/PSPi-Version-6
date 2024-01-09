@@ -25,9 +25,17 @@ jobs:
           cd /usr/local/bin
           git clone https://github.com/mkaczanowski/packer-builder-arm
           cd packer-builder-arm
+          go get -v -t -d ./...
+          if [ -f Gopkg.toml ]; then
+              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+              dep ensure
+          fi
           go mod download
           go build -v .
-          sudo chmod -R +rwx ./
+
+      - name: Packer init
+        run: |
+          sudo packer init "$GITHUB_WORKSPACE/packer/"
 
       - name: Build images
         run: |
