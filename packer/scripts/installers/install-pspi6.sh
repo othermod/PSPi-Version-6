@@ -161,13 +161,8 @@ add_services() {
 
     # User choice for mouse and gamepad services
     for service in mouse gamepad; do
-        read -p "Enable and start the ${service} service? [y/N]: " enable_service
-        if [ "$enable_service" = "y" ]; then
-            sudo systemctl enable ${service}${ARCH_SUFFIX}.service
-            sudo systemctl start ${service}${ARCH_SUFFIX}.service
-        else
-            echo "Skipping ${service}${ARCH_SUFFIX} service"
-        fi
+        sudo systemctl enable ${service}${ARCH_SUFFIX}.service
+        sudo systemctl start ${service}${ARCH_SUFFIX}.service
     done
 
     echo "Services added and started."

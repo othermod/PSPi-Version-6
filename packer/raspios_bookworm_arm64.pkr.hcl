@@ -48,6 +48,12 @@ build {
   }
 
   provisioner "shell" {
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    inline            = ["echo 'Reboot VM'", "sudo reboot"]
+  }
+
+  provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = [
       "mkdir ${var.packer_folder}", 
@@ -75,6 +81,7 @@ build {
 
   # Install pspi6 drivers & services
   provisioner "shell" {
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
       "${path.root}scripts/installers/install-pspi6.sh"
     ]
