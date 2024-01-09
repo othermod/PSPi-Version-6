@@ -13,7 +13,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Dependencies
+      - name: Set up Go 1.21
+        uses: actions/setup-go@v5.0.0
+        with:
+          go-version: '1.21'
+          check-latest: true
+        id: go
+
+      - name: Get Go dependencies
+        run: |
+          go get -v -t -d ./...
+          if [ -f Gopkg.toml ]; then
+              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+              dep ensure
+          fi
+
+      - name: Install apt dependencies
         run: |
           sudo apt-get update
           sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar
@@ -23,8 +38,8 @@ jobs:
           git clone https://github.com/mkaczanowski/packer-builder-arm
           cd packer-builder-arm
           go mod download
-          go build
+          go build -v .
 
-      - name: Build Images
+      - name: Build images
         run: |
           sudo packer build "$GITHUB_WORKSPACE/packer/"
