@@ -20,21 +20,17 @@ jobs:
 
       - name: Install packer-builder-arm
         run: |
-          mkdir -p $HOME/.config/packer/plugins
-          cd $HOME/.config/packer/plugins
+          mkdir -p $GITHUB_WORKSPACE/packer/plugins
+          cd $GITHUB_WORKSPACE/packer/plugins
           git clone https://github.com/mkaczanowski/packer-builder-arm
           cd packer-builder-arm
           go mod download
           go build -v .
 
-      - name: Packer init
-        run: |
-          sudo packer init "$GITHUB_WORKSPACE/packer/"
-
       - name: Build images
         run: |
           sudo packer build "$GITHUB_WORKSPACE/packer/"
         env:
-          PACKER_PLUGIN_PATH: $HOME/.config/packer/plugins
+          PACKER_PLUGIN_PATH: $GITHUB_WORKSPACE/packer/plugins
 
       
