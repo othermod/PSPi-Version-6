@@ -13,13 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # - name: Set up Go 1.21
-      #   uses: actions/setup-go@v5.0.0
-      #   with:
-      #     go-version: '1.21'
-      #     check-latest: true
-      #   id: go
-
       - name: Install apt dependencies
         run: |
           sudo apt-get update
@@ -32,9 +25,11 @@ jobs:
           go mod download
           go build -v .
 
+
       - name: Build images
         run: |
           sudo packer build "$GITHUB_WORKSPACE/packer/"
-        working-directory: "packer-builder-arm/"
+        env: 
+          PACKER_PLUGIN_PATH: "$GITHUB_WORKSPACE/packer-builder-arm/"
 
       
