@@ -30,8 +30,8 @@ jobs:
               curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
               dep ensure
           fi
-          go mod download
-          go build -v .
+          sudo go mod download
+          sudo go build -v .
 
       - name: Packer init
         run: |
