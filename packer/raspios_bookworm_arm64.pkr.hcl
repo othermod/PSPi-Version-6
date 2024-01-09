@@ -45,6 +45,18 @@ build {
   # 
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = ["sudo raspi-config nonint do_hostname pspi6"]
+  }
+
+  provisioner "shell" {
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    inline            = ["echo 'Reboot VM'", "sudo reboot"]
+  }
+
+  # 
+  provisioner "shell" {
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
       "${path.root}scripts/installers/apt.sh"
     ]
@@ -56,12 +68,6 @@ build {
     scripts = [
       "${path.root}scripts/installers/install-cloudinit.sh"
     ]
-  }
-
-  # set hostname via dhcp
-  provisioner "shell" {
-    # execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = ["echo $HOSTNAME > /etc/hostname"]
   }
 
   # disable file system resize, this is already done by packer
