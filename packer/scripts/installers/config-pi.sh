@@ -14,7 +14,7 @@ layout=us
 raspi-config nonint do_change_locale $locale
 raspi-config nonint do_configure_keyboard $layout
 raspi-config nonint do_hostname pspi6
-raspi-config nonint do_boot_splash 0
+# raspi-config nonint do_boot_splash 0
 raspi-config nonint do_i2c 1
 sed -i "s/dtoverlay=vc4-kms-v3d/dtoverlay=vc4-fkms-v3d/g" $CONFIG
 sed -i "s/camera_auto_detect=1/#camera_auto_detect=1/g" $CONFIG
