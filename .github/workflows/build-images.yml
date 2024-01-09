@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar
+          sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted e2fsprogs resize2fs qemu-img
 
       - name: Install packer-builder-arm
         run: |
