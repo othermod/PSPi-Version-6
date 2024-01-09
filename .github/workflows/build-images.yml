@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Run Shell script
+      - name: Install Dependencies
         run: |
           # Add your shell commands here
           # For example:
@@ -22,4 +22,4 @@ jobs:
 
       - name: Build image
         run: |
-          sudo packer build
+          sudo packer build "$GITHUB_WORKSPACE/"
