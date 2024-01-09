@@ -42,6 +42,11 @@ build {
     "source.arm.raspios_bookworm_arm64"
   ]
 
+  # set hostname via dhcp
+  provisioner "shell" {
+    inline = ["echo 'localhost' > /etc/hostname"]
+  }
+
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = [
