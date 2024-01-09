@@ -3,7 +3,7 @@
 ##  File:  configure-apt.sh
 ##  Desc:  Configure apt, install jq and apt-fast packages.
 ################################################################################
-set -x -e
+set -x
 
 cat /etc/hostname
 cat /etc/hosts

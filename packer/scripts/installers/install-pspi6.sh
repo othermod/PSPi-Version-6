@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x -e
+set -x
 
 detect_architecture() {
     local arch

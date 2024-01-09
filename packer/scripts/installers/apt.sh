@@ -6,3 +6,4 @@
 
 apt update
 apt full-upgrade -y
+apt install i2c-tools -y

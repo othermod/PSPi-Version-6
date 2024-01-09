@@ -98,22 +98,10 @@ build {
     ]
   }
 
-  # Upload drivers
+  # Upload pspi6 installer & config files
   provisioner "file" {
-    source = "${path.root}../rpi/drivers"
-    destination = "${var.temp_folder}/drivers"
-  }
-
-  # Upload overlays
-  provisioner "file" {
-    source = "${path.root}../rpi/overlays"
-    destination = "${var.temp_folder}/overlays"
-  }
-
-  # Upload services
-  provisioner "file" {
-    source = "${path.root}../rpi/services"
-    destination = "${var.temp_folder}/services"
+    source = "${path.root}../rpi"
+    destination = "${var.temp_folder}"
   }
 
   # Install pspi6 drivers & services

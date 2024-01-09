@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x -e
+set -x
 
 apt install cloud-init -y
 
