@@ -20,13 +20,12 @@ jobs:
 
       - name: Install packer-builder-arm
         run: |
-          New-Item -Path $GITHUB_WORKSPACE/packer/plugins -Type Directory
-          Set-Location $GITHUB_WORKSPACE/packer/plugins
+          mkdir -p $GITHUB_WORKSPACE/packer/plugins
+          cd $GITHUB_WORKSPACE/packer/plugins
           git clone https://github.com/mkaczanowski/packer-builder-arm
-          Set-Location ./packer-builder-arm
+          cd packer-builder-arm
           go mod download
           go build -v .
-        shell: pwsh
 
       - name: Build images
         run: |
