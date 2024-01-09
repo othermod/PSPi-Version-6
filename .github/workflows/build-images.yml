@@ -20,6 +20,7 @@ jobs:
 
       - name: Install packer-builder-arm
         run: |
+          mkdir -p $HOME/.config/packer/plugins
           cd $HOME/.config/packer/plugins
           git clone https://github.com/mkaczanowski/packer-builder-arm
           cd packer-builder-arm
