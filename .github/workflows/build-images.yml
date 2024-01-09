@@ -32,6 +32,12 @@ jobs:
           sudo packer build -var pspi_version=$GITHUB_RUN_ID "$GITHUB_WORKSPACE/packer/"
         working-directory: packer/plugins/packer-builder-arm
 
+      - name: Upload images
+        uses: actions/upload-artifact@v4
+        with:
+          name: drop
+          path: packer/plugins/packer-builder-arm/*.img
+
       
 
       

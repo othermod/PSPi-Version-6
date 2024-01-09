@@ -158,7 +158,7 @@ source "arm" "retropie_pizero_arm" {
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi 6 RetroPie 4.8 32bit Zero ${var.pspi_version}.img"
-  image_size            = "4G"
+  image_size            = "6G"
   image_type            = "dos"
 
   # configure boot partition
@@ -196,7 +196,7 @@ source "arm" "retropie_cm4_arm" {
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi 6 RetroPie 4.8 32bit CM4 ${var.pspi_version}.img"
-  image_size            = "4G"
+  image_size            = "6G"
   image_type            = "dos"
 
   # configure boot partition
