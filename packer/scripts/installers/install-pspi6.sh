@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x -e
 
 detect_architecture() {
     local arch
@@ -19,7 +20,7 @@ lakka_setup() {
     echo "Lakka OS detected. Setting up autostart script..."
 
     echo "Copying overlays"
-    sudo cp -r /packer/temp/overlays/* /storage/overlays/
+    cp -r /packer/temp/overlays/* /storage/overlays/
 
     if [ -f "/storage/.config/autostart.sh" ]; then
         mv "/storage/.config/autostart.sh" "/storage/.config/autostart.old"
@@ -72,14 +73,6 @@ EOF
     # Modify a line in retroarch.cfg
     sed -i '/input_quit_gamepad_combo/c\input_quit_gamepad_combo = "4"' /storage/.config/retroarch/retroarch.cfg
     echo "Modified input_quit_gamepad_combo in retroarch.cfg."
-
-    # Prompt for reboot
-    read -p "Configuration complete. Would you like to reboot now? (yes/no) " answer
-    case $answer in
-    [Yy]*) reboot ;;
-    [Nn]*) echo "Reboot skipped. Please reboot manually for changes to take effect." ;;
-    *) echo "Invalid response. Please reboot manually for changes to take effect." ;;
-    esac
 }
 
 batocera_setup() {
@@ -88,25 +81,13 @@ batocera_setup() {
 
 raspbian_setup() {
     enable_i2c
-    remove_services
     copy_binaries
     add_services
 }
 
 ubuntu_setup() {
-    remove_services
     copy_binaries
     add_services
-}
-
-remove_services() {
-    echo "Disabling and removing existing services..."
-    # Stop and disable existing services
-    for service in main osd mouse gamepad; do
-        sudo systemctl stop ${service}${ARCH_SUFFIX}.service 2>/dev/null || true
-        sudo systemctl disable ${service}${ARCH_SUFFIX}.service 2>/dev/null || true
-    done
-    echo "Existing services removed."
 }
 
 enable_i2c() {
@@ -142,27 +123,27 @@ enable_i2c() {
 }
 
 copy_binaries() {
-    echo "Copying binaries from /boot/drivers/bin/ to /usr/share/bin/..."
+    echo "Copying binaries from /packer/temp/drivers/bin/ to /usr/bin/..."
     # Copy all files from the source directory to the target directory
-    sudo cp -r /packer/temp/drivers/bin/* /usr/bin/
+    cp -r /packer/temp/drivers/bin/* /usr/bin/
 }
 
 add_services() {
     echo "Installing and enabling services..."
     # Copy new service files
-    sudo cp /packer/temp/services/* /etc/systemd/system/
-    sudo systemctl daemon-reload
+    cp /packer/temp/services/* /etc/systemd/system/
+    systemctl daemon-reload
 
     # Always enable and start main and osd services
     for service in main osd; do
-        sudo systemctl enable ${service}${ARCH_SUFFIX}.service
-        sudo systemctl start ${service}${ARCH_SUFFIX}.service
+        systemctl enable ${service}${ARCH_SUFFIX}.service
+        systemctl start ${service}${ARCH_SUFFIX}.service
     done
 
     # User choice for mouse and gamepad services
     for service in mouse gamepad; do
-        sudo systemctl enable ${service}${ARCH_SUFFIX}.service
-        sudo systemctl start ${service}${ARCH_SUFFIX}.service
+        systemctl enable ${service}${ARCH_SUFFIX}.service
+        systemctl start ${service}${ARCH_SUFFIX}.service
     done
 
     echo "Services added and started."

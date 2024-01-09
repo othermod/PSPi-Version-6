@@ -42,9 +42,38 @@ build {
     "source.arm.raspios_bookworm_arm64"
   ]
 
+  # 
+  provisioner "shell" {
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.root}scripts/installers/ape.sh"
+    ]
+  }
+
+  # 
+  provisioner "shell" {
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.root}scripts/installers/install-cloudinit.sh"
+    ]
+  }
+
   # set hostname via dhcp
   provisioner "shell" {
-    inline = ["echo 'localhost' > /etc/hostname"]
+    # execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = ["echo $HOSTNAME > /etc/hostname"]
+  }
+
+  # disable file system resize, this is already done by packer
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = ["rm /etc/init.d/resize2fs_once"]
+  }
+
+  # disable the customization dialog, that raspberry pi os will show at boot
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = ["rm /usr/lib/systemd/system/userconfig.service"]
   }
 
   provisioner "shell" {
@@ -85,15 +114,5 @@ build {
     scripts = [
       "${path.root}scripts/installers/install-pspi6.sh"
     ]
-  }
-
-  # disable file system resize, this is already done by packer
-  provisioner "shell" {
-    inline = ["rm /etc/init.d/resize2fs_once"]
-  }
-
-  # disable the customization dialog, that raspberry pi os will show at boot
-  provisioner "shell" {
-    inline = ["rm /usr/lib/systemd/system/userconfig.service"]
   }
 }
