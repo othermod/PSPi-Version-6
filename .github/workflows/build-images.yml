@@ -15,10 +15,15 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          # Add your shell commands here
-          # For example:
           sudo apt-get update
           sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar
+
+      - name: Install packer-builder-arm
+        run: |
+          git clone https://github.com/mkaczanowski/packer-builder-arm
+          cd packer-builder-arm
+          go mod download
+          go build
 
       - name: Build Images
         run: |
