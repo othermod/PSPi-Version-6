@@ -44,7 +44,10 @@ build {
 
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline          = ["mkdir ${var.image_folder}", "chmod 777 ${var.image_folder}"]
+    inline          = [
+      "mkdir ${var.packer_folder}", 
+      "chmod 777 ${var.packer_folder}"
+    ]
   }
 
   # Upload drivers
@@ -68,7 +71,7 @@ build {
   # Install pspi6 drivers & services
   provisioner "shell" {
     scripts = [
-      "${path.root}scripts/installers/install-pspi6-drivers.sh"
+      "${path.root}scripts/installers/install-pspi6.sh"
     ]
   }
 
