@@ -20,8 +20,9 @@ jobs:
 
       - name: Install packer-builder-arm
         run: |
-          mkdir -p $HOME/.config/packer/plugins
-          cd $HOME/.config/packer/plugins
+          # mkdir -p $HOME/.config/packer/plugins
+          # cd $HOME/.config/packer/plugins
+          cd /usr/local/bin
           git clone https://github.com/mkaczanowski/packer-builder-arm
           cd packer-builder-arm
           go mod download
