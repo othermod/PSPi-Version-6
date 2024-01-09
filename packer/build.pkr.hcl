@@ -54,14 +54,8 @@ build {
   }
 
   # disable file system resize, this is already done by packer
-  provisioner "shell" {
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = ["rm /etc/init.d/resize2fs_once"]
-  }
-
-  # disable the customization dialog, that raspberry pi os will show at boot
-  provisioner "shell" {
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = ["rm /usr/lib/systemd/system/userconfig.service"]
-  }
+  # provisioner "shell" {
+  #   execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+  #   inline = ["rm /etc/init.d/resize2fs_once"]
+  # }
 }

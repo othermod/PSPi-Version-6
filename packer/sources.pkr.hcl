@@ -5,7 +5,7 @@ source "arm" "raspios_cm4_arm64" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Raspbian 4.3 64bit CM4.img"
+  image_path            = "PSPi 6 Raspbian 4.3 64bit CM4 ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -43,7 +43,7 @@ source "arm" "raspios_pizero_arm" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Raspbian 4.3 32bit Lite.img"
+  image_path            = "PSPi 6 Raspbian 4.3 32bit Lite ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -81,7 +81,7 @@ source "arm" "lakka_pizero_arm" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Lakka 4.3 32bit Zero.img"
+  image_path            = "PSPi 6 Lakka 4.3 32bit Zero ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -119,7 +119,7 @@ source "arm" "lakka_cm4_arm64" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Lakka 4.3 64bit CM4.img"
+  image_path            = "PSPi 6 Lakka 4.3 64bit CM4 ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -157,7 +157,7 @@ source "arm" "retropie_pizero_arm" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 RetroPie 4.8 32bit Zero.img"
+  image_path            = "PSPi 6 RetroPie 4.8 32bit Zero ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -195,7 +195,7 @@ source "arm" "retropie_cm4_arm" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 RetroPie 4.8 32bit CM4.img"
+  image_path            = "PSPi 6 RetroPie 4.8 32bit CM4 ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 

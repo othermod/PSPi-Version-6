@@ -8,3 +8,6 @@ variable "temp_folder" {
   default = "/packer/temp"
 }
 
+variable "pspi_version" {
+  type    = string
+}

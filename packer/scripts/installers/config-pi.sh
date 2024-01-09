@@ -7,6 +7,11 @@ set -x
 
 CONFIG=/boot/config.txt
 
+# Disable userconfig
+systemctl stop userconfig
+systemctl disable userconfig
+systemctl mask userconfig
+
 locale=en_US.UTF-8
 layout=us
 raspi-config nonint do_change_locale $locale

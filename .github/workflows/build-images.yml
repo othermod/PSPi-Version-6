@@ -29,7 +29,7 @@ jobs:
 
       - name: Build images
         run: |
-          sudo packer build "$GITHUB_WORKSPACE/packer/"
+          sudo packer build -var pspi_version=$GITHUB_RUN_ID "$GITHUB_WORKSPACE/packer/"
         working-directory: packer/plugins/packer-builder-arm
 
       
