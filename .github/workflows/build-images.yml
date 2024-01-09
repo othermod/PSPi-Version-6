@@ -1,0 +1,31 @@
+name: Build Images
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run Shell script
+        run: |
+          # Add your shell commands here
+          # For example:
+          sudo apt-get update
+          sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar
+
+      - name: Build image
+        run: |
+          sudo packer build
+
+      
+
+      
