@@ -1,8 +1,8 @@
 build {
   # specify the build source image
   sources = [
-    "source.arm.raspios_bookworm_arm64"
-    "source.arm.raspios_bookworm_arm"
+    "source.arm.raspios_bookworm_arm64",
+    "source.arm.raspios_bookworm_arm",
     "source.arm.lakka-4.3_rpi_arm"
   ]
 
