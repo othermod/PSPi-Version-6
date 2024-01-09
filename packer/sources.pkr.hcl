@@ -156,7 +156,7 @@ source "arm" "retropie_pizero_arm" {
   file_checksum_type    = "md5"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "reuse"
+  image_build_method    = "resize"
   image_path            = "PSPi 6 RetroPie 4.8 32bit Zero ${var.pspi_version}.img"
   image_size            = "6G"
   image_type            = "dos"
