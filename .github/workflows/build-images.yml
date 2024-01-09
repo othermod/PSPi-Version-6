@@ -20,13 +20,14 @@ jobs:
           check-latest: true
         id: go
 
-      - name: Get Go dependencies
-        run: |
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
+      # - name: Get Go dependencies
+      #   run: |
+      #     go get -v -t -d ./...
+      #     if [ -f Gopkg.toml ]; then
+      #         curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      #         dep ensure
+      #     fi
+      #   working-directory: 
 
       - name: Install apt dependencies
         run: |
@@ -43,3 +44,5 @@ jobs:
       - name: Build images
         run: |
           sudo packer build "$GITHUB_WORKSPACE/packer/"
+
+      
