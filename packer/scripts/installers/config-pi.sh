@@ -9,6 +9,7 @@ CONFIG=/boot/config.txt
 locale=en_US.UTF-8
 layout=us
 
+# Workaround: Temp hardcode nameserver to 8.8.8.8
 mv /etc/resolv.conf /etc/resolv.conf.bak
 echo 'nameserver 8.8.8.8' > /etc/resolv.conf
 

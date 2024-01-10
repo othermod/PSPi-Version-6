@@ -11,6 +11,10 @@ build {
 
   # Configure raspberry pi
   provisioner "shell" {
+    except = [
+      "source.arm.lakka_pizero_arm",
+      "source.arm.lakka_cm4_arm64"
+    ]
 
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
