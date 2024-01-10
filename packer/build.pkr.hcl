@@ -11,6 +11,17 @@ build {
     "source.arm.batocera_cm4_arm64"
   ]
 
+  provisioner "shell" {
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline            = ["sed -i 's/quiet\"/boot=quiet textmode retroarch=0\"/g' /flash/cmdline.txt"]
+  }
+
+  provisioner "shell" {
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    inline            = ["echo 'Reboot VM'", "sudo reboot"]
+  }
+
   # Configure raspberry pi
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
