@@ -244,13 +244,13 @@ source "arm" "retropie_cm4_arm" {
 
 source "arm" "batocera_pizero2_arm" {
   file_urls             = ["https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gz"]
-  file_checksum_url     = "https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gzz.sha256"
+  file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gz.sha256"
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Batocera 36 Pi Zero 2 ${var.pspi_version}.img.gz"
-  image_size            = "4G"
+  image_path            = "PSPi 6 Batocera 36 Pi Zero 2 ${var.pspi_version}.img.gz" 
+  image_size            = "4G" 
   image_type            = "dos"
 
   # configure boot partition
@@ -282,7 +282,7 @@ source "arm" "batocera_pizero2_arm" {
 
 source "arm" "batocera_cm4_arm64" {
   file_urls             = ["https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz"]
-  file_checksum_url     = "https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz.sha256"
+  file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz.sha256"
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
