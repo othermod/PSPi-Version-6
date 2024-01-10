@@ -25,7 +25,7 @@ build {
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
-      "${path.root}scripts/installers/config-pi.sh"
+      "${path.root}/scripts/installers/config-pi.sh"
     ]
   }
 
@@ -39,7 +39,7 @@ build {
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
-      "${path.root}scripts/installers/apt.sh"
+      "${path.root}/scripts/installers/apt.sh"
     ]
   }
 
@@ -53,7 +53,7 @@ build {
 
   # Upload pspi6 installer & config files
   provisioner "file" {
-    source = "${path.root}../rpi"
+    source = "${path.root}/../rpi"
     destination = "${var.temp_folder}"
   }
 
@@ -61,7 +61,7 @@ build {
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
-      "${path.root}scripts/installers/install-pspi6.sh"
+      "${path.root}/scripts/installers/install-pspi6.sh"
     ]
   }
 
@@ -74,7 +74,7 @@ build {
 
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
-      "${path.root}scripts/installers/disable-userconfig.sh"
+      "${path.root}/scripts/installers/disable-userconfig.sh"
     ]
   }
 
@@ -82,7 +82,7 @@ build {
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
-      "${path.root}scripts/installers/cleanup.sh"
+      "${path.root}/scripts/installers/cleanup.sh"
     ]
   }  
 }
