@@ -13,13 +13,12 @@ build {
 
   provisioner "shell" {
     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline            = ["sed -i 's/quiet/quiet textmode retroarch=0 ssh/g' /flash/cmdline.txt"]
-  }
-
-  provisioner "shell" {
-    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    inline            = ["echo 'Reboot VM'", "reboot"]
+    inline            = [
+      "mount -o remount,rw /flash",
+      "sed -i 's/quiet/quiet textmode retroarch=0 ssh/g' /flash/cmdline.txt",
+      "echo 'Reboot VM'", 
+      "reboot"
+    ]
   }
 
   # Configure raspberry pi
