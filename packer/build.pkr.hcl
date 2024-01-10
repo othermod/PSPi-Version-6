@@ -53,7 +53,7 @@ build {
 
   # Upload pspi6 installer & config files
   provisioner "file" {
-    source = "${path.root}/../rpi"
+    source = "${path.root}/rpi"
     destination = "${var.temp_folder}"
   }
 
