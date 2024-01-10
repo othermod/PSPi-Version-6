@@ -72,10 +72,4 @@ build {
       "${path.root}scripts/installers/disable-userconfig.sh"
     ]
   }
-
-  post-processors {
-    post-processor "compress" {
-      output = "{{.BuildName}}.gz"
-    }  
-  }
 }
