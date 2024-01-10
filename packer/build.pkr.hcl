@@ -3,23 +3,23 @@ build {
   sources = [
     # "source.arm.raspios_pizero_arm",
     # "source.arm.raspios_cm4_arm64",
-    # "source.arm.lakka_pizero_arm",
-    # "source.arm.lakka_cm4_arm64",
+    "source.arm.lakka_pizero_arm",
+    "source.arm.lakka_cm4_arm64",
     # "source.arm.retropie_pizero_arm",
     # "source.arm.retropie_cm4_arm"
-    "source.arm.batocera_pizero2_arm",
-    "source.arm.batocera_cm4_arm64"
+    # "source.arm.batocera_pizero2_arm",
+    # "source.arm.batocera_cm4_arm64"
   ]
 
   provisioner "shell" {
     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline            = ["sed -i 's/quiet\"/boot=quiet textmode retroarch=0\"/g' /flash/cmdline.txt"]
+    inline            = ["sed -i 's/quiet/quiet textmode retroarch=0 ssh/g' /flash/cmdline.txt"]
   }
 
   provisioner "shell" {
     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
-    inline            = ["echo 'Reboot VM'", "sudo reboot"]
+    inline            = ["echo 'Reboot VM'", "reboot"]
   }
 
   # Configure raspberry pi
@@ -33,7 +33,7 @@ build {
   provisioner "shell" {
     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
-    inline            = ["echo 'Reboot VM'", "sudo reboot"]
+    inline            = ["echo 'Reboot VM'", "reboot"]
   }
 
   # 
