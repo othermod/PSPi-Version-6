@@ -1,3 +1,7 @@
+# 
+# Raspbian
+# 
+
 source "arm" "raspios_pizero_arm" {
   file_urls             = ["https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2023-12-11/2023-12-11-raspios-bookworm-armhf-lite.img.xz"]
   file_checksum_url     = "https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2023-12-11/2023-12-11-raspios-bookworm-armhf-lite.img.xz.sha256"
@@ -73,6 +77,10 @@ source "arm" "raspios_cm4_arm64" {
   qemu_binary_source_path      = "/usr/bin/qemu-aarch64-static"
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
+
+# 
+# Lakka
+# 
 
 # source "arm" "lakka_pizero_arm" {
 #   file_urls             = ["https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz"]
@@ -150,6 +158,10 @@ source "arm" "raspios_cm4_arm64" {
 #   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 # }
 
+# 
+# RetroPie
+# 
+
 source "arm" "retropie_pizero_arm" {
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi2_3_zero2w.img.gz"]
   file_checksum         = "224e64d8820fc64046ba3850f481c87e"
@@ -226,14 +238,18 @@ source "arm" "retropie_cm4_arm" {
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
-source "arm" "lakka_pizero_arm" {
-  file_urls             = ["https://nightly.builds.lakka.tv/devbuild_latest/RPi.arm/Lakka-RPi.arm-devbuild-v5.x-20231229-3cd3d02.img.gz"]
-  file_checksum_url     = "https://nightly.builds.lakka.tv/devbuild_latest/RPi.arm/Lakka-RPi.arm-devbuild-v5.x-20231229-3cd3d02.img.gz.sha256"
+# 
+# Batocera 
+# 
+
+source "arm" "batocera_pizero2_arm" {
+  file_urls             = ["https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gz"]
+  file_checksum_url     = "https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gzz.sha256"
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Lakka 5.x 32bit pizero ${var.pspi_version}.img.gz"
+  image_path            = "PSPi 6 Batocera 36 Pi Zero 2 ${var.pspi_version}.img.gz"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -262,4 +278,42 @@ source "arm" "lakka_pizero_arm" {
   # qemu binary paths
   qemu_binary_source_path      = "/usr/bin/qemu-arm-static"
   qemu_binary_destination_path = "/usr/bin/qemu-arm-static"
+}
+
+source "arm" "batocera_cm4_arm64" {
+  file_urls             = ["https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz"]
+  file_checksum_url     = "https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz.sha256"
+  file_checksum_type    = "sha256"
+  file_target_extension = "gz"
+  file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
+  image_build_method    = "reuse"
+  image_path            = "PSPi 6 Batocera 36 CM4 ${var.pspi_version}.img.gz"
+  image_size            = "4G"
+  image_type            = "dos"
+
+  # configure boot partition
+  image_partitions {
+    name         = "boot"
+    type         = "c"
+    start_sector = "2048"
+    filesystem   = "fat"
+    size         = "256M"
+    mountpoint   = "/boot"
+  }
+
+  # configure root partition
+  image_partitions {
+    name         = "root"
+    type         = "83"
+    start_sector = "526336"
+    filesystem   = "ext4"
+    size         = "0"
+    mountpoint   = "/"
+  }
+
+  image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
+
+  # qemu binary paths
+  qemu_binary_source_path      = "/usr/bin/qemu-aarch64-static"
+  qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
