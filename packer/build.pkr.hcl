@@ -4,23 +4,18 @@ build {
     # "source.arm.raspios_pizero_arm",
     # "source.arm.raspios_cm4_arm64",
     "source.arm.lakka_pizero_arm",
-    "source.arm.lakka_cm4_arm64",
+    # "source.arm.lakka_cm4_arm64",
     # "source.arm.retropie_pizero_arm",
     # "source.arm.retropie_cm4_arm"
   ]
 
   # Configure raspberry pi
-  # provisioner "shell" {
-  #   except = [
-  #     "source.arm.lakka_pizero_arm",
-  #     "source.arm.lakka_cm4_arm64"
-  #   ]
-
-  #   execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-  #   scripts = [
-  #     "${path.root}scripts/installers/config-pi.sh"
-  #   ]
-  # }
+  provisioner "shell" {
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.root}scripts/installers/config-pi.sh"
+    ]
+  }
 
   provisioner "shell" {
     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
