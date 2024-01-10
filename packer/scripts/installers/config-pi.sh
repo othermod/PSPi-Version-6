@@ -9,7 +9,7 @@ CONFIG=/boot/config.txt
 locale=en_US.UTF-8
 layout=us
 
-rm /etc/resolv.conf
+mv /etc/resolv.conf /etc/resolv.conf.bak
 echo 'nameserver 8.8.8.8' > /etc/resolv.conf
 
 raspi-config nonint do_change_locale $locale

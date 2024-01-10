@@ -1,12 +1,12 @@
 build {
   # specify the build source image
   sources = [
-    "source.arm.raspios_pizero_arm",
-    "source.arm.raspios_cm4_arm64",
-    # "source.arm.lakka_pizero_arm",
-    # "source.arm.lakka_cm4_arm64",
-    "source.arm.retropie_pizero_arm",
-    "source.arm.retropie_cm4_arm"
+    # "source.arm.raspios_pizero_arm",
+    # "source.arm.raspios_cm4_arm64",
+    "source.arm.lakka_pizero_arm",
+    "source.arm.lakka_cm4_arm64",
+    # "source.arm.retropie_pizero_arm",
+    # "source.arm.retropie_cm4_arm"
   ]
 
   # Configure raspberry pi
@@ -54,12 +54,6 @@ build {
     ]
   }
 
-  # disable file system resize, this is already done by packer
-  provisioner "shell" {
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = ["rm /etc/init.d/resize2fs_once"]
-  }
-
   # disable the customization dialog, that raspberry pi os will show at boot
   provisioner "shell" {
     only = [
@@ -72,4 +66,12 @@ build {
       "${path.root}scripts/installers/disable-userconfig.sh"
     ]
   }
+
+  # disable the customization dialog, that raspberry pi os will show at boot
+  provisioner "shell" {
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.root}scripts/installers/cleanup.sh"
+    ]
+  }  
 }
