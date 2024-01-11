@@ -93,8 +93,10 @@ source "arm" "lakka_pizero_arm" {
   image_size            = "8G"
   image_type            = "dos"
   image_setup_extra = [
-    "mount -o remount,rw /flash",
-    "sed -i 's/quiet/quiet textmode retroarch=0 ssh/g' /flash/cmdline.txt"
+    [
+      "mount -o remount,rw /flash",
+      "sed -i 's/quiet/quiet textmode retroarch=0 ssh/g' /flash/cmdline.txt"
+    ]
   ]
 
   # configure boot partition
