@@ -271,21 +271,21 @@ source "arm" "batocera_pizero2_arm" {
     type         = "c"
     start_sector = "2048"
     filesystem   = "vfat"
-    size         = "256M"
+    size         = "3G"
     mountpoint   = "/boot"
   }
 
-  configure root partition
+  # configure root partition
   image_partitions {
     name         = "root"
     type         = "83"
     start_sector = "6293504"
     filesystem   = "ext4"
-    size         = "0"
+    size         = "512M"
     mountpoint   = "/"
   }
 
-  configure root partition
+  # configure root partition
   image_partitions {
     name         = "userdata"
     type         = "83"
