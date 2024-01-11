@@ -88,7 +88,7 @@ source "arm" "lakka_pizero_arm" {
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "new"
+  image_build_method    = "reuse"
   image_path            = "PSPi 6 Lakka 4.3 32bit Zero ${var.pspi_version}.img.gz"
   image_size            = "8G"
   image_type            = "dos"
@@ -103,7 +103,7 @@ source "arm" "lakka_pizero_arm" {
     name                    = "boot"
     type                    = "c"
     start_sector            = "8192"
-    filesystem              = "Vfat"
+    filesystem              = "vfat"
     filesystem_make_options = ["-L", "LAKKA"]
     size                    = "2G"
     mountpoint              = "/flash"
@@ -117,7 +117,7 @@ source "arm" "lakka_pizero_arm" {
     filesystem              = "ext4"
     filesystem_make_options = ["-L", "LAKKA_DISK"]
     size                    = "0"
-    mountpoint              = "/"
+    mountpoint              = "/storage"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
