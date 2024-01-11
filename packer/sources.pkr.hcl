@@ -100,22 +100,24 @@ source "arm" "lakka_pizero_arm" {
 
   # configure boot partition
   image_partitions {
-    name         = "boot"
-    type         = "c"
-    start_sector = "8192"
-    filesystem   = "fat"
-    size         = "2G"
-    mountpoint   = "/flash"
+    name                    = "boot"
+    type                    = "c"
+    start_sector            = "8192"
+    filesystem              = "Vfat"
+    filesystem_make_options = ["-L", "LAKKA"]
+    size                    = "2G"
+    mountpoint              = "/flash"
   }
 
   # configure root partition
   image_partitions {
-    name         = "root"
-    type         = "83"
-    start_sector = "4202496"
-    filesystem   = "ext4"
-    size         = "0"
-    mountpoint   = "/"
+    name                    = "root"
+    type                    = "83"
+    start_sector            = "4202496"
+    filesystem              = "ext4"
+    filesystem_make_options = ["-L", "LAKKA_DISK"]
+    size                    = "0"
+    mountpoint              = "/"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
