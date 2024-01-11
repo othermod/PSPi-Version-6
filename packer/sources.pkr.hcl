@@ -260,7 +260,7 @@ source "arm" "batocera_pizero2_arm" {
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "reuse"
+  image_build_method    = "resize"
   image_path            = "PSPi 6 Batocera 36 Pi Zero 2 ${var.pspi_version}.img.gz" 
   image_size            = "4G" 
   image_type            = "dos"
@@ -281,19 +281,9 @@ source "arm" "batocera_pizero2_arm" {
     type         = "83"
     start_sector = "6293504"
     filesystem   = "ext4"
-    size         = "512M"
+    size         = "0"
     mountpoint   = "/"
   }
-
-  # configure root partition
-  image_partitions {
-    name         = "userdata"
-    type         = "83"
-    start_sector = "7342080"
-    filesystem   = "ext4"
-    size         = "0"
-    mountpoint   = "/userdata"
-  }  
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
 
