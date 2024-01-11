@@ -104,7 +104,7 @@ source "arm" "lakka_pizero_arm" {
     type                    = "c"
     start_sector            = "8192"
     filesystem              = "vfat"
-    filesystem_make_options = ["-L", "LAKKA"]
+    # filesystem_make_options = ["-L", "LAKKA"]
     size                    = "2G"
     mountpoint              = "/flash"
   }
@@ -115,7 +115,7 @@ source "arm" "lakka_pizero_arm" {
     type                    = "83"
     start_sector            = "4202496"
     filesystem              = "ext4"
-    filesystem_make_options = ["-L", "LAKKA_DISK"]
+    # filesystem_make_options = ["-L", "LAKKA_DISK"]
     size                    = "0"
     mountpoint              = "/"
   }
