@@ -97,20 +97,20 @@ source "arm" "lakka_pizero_arm" {
   image_partitions {
     name         = "boot"
     type         = "c"
-    start_sector = "2048"
+    start_sector = "8192"
     filesystem   = "fat"
-    size         = "256M"
-    mountpoint   = "/boot"
+    size         = "2G"
+    mountpoint   = "/flash"
   }
 
   # configure root partition
   image_partitions {
     name         = "root"
     type         = "83"
-    start_sector = "526336"
+    start_sector = "4202496"
     filesystem   = "ext4"
     size         = "0"
-    mountpoint   = "/"
+    mountpoint   = "/storage"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]

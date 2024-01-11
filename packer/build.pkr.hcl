@@ -11,15 +11,15 @@ build {
     # "source.arm.batocera_cm4_arm64"
   ]
 
-  provisioner "shell" {
-    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline            = [
-      "mount -o remount,rw /flash",
-      "sed -i 's/quiet/quiet textmode retroarch=0 ssh/g' /flash/cmdline.txt",
-      "echo 'Reboot VM'", 
-      "reboot"
-    ]
-  }
+  # provisioner "shell" {
+  #   execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+  #   inline            = [
+  #     "mount -o remount,rw /flash",
+  #     "sed -i 's/quiet/quiet textmode retroarch=0 ssh/g' /flash/cmdline.txt",
+  #     "echo 'Reboot VM'", 
+  #     "reboot"
+  #   ]
+  # }
 
   # Configure raspberry pi
   provisioner "shell" {
