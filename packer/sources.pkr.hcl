@@ -117,7 +117,7 @@ source "arm" "lakka_pizero_arm" {
     filesystem              = "ext4"
     filesystem_make_options = ["-L", "LAKKA_DISK"]
     size                    = "0"
-    mountpoint              = "/storage"
+    mountpoint              = "/"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
