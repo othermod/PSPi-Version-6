@@ -94,6 +94,7 @@ source "arm" "lakka_pizero_arm" {
   image_type            = "dos"
   image_setup_extra = [
     [
+      "cat", "$MOUNTPOINT/flash/cmdline.txt",
       "sed", "-i", "s/quiet/quiet textmode retroarch=0 ssh/g", "$MOUNTPOINT/flash/cmdline.txt"
     ]
   ]
