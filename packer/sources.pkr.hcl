@@ -94,7 +94,7 @@ source "arm" "lakka_pizero_arm" {
   image_type            = "dos"
   image_setup_extra = [
     [
-      "cat", "$MOUNTPOINT/flash/cmdline.txt", "&&", "sed", "-i", "s/quiet/quiet textmode retroarch=0 ssh/g", "$MOUNTPOINT/flash/cmdline.txt"
+      "sed", "-i", "s/quiet/quiet textmode retroarch=0 ssh/g", "$MOUNTPOINT/flash/cmdline.txt"
     ]
   ]
 
@@ -115,7 +115,7 @@ source "arm" "lakka_pizero_arm" {
     start_sector = "4202496"
     filesystem   = "ext4"
     size         = "0"
-    mountpoint   = "/storage"
+    mountpoint   = "/"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
