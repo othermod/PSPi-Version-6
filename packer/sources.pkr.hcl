@@ -88,7 +88,7 @@ source "arm" "lakka_pizero_arm" {
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "reuse"
+  image_build_method    = "new"
   image_path            = "PSPi 6 Lakka 4.3 32bit Zero ${var.pspi_version}.img.gz"
   image_size            = "8G"
   image_type            = "dos"
