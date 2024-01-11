@@ -288,8 +288,8 @@ source "arm" "batocera_pizero2_arm" {
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
 
   # qemu binary paths
-  qemu_binary_source_path      = "/usr/bin/qemu-arm-static"
-  qemu_binary_destination_path = "/usr/bin/qemu-arm-static"
+  qemu_binary_source_path      = "/usr/bin/qemu-aarch64-static"
+  qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
 source "arm" "batocera_cm4_arm64" {
