@@ -83,18 +83,23 @@ source "arm" "raspios_cm4_arm64" {
 # 
 
 source "arm" "lakka_pizero_arm" {
-  file_urls             = ["https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz"]
-  file_checksum_url     = "https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz.sha256"
-  file_checksum_type    = "sha256"
+  file_urls = ["./Lakka-RPi2.arm-4.3-Base.img.gz"]
+  # file_checksum_url     = "file:./Lakka-RPi2.arm-4.3-Base.img.sha256"
+  # file_urls             = ["https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz"]
+  # file_checksum_url     = "https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz.sha256"
+  file_checksum_type    = "none"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "new"
+  image_build_method    = "reuse"
   image_path            = "PSPi 6 Lakka 4.3 32bit Zero ${var.pspi_version}.img.gz"
   image_size            = "8G"
   image_type            = "dos"
   image_setup_extra = [
     [
       "sed", "-i", "s/quiet/quiet textmode retroarch=0 ssh/g", "$MOUNTPOINT/flash/cmdline.txt"
+    ],
+    [
+      "cat", "$MOUNTPOINT/flash/cmdline.txt"
     ]
   ]
 
@@ -104,7 +109,7 @@ source "arm" "lakka_pizero_arm" {
     type                    = "c"
     start_sector            = "8192"
     filesystem              = "vfat"
-    # filesystem_make_options = ["-L", "LAKKA"]
+    filesystem_make_options = ["-L", "LAKKA"]
     size                    = "2G"
     mountpoint              = "/flash"
   }
@@ -115,7 +120,7 @@ source "arm" "lakka_pizero_arm" {
     type                    = "83"
     start_sector            = "4202496"
     filesystem              = "ext4"
-    # filesystem_make_options = ["-L", "LAKKA_DISK"]
+    filesystem_make_options = ["-L", "LAKKA_DISK"]
     size                    = "0"
     mountpoint              = "/"
   }
@@ -265,7 +270,7 @@ source "arm" "batocera_pizero2_arm" {
     name         = "boot"
     type         = "c"
     start_sector = "2048"
-    filesystem   = "fat"
+    filesystem   = "vfat"
     size         = "256M"
     mountpoint   = "/boot"
   }
@@ -274,7 +279,7 @@ source "arm" "batocera_pizero2_arm" {
   image_partitions {
     name         = "root"
     type         = "83"
-    start_sector = "526336"
+    start_sector = "6293504"
     filesystem   = "ext4"
     size         = "0"
     mountpoint   = "/"
@@ -295,7 +300,7 @@ source "arm" "batocera_cm4_arm64" {
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi 6 Batocera 36 CM4 ${var.pspi_version}.img.gz"
-  image_size            = "4G"
+  image_size            = "8G"
   image_type            = "dos"
 
   # configure boot partition
@@ -303,7 +308,7 @@ source "arm" "batocera_cm4_arm64" {
     name         = "boot"
     type         = "c"
     start_sector = "2048"
-    filesystem   = "fat"
+    filesystem   = "vfat"
     size         = "256M"
     mountpoint   = "/boot"
   }
@@ -312,7 +317,7 @@ source "arm" "batocera_cm4_arm64" {
   image_partitions {
     name         = "root"
     type         = "83"
-    start_sector = "526336"
+    start_sector = "6293504"
     filesystem   = "ext4"
     size         = "0"
     mountpoint   = "/"
