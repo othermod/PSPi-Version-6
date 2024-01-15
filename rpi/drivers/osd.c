@@ -292,7 +292,8 @@ void drawMute(IMAGE_LAYER_T * muteLayer) {
 
 void drawVolume(IMAGE_LAYER_T * volumeLayer) {
   IMAGE_T * image = & (volumeLayer -> image);
-    imageBoxFilledRGB(image,0, 0, 109, 20, & black);
+    imageBoxFilledRGB(image,0, 0, 110, 21, & white);
+    imageBoxFilledRGB(image,1, 1, 109, 20, & black);
     imageBoxFilledRGB(image,volume+4, 4, volume+5, 16, & white);
   changeSourceAndUpdateImageLayer(volumeLayer);
 }
@@ -422,7 +423,7 @@ int main() {
   createResourceImageLayer( & brightnessLayer, layer);
 
   IMAGE_LAYER_T volumeLayer;
-  initImageLayer( & volumeLayer, 109, 20, VC_IMAGE_RGBA16);
+  initImageLayer( & volumeLayer, 111, 22, VC_IMAGE_RGBA16);
   createResourceImageLayer( & volumeLayer, layer);
 
   IMAGE_LAYER_T muteLayer;
