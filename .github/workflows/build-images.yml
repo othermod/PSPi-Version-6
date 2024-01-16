@@ -33,11 +33,44 @@ jobs:
           sudo packer build -var pspi_version=$GITHUB_RUN_ID "$GITHUB_WORKSPACE/packer/"
         working-directory: packer/plugins/packer-builder-arm
 
-      - name: Upload images
-        uses: actions/upload-artifact@v4
+      # - name: Upload images
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: drop
+      #     path: packer/plugins/packer-builder-arm/*.img.gz
+          
+      # - name: Create Release
+      #   id: create_release
+      #   uses: actions/create-release@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: ${{ github.ref }}
+      #     release_name: Release ${{ github.ref }}
+      #     draft: false
+      #     prerelease: false
+
+      # - name: Upload Release Asset
+      #   id: upload-release-asset 
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+      #     asset_path: packer/plugins/packer-builder-arm/*.img.gz
+      #     asset_content_type: application/gzip
+      #     asset_name: ${{ github.ref }}.img.gz
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v0.1.15
         with:
-          name: drop
-          path: packer/plugins/packer-builder-arm/*.img.gz
+          # body_path: .github/workflows/RELEASE_FORMAT.txt
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref }}
+          draft: true
+          fail_on_unmatched_files: true
+          files: |
+            packer/plugins/packer-builder-arm/*.img.gz
 
       
 
