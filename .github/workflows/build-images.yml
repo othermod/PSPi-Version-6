@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: drop
-          path: packer/plugins/packer-builder-arm/*.img 
+          path: packer/plugins/packer-builder-arm/*.img.gz
 
       
 
