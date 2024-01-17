@@ -61,8 +61,8 @@ gpio=4-27=a2,np
 dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
 
 # Disable WiFi and Bluetooth (Optional)
-#dtoverlay=pi3-disable-wifi
-#dtoverlay=pi3-disable-bt
+#dtoverlay=disable-wifi
+#dtoverlay=disable-bt
 
 # Disables PCI-E link to prevent warning at boot
 dtoverlay=disable-pcie

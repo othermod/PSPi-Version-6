@@ -5,7 +5,7 @@ source "arm" "recalbox_zero_arm" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi6.Recalbox9.1.Zero.${var.pspi_version}.img.gz"
+  image_path            = "PSPi6.Recalbox9.1.Zero.${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -33,7 +33,7 @@ source "arm" "recalbox_zero2_arm64" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi6.Recalbox9.1.Zero2.${var.pspi_version}.img.gz"
+  image_path            = "PSPi6.Recalbox9.1.Zero2.${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -61,7 +61,7 @@ source "arm" "recalbox_cm4_arm64" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi6.Recalbox9.1.CM4.${var.pspi_version}.img.gz"
+  image_path            = "PSPi6.Recalbox9.1.CM4.${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 

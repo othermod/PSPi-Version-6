@@ -81,7 +81,7 @@ source "arm" "retropie_cm4_arm64" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.RetroPie4-8.CM4.${var.pspi_version}.img.gz"
+  image_path            = "PSPi6.RetroPie4-8.CM4.${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 

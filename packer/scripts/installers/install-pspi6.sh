@@ -140,6 +140,9 @@ copy_config() {
     echo "Moving /packer/temp/configs/$1.txt to /boot/config.txt..."
     # Copy all files from the source directory to the target directory
     mv /packer/temp/configs/$1.txt /boot/config.txt
+
+    echo "Copying overlays from /packer/temp/overlays/ to /boot/overlays/..."
+    cp -r /packer/temp/overlays/. /boot/overlays/
 }
 
 enable_i2c() {
