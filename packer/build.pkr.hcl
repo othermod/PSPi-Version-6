@@ -1,13 +1,14 @@
 build {
   # specify the build source image
   sources = [
-    "source.arm.raspios_pizero_arm",
-    "source.arm.raspios_cm4_arm64",
-    # "source.arm.lakka_pizero_arm",
+    "source.arm.raspios_zero_arm",
+    "source.arm.raspios_cm4_zero2_arm64",
+    # "source.arm.lakka_zero_arm",
     # "source.arm.lakka_cm4_arm64",
-    # "source.arm.retropie_pizero_arm",
-    # "source.arm.retropie_cm4_arm"
-    # "source.arm.batocera_pizero2_arm",
+    "source.arm.retropie_zero_arm",
+    "source.arm.retropie_zero2_arm"
+    "source.arm.retropie_cm4_arm"
+    # "source.arm.batocera_zero2_arm",
     # "source.arm.batocera_cm4_arm64"
   ]
 
