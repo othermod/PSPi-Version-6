@@ -49,7 +49,7 @@ jobs:
           draft: true
           fail_on_unmatched_files: true
           files: |
-            packer/plugins/packer-builder-arm/*.img
+            packer/plugins/packer-builder-arm/*.img.gz
 
       
 
