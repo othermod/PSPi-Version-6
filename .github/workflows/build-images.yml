@@ -44,7 +44,7 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
           chmod +x pishrink.sh
-          for i in $(ls *.json)
+          for i in $(ls *.img)
           do
             sudo ./pishrink.sh -v -Z $i
           done
