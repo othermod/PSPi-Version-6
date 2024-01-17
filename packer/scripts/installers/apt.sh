@@ -1,7 +1,7 @@
 #!/bin/bash -e
 ################################################################################
-##  File:  configure-apt.sh
-##  Desc:  Configure apt, install jq and apt-fast packages.
+##  File:  apt.sh
+##  Desc:  Update OS & Install any required packages for PSPi
 ################################################################################
 
 df -h

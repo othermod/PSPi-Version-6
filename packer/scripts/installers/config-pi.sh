@@ -1,7 +1,7 @@
 #!/bin/bash -e
 ################################################################################
-##  File:  configure-apt.sh
-##  Desc:  Configure apt, install jq and apt-fast packages.
+##  File:  config-pi.sh
+##  Desc:  Configure raspberry pi
 ################################################################################
 
 CONFIG=/boot/config.txt

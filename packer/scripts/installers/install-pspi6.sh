@@ -1,9 +1,12 @@
 #!/bin/bash -e
 ################################################################################
-##  File:  configure-apt.sh
-##  Desc:  Configure apt, install jq and apt-fast packages.
+##  File:  install-pspi6.sh
+##  Desc: This script is used to install PSPi Version 6. It contains the necessary installation steps and dependencies required for the installation process.
 ################################################################################
 set -x 
+
+detect_architecture
+detect_os_and_setup_services
 
 detect_architecture() {
     local arch
@@ -18,6 +21,55 @@ detect_architecture() {
         ARCH_SUFFIX="_32"
         ;;
     esac
+}
+
+detect_os_and_setup_services() {
+    OS=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+    echo "Operating System Detected: $OS"
+    case "$OS" in
+    batocera)
+        batocera_setup
+        ;;
+    debian)
+        raspbian_setup
+        ;;
+    raspbian)
+        raspbian_setup
+        ;;
+    retropie)
+        raspbian_setup
+        ;;
+    ubuntu)
+        raspbian_setup
+        ;;
+    lakka)
+        lakka_setup
+        ;;
+    *)
+        echo "Operating System Detection: Unknown or Unsupported"
+        unknown_setup
+        ;;
+    esac
+}
+
+unknown_setup() {
+    echo "Unknown or unsupported OS. Manual setup may be required."
+}
+
+batocera_setup() {
+    echo "batocera"
+}
+
+raspbian_setup() {
+    enable_i2c
+    copy_config "raspios"
+    copy_binaries
+    add_services
+}
+
+ubuntu_setup() {
+    copy_binaries
+    add_services
 }
 
 lakka_setup() {
@@ -79,20 +131,12 @@ EOF
     echo "Modified input_quit_gamepad_combo in retroarch.cfg."
 }
 
-batocera_setup() {
-    echo "batocera"
-}
+copy_binaries() {
+    echo "Setting permissions on binaries..."
+    chmod +x /packer/temp/drivers/bin/*
 
-raspbian_setup() {
-    enable_i2c
-    copy_config "raspios"
-    copy_binaries
-    add_services
-}
-
-ubuntu_setup() {
-    copy_binaries
-    add_services
+    echo "Copying binaries from /packer/temp/drivers/bin/ to /usr/bin/..."
+    cp -r /packer/temp/drivers/bin/* /usr/bin/
 }
 
 copy_config() {
@@ -135,65 +179,16 @@ enable_i2c() {
     set -e
 }
 
-copy_binaries() {
-    echo "Setting permissions on binaries..."
-    chmod +x /packer/temp/drivers/bin/*
-
-    echo "Copying binaries from /packer/temp/drivers/bin/ to /usr/bin/..."
-    cp -r /packer/temp/drivers/bin/* /usr/bin/
-}
-
 add_services() {
     echo "Installing and enabling services..."
-    # Copy new service files
+    # Copy service files to system
     cp /packer/temp/services/* /etc/systemd/system/
     systemctl daemon-reload
 
-    # Always enable and start main and osd services
-    for service in main osd; do
-        systemctl enable ${service}${ARCH_SUFFIX}.service
-    done
-
-    # User choice for mouse and gamepad services
-    for service in mouse gamepad; do
+    # Enable services
+    for service in main osd mouse gamepad; do
         systemctl enable ${service}${ARCH_SUFFIX}.service
     done
 
     echo "Services added."
 }
-
-unknown_setup() {
-    echo "Unknown or unsupported OS. Manual setup may be required."
-}
-
-detect_os_and_setup_services() {
-    OS=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
-    echo "Operating System Detected: $OS"
-    case "$OS" in
-    batocera)
-        batocera_setup
-        ;;
-    debian)
-        raspbian_setup
-        ;;
-    lakka)
-        lakka_setup
-        ;;
-    raspbian)
-        raspbian_setup
-        ;;
-    retropie)
-        raspbian_setup
-        ;;
-    ubuntu)
-        raspbian_setup
-        ;;
-    *)
-        echo "Operating System Detection: Unknown or Unsupported"
-        unknown_setup
-        ;;
-    esac
-}
-
-detect_architecture
-detect_os_and_setup_services

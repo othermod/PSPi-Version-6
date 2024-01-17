@@ -1,7 +1,7 @@
 #!/bin/bash -e
 ################################################################################
-##  File:  configure-apt.sh
-##  Desc:  Configure apt, install jq and apt-fast packages.
+##  File:  disable-userconfig.sh
+##  Desc:  Stop & disable userconfig service
 ################################################################################
 
 systemctl stop userconfig
