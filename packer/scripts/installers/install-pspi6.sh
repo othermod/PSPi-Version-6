@@ -98,15 +98,6 @@ copy_config() {
     echo "Copying config.txt from /packer/temp/configs/ to /boot/..."
     # Copy all files from the source directory to the target directory
     cp -r /packer/temp/configs/* /boot/
-
-    cat <<EOF >> /boot/config.txt
-[board-type=0x14]
-# This applies to CM4 only
-include cm4.txt
-
-[pi0]
-include pi0.txt
-EOF
 }
 
 enable_i2c() {
