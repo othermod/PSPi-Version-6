@@ -54,7 +54,6 @@ jobs:
         run: |
           for i in $(ls *.img.xz)
           do
-            sudo ./pishrink.sh -v -Z -a "$i"
             sha256sum "$1" | awk '{print $1}' > "$1.sha256"
           done
         working-directory: packer/plugins/packer-builder-arm
