@@ -2,12 +2,12 @@ build {
   # specify the build source image
   sources = [
     "source.arm.raspios_zero_arm",
-    "source.arm.raspios_cm4_zero2_arm64"
+    "source.arm.raspios_cm4_zero2_arm64",
     # "source.arm.lakka_zero_arm",
     # "source.arm.lakka_cm4_arm64",
     "source.arm.retropie_zero_arm",
     "source.arm.retropie_zero2_arm64",
-    "source.arm.retropie_cm4_arm64",
+    "source.arm.retropie_cm4_arm64"
     # "source.arm.batocera_zero2_arm",
     # "source.arm.batocera_cm4_arm64",
     # "source.arm.recalbox_zero_arm",
@@ -23,13 +23,14 @@ build {
     ]
   }
 
+  # Reboot
   provisioner "shell" {
     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     inline            = ["echo 'Reboot VM'", "reboot"]
   }
 
-  # 
+  # Update OS & Install Dependencies
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
@@ -37,6 +38,7 @@ build {
     ]
   }
 
+  # Create upload folder
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = [
@@ -79,7 +81,7 @@ build {
     ]
   }
 
-  # cleanup
+  # Cleanup
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
