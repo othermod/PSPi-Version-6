@@ -9,7 +9,7 @@ source "arm" "raspios_pizero_arm" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Raspbian 4.3 32bit Lite ${var.pspi_version}.img.gz"
+  image_path            = "PSPi 6 Raspbian 4.3 32bit Lite ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 
@@ -47,7 +47,7 @@ source "arm" "raspios_cm4_arm64" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Raspbian 4.3 64bit CM4 ${var.pspi_version}.img.gz"
+  image_path            = "PSPi 6 Raspbian 4.3 64bit CM4 ${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 

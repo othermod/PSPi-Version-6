@@ -1,5 +1,8 @@
-#!/bin/bash
-set -x
+#!/bin/bash -x -e
+################################################################################
+##  File:  configure-apt.sh
+##  Desc:  Configure apt, install jq and apt-fast packages.
+################################################################################
 
 detect_architecture() {
     local arch

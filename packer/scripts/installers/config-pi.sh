@@ -1,9 +1,8 @@
-#!/bin/bash -e
+#!/bin/bash -x -e
 ################################################################################
 ##  File:  configure-apt.sh
 ##  Desc:  Configure apt, install jq and apt-fast packages.
 ################################################################################
-set -x
 
 CONFIG=/boot/config.txt
 locale=en_US.UTF-8
