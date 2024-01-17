@@ -95,9 +95,9 @@ ubuntu_setup() {
 }
 
 copy_config() {
-    echo "Copying config.txt from /packer/temp/config/ to /boot/..."
+    echo "Copying config.txt from /packer/temp/configs/ to /boot/..."
     # Copy all files from the source directory to the target directory
-    cp -r /packer/temp/config/* /boot/
+    cp -r /packer/temp/configs/* /boot/
 
     cat <<EOF >> /boot/config.txt
 [board-type=0x14]
