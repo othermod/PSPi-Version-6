@@ -2,7 +2,7 @@ build {
   # specify the build source image
   sources = [
     # "source.arm.raspios_zero_arm",
-    # "source.arm.raspios_cm4_zero2_arm64"
+    "source.arm.raspios_cm4_zero2_arm64"
   ]
 
   # Configure raspberry pi
@@ -49,6 +49,9 @@ build {
     scripts = [
       "${path.root}scripts/installers/install-pspi6.sh"
     ]
+    env = {
+      "OS" = "Raspios"
+    }
   }
 
   # Reboot

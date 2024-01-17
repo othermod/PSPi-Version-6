@@ -1,7 +1,7 @@
 build {
   # specify the build source image
   sources = [
-    "source.arm.batocera_zero2_arm",
+    # "source.arm.batocera_zero2_arm",
     "source.arm.batocera_cm4_arm64"
   ]
 
@@ -29,6 +29,9 @@ build {
     scripts = [
       "${path.root}scripts/installers/install-pspi6.sh"
     ]
+    env = {
+      "OS" = "Batocera"
+    }
   }
 
   # Reboot

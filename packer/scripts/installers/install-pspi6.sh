@@ -21,16 +21,15 @@ detect_architecture() {
 }
 
 detect_os_and_setup_services() {
-    OS=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
     echo "Operating System Detected: $OS"
     case "$OS" in
-    batocera)
+    Batocera)
         batocera_setup
         ;;
     debian)
         raspbian_setup
         ;;
-    raspbian)
+    Raspios)
         raspbian_setup
         ;;
     retropie)
@@ -43,7 +42,6 @@ detect_os_and_setup_services() {
         lakka_setup
         ;;
     *)
-        echo "Operating System Detection: Unknown or Unsupported"
         unknown_setup
         ;;
     esac
