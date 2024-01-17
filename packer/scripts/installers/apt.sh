@@ -11,4 +11,4 @@ apt full-upgrade -y
 
 # Install & enable i2c
 apt-get install i2c-tools -y
-raspi-config nonint do_i2c 1
+# raspi-config nonint do_i2c 1
