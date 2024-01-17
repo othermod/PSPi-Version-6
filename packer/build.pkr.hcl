@@ -2,7 +2,7 @@ build {
   # specify the build source image
   sources = [
     # "source.arm.raspios_zero_arm",
-    "source.arm.raspios_cm4_zero2_arm64",
+    "source.arm.raspios_cm4_zero2_arm64"
     # "source.arm.lakka_zero_arm",
     # "source.arm.lakka_cm4_arm64",
     # "source.arm.retropie_zero_arm",
@@ -59,6 +59,13 @@ build {
     ]
   }
 
+  # Reboot
+  provisioner "shell" {
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    inline            = ["echo 'Reboot VM'", "reboot"]
+  }
+
   # disable the customization dialog, that raspberry pi os will show at boot
   provisioner "shell" {
     only = [
@@ -72,7 +79,7 @@ build {
     ]
   }
 
-  # disable the customization dialog, that raspberry pi os will show at boot
+  # cleanup
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [

@@ -6,3 +6,4 @@
 
 rm -rf /etc/resolv.conf
 mv /etc/resolv.conf.bak /etc/resolv.con
+rm -rf /packer

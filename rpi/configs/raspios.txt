@@ -1,0 +1,105 @@
+# For more options and information see
+# http://rptl.io/configtxt
+# Some settings may impact device functionality. See link above for details
+
+# Uncomment some or all of these to enable the optional hardware interfaces
+dtparam=i2c_arm=on
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=on
+
+# Automatically load initramfs files, if found
+auto_initramfs=1
+
+# Enable DRM VC4 V3D driver
+dtoverlay=vc4-fkms-v3d
+dtoverlay=dwc2,dr_mode=host
+max_framebuffers=1
+
+# Don't have the firmware create an initial video= setting in cmdline.txt.
+# Use the kernel's default instead.
+disable_fw_kms_setup=1
+
+# Run in 64-bit mode
+arm_64bit=1
+
+# Disable compensation for displays with overscan
+disable_overscan=1
+
+# Run as fast as firmware / board allows
+arm_boost=1
+
+# Don't show splash screen
+disable_splash=1
+
+# Reduce I2C speed to avoid clock bug in Raspberry Pi I2C
+dtparam=i2c_baudrate=25000
+
+# Disable HDMI audio
+hdmi_ignore_edid_audio=1
+
+# Configure DPI signal
+framebuffer_width=800
+framebuffer_height=480
+enable_dpi_lcd=1
+display_default_lcd=1
+dpi_group=2
+dpi_mode=87
+dpi_output_format=503863
+
+over_voltage=-2
+
+[cm4]
+
+# Set GPIO pins for 24-Bit DPI Mode 7
+gpio=0=a2,np
+gpio=1=a2,np
+gpio=2=a0,np
+gpio=3=a0,np
+gpio=4-27=a2,np
+
+dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
+
+# Disable WiFi and Bluetooth (Optional)
+#dtoverlay=pi3-disable-wifi
+#dtoverlay=pi3-disable-bt
+
+# Disables PCI-E link to prevent warning at boot
+dtoverlay=disable-pcie
+
+# Enable external PSP antenna
+dtparam=ant2
+
+# Set up CM4 audio pin
+dtoverlay=audiocm4
+
+arm_freq_min=300
+core_freq_min=200
+
+[pi0]
+
+gpu_mem_256=128
+gpu_mem_512=256
+gpu_mem_1024=256
+
+# Set GPIO pins for 21-Bit DPI
+gpio=0=a2,np
+gpio=1=a2,np
+gpio=2=a0,np
+gpio=3=a0,np
+gpio=5-11=a2,np
+gpio=13-19=a2,np
+gpio=21-27=a2,np
+
+dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 32000000 6
+
+# Zero-specific settings
+dtparam=act_led_gpio=20
+dtoverlay=audiozero
+dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
+dtparam=act_led_activelow=no
+
+arm_freq_min=500
+core_freq_min=200
+
+[all]

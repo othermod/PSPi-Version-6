@@ -3,6 +3,7 @@
 ##  File:  configure-apt.sh
 ##  Desc:  Configure apt, install jq and apt-fast packages.
 ################################################################################
+set -x 
 
 detect_architecture() {
     local arch
@@ -84,7 +85,7 @@ batocera_setup() {
 
 raspbian_setup() {
     enable_i2c
-    copy_config
+    copy_config "raspios"
     copy_binaries
     add_services
 }
@@ -95,9 +96,9 @@ ubuntu_setup() {
 }
 
 copy_config() {
-    echo "Copying config.txt from /packer/temp/configs/ to /boot/..."
+    echo "Moving /packer/temp/configs/$1.txt to /boot/config.txt..."
     # Copy all files from the source directory to the target directory
-    cp -r /packer/temp/configs/* /boot/
+    mv /packer/temp/configs/$1.txt /boot/config.txt
 }
 
 enable_i2c() {
@@ -135,8 +136,10 @@ enable_i2c() {
 }
 
 copy_binaries() {
+    echo "Setting permissions on binaries..."
+    chmod +x /packer/temp/drivers/bin/*
+
     echo "Copying binaries from /packer/temp/drivers/bin/ to /usr/bin/..."
-    # Copy all files from the source directory to the target directory
     cp -r /packer/temp/drivers/bin/* /usr/bin/
 }
 
