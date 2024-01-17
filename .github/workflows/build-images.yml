@@ -39,6 +39,16 @@ jobs:
         run: |
           sudo packer build -var pspi_version=$GITHUB_RUN_ID "$GITHUB_WORKSPACE/packer/"
         working-directory: packer/plugins/packer-builder-arm
+
+      - name: Shrink images
+        run: |
+          wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+          chmod +x pishrink.sh
+          for i in $(ls *.json)
+          do
+            sudo ./pishrink.sh -v -Z $i
+          done
+        working-directory: packer/plugins/packer-builder-arm
           
       - name: Create Release
         uses: softprops/action-gh-release@v0.1.15
@@ -49,7 +59,7 @@ jobs:
           draft: true
           fail_on_unmatched_files: true
           files: |
-            packer/plugins/packer-builder-arm/*.img.gz
+            packer/plugins/packer-builder-arm/*.img.xz
 
       
 
