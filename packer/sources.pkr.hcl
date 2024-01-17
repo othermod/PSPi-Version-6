@@ -8,7 +8,7 @@ source "arm" "raspios_pizero_arm" {
   file_checksum_type    = "sha256"
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
-  image_build_method    = "reuse"
+  image_build_method    = "resize"
   image_path            = "PSPi6.PiOS.4-3.32bit.Lite.${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
@@ -17,8 +17,8 @@ source "arm" "raspios_pizero_arm" {
   image_partitions {
     name         = "boot"
     type         = "c"
-    start_sector = "2048"
-    filesystem   = "fat"
+    start_sector = "8192"
+    filesystem   = "vfat"
     size         = "256M"
     mountpoint   = "/boot"
   }
@@ -27,7 +27,7 @@ source "arm" "raspios_pizero_arm" {
   image_partitions {
     name         = "root"
     type         = "83"
-    start_sector = "526336"
+    start_sector = "532480"
     filesystem   = "ext4"
     size         = "0"
     mountpoint   = "/"
@@ -46,7 +46,7 @@ source "arm" "raspios_cm4_arm64" {
   file_checksum_type    = "sha256"
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
-  image_build_method    = "reuse"
+  image_build_method    = "resize"
   image_path            = "PSPi6.PiOS.4-3.64bit.CM4.${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
@@ -55,8 +55,8 @@ source "arm" "raspios_cm4_arm64" {
   image_partitions {
     name         = "boot"
     type         = "c"
-    start_sector = "2048"
-    filesystem   = "fat"
+    start_sector = "8192"
+    filesystem   = "vfat"
     size         = "256M"
     mountpoint   = "/boot"
   }
@@ -65,7 +65,7 @@ source "arm" "raspios_cm4_arm64" {
   image_partitions {
     name         = "root"
     type         = "83"
-    start_sector = "526336"
+    start_sector = "532480"
     filesystem   = "ext4"
     size         = "0"
     mountpoint   = "/"
