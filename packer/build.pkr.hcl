@@ -1,18 +1,18 @@
 build {
   # specify the build source image
   sources = [
-    # "source.arm.raspios_zero_arm",
-    "source.arm.raspios_cm4_zero2_arm64"
+    "source.arm.raspios_zero_arm",
+    "source.arm.raspios_cm4_zero2_arm64",
     # "source.arm.lakka_zero_arm",
     # "source.arm.lakka_cm4_arm64",
-    # "source.arm.retropie_zero_arm",
-    # "source.arm.retropie_zero2_arm",
-    # "source.arm.retropie_cm4_arm64",
+    "source.arm.retropie_zero_arm",
+    "source.arm.retropie_zero2_arm",
+    "source.arm.retropie_cm4_arm64",
     # "source.arm.batocera_zero2_arm",
     # "source.arm.batocera_cm4_arm64",
-    # "source.arm.recalbox_zero_arm",
-    # "source.arm.recalbox_zero2_arm64",
-    # "source.arm.recalbox_cm4_arm64"
+    "source.arm.recalbox_zero_arm",
+    "source.arm.recalbox_zero2_arm64",
+    "source.arm.recalbox_cm4_arm64"
   ]
 
   # Configure raspberry pi
