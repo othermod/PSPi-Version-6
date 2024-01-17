@@ -32,6 +32,11 @@ build {
 
   # Update OS & Install Dependencies
   provisioner "shell" {
+    only = [
+      "source.arm.raspios_zero_arm",
+      "source.arm.raspios_cm4_zero2_arm64"
+    ]
+    
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
       "${path.root}scripts/installers/apt.sh"
