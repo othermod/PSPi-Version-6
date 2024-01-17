@@ -138,7 +138,7 @@ enable_i2c() {
     fi
 
     # Enable the I2C device
-    modprobe i2c-dev
+    # modprobe i2c-dev
 }
 
 copy_binaries() {
