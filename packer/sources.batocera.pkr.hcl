@@ -6,7 +6,7 @@ source "arm" "batocera_zero2_arm" {
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
   image_path            = "PSPi6.Batocera36.Zero2.${var.pspi_version}.img" 
-  image_size            = "4G" 
+  image_size            = "8G" 
   image_type            = "dos"
 
   # configure boot partition
@@ -15,7 +15,7 @@ source "arm" "batocera_zero2_arm" {
     type         = "c"
     start_sector = "2048"
     filesystem   = "vfat"
-    size         = "3G"
+    size         = "4G"
     mountpoint   = "/boot"
   }
 
@@ -23,7 +23,7 @@ source "arm" "batocera_zero2_arm" {
   image_partitions {
     name         = "root"
     type         = "83"
-    start_sector = "6293504"
+    start_sector = "8390656"
     filesystem   = "ext4"
     size         = "0"
     mountpoint   = "/"
@@ -42,7 +42,7 @@ source "arm" "batocera_cm4_arm64" {
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "reuse"
+  image_build_method    = "resize"
   image_path            = "PSPi6.Batocera36.CM4.${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
@@ -53,7 +53,7 @@ source "arm" "batocera_cm4_arm64" {
     type         = "c"
     start_sector = "2048"
     filesystem   = "vfat"
-    size         = "256M"
+    size         = "4G"
     mountpoint   = "/boot"
   }
 
@@ -61,7 +61,7 @@ source "arm" "batocera_cm4_arm64" {
   image_partitions {
     name         = "root"
     type         = "83"
-    start_sector = "6293504"
+    start_sector = "8390656"
     filesystem   = "ext4"
     size         = "0"
     mountpoint   = "/"
