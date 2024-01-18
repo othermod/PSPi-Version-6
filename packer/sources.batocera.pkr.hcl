@@ -80,7 +80,7 @@ source "arm" "batocera_cm4_arm64" {
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "resize"
+  image_build_method    = "reuse"
   image_path            = "PSPi6.Batocera38.CM4.${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
