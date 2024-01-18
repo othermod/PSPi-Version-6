@@ -1,6 +1,6 @@
 source "arm" "batocera_zero_arm" {
   file_urls             = ["https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz"]
-  file_checksum_url     = "https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz.sha256"
+  file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz.sha256"
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
@@ -81,7 +81,7 @@ source "arm" "batocera_cm4_arm64" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.Batocera36.CM4.${var.pspi_version}.img"
+  image_path            = "PSPi6.Batocera38.CM4.${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
 
