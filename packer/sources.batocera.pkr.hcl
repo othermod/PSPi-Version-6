@@ -78,7 +78,7 @@ source "arm" "batocera_cm4_arm64" {
   # file_urls             = ["https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz"]
   # file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz.sha256"
   file_urls             = ["https://stpspiproduseast001.blob.core.windows.net/pspi6/PSPi6.Batocera38.CM4.Base.img.xz"]
-  file_checksum_url     = "https://stpspiproduseast001.blob.core.windows.net/pspi6/PSPi6.Batocera38.CM4.Base.img.xz.sha256"
+  file_checksum     = "04227087EE546F5B24B5D1B2D2EB2E9FD2D4F6FDB429854DCAFE9A8C6DCB6534"
   file_checksum_type    = "sha256"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
