@@ -26,19 +26,10 @@ detect_os_and_setup_services() {
     Batocera)
         batocera_setup
         ;;
-    debian)
+    Debian | Raspios | RetroPie | Ubuntu)
         raspbian_setup
         ;;
-    Raspios)
-        raspbian_setup
-        ;;
-    retropie)
-        raspbian_setup
-        ;;
-    ubuntu)
-        raspbian_setup
-        ;;
-    lakka)
+    Lakka)
         lakka_setup
         ;;
     *)

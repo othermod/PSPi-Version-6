@@ -26,7 +26,7 @@ source "arm" "batocera_zero2_arm" {
     start_sector = "8390656"
     filesystem   = "ext4"
     size         = "0"
-    mountpoint   = "/"
+    mountpoint   = "/userdata"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
@@ -64,7 +64,7 @@ source "arm" "batocera_cm4_arm64" {
     start_sector = "8390656"
     filesystem   = "ext4"
     size         = "0"
-    mountpoint   = "/"
+    mountpoint   = "/userdata"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
