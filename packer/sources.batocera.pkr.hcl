@@ -80,8 +80,10 @@ source "arm" "batocera_cm4_arm64" {
   file_urls             = ["https://stpspiproduseast001.blob.core.windows.net/pspi6/PSPi6.Batocera38.CM4.Base.img.xz"]
   file_checksum     = "04227087EE546F5B24B5D1B2D2EB2E9FD2D4F6FDB429854DCAFE9A8C6DCB6534"
   file_checksum_type    = "sha256"
-  file_target_extension = "gz"
-  file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
+  file_target_extension = "xz"
+  file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
+  # file_target_extension = "gz"
+  # file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi6.Batocera38.CM4.${var.pspi_version}.img"
   image_size            = "8G"
