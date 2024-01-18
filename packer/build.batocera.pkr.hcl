@@ -6,6 +6,11 @@ build {
     "source.arm.batocera_cm4_arm64"
   ]
 
+  provisioner "shell-local" {
+    inline = ["echo waiting for automatic disk resize"]
+    pause_before = "1m"
+  }
+
   # Upload config.txt
   provisioner "file" {
     source = "${path.root}/../rpi/configs/batocera.txt"

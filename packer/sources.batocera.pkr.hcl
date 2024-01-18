@@ -95,15 +95,15 @@ source "arm" "batocera_cm4_arm64" {
     mountpoint   = "/boot"
   }
 
-  # configure root partition
-  # image_partitions {
-  #   name         = "root"
-  #   type         = "83"
-  #   start_sector = "8390656"
-  #   filesystem   = "ext4"
-  #   size         = "0"
-  #   mountpoint   = "/userdata"
-  # }
+  configure root partition
+  image_partitions {
+    name         = "root"
+    type         = "83"
+    start_sector = "8390656"
+    filesystem   = "ext4"
+    size         = "0"
+    mountpoint   = "/"
+  }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
 
