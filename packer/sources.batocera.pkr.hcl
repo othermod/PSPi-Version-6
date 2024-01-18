@@ -95,7 +95,7 @@ source "arm" "batocera_cm4_arm64" {
     mountpoint   = "/boot"
   }
 
-  configure root partition
+  # configure root partition
   image_partitions {
     name         = "root"
     type         = "83"
