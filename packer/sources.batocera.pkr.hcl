@@ -1,4 +1,42 @@
-source "arm" "batocera_zero2_arm" {
+source "arm" "batocera_zero_arm" {
+  file_urls             = ["https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz"]
+  file_checksum_url     = "https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz.sha256"
+  file_checksum_type    = "sha256"
+  file_target_extension = "gz"
+  file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
+  image_build_method    = "resize"
+  image_path            = "PSPi6.Batocera36.Zero.${var.pspi_version}.img" 
+  image_size            = "8G" 
+  image_type            = "dos"
+
+  # configure boot partition
+  image_partitions {
+    name         = "boot"
+    type         = "c"
+    start_sector = "2048"
+    filesystem   = "vfat"
+    size         = "4G"
+    mountpoint   = "/boot"
+  }
+
+  # configure root partition
+  image_partitions {
+    name         = "root"
+    type         = "83"
+    start_sector = "8390656"
+    filesystem   = "ext4"
+    size         = "0"
+    mountpoint   = "/userdata"
+  }
+
+  image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
+
+  # qemu binary paths
+  qemu_binary_source_path      = "/usr/bin/qemu-aarch64-static"
+  qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
+}
+
+source "arm" "batocera_zero2_arm64" {
   file_urls             = ["https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gz"]
   file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gz.sha256"
   file_checksum_type    = "sha256"
@@ -32,8 +70,8 @@ source "arm" "batocera_zero2_arm" {
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
 
   # qemu binary paths
-  qemu_binary_source_path      = "/usr/bin/qemu-aarch64-static"
-  qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
+  qemu_binary_source_path      = "/usr/bin/qemu-arm-static"
+  qemu_binary_destination_path = "/usr/bin/qemu-arm-static"
 }
 
 source "arm" "batocera_cm4_arm64" {

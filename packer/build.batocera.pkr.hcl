@@ -1,7 +1,8 @@
 build {
   # specify the build source image
   sources = [
-    # "source.arm.batocera_zero2_arm",
+    "source.arm.batocera_zero_arm",
+    "source.arm.batocera_zero2_arm64",
     "source.arm.batocera_cm4_arm64"
   ]
 

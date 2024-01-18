@@ -1,8 +1,9 @@
 # build {
 #   # specify the build source image
 #   sources = [
-#     "source.arm.raspios_zero_arm",
-#     "source.arm.raspios_cm4_zero2_arm64"
+#     "source.arm.retropie_zero_arm",
+#     "source.arm.retropie_zero2_arm64",
+#     "source.arm.retropie_cm4_arm64"
 #   ]
 
 #   # Configure raspberry pi
@@ -50,7 +51,7 @@
 #       "${path.root}scripts/installers/install-pspi6.sh"
 #     ]
 #     env = {
-#       "OS" = "Raspios"
+#       "OS" = "RetroPie"
 #     }
 #   }
 
@@ -59,14 +60,6 @@
 #     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
 #     expect_disconnect = true
 #     inline            = ["echo 'Reboot VM'", "reboot"]
-#   }
-
-#   # disable the customization dialog, that raspberry pi os will show at boot
-#   provisioner "shell" {
-#     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-#     scripts = [
-#       "${path.root}scripts/installers/disable-userconfig.sh"
-#     ]
 #   }
 
 #   # Cleanup
