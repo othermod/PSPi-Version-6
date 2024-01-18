@@ -52,6 +52,7 @@ unknown_setup() {
 }
 
 batocera_setup() {
+    echo "Batocera"
 }
 
 raspbian_setup() {
