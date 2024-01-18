@@ -97,7 +97,6 @@ source "arm" "batocera_cm4_arm64" {
 
   # configure root partition
   image_partitions {
-    name         = "userdata"
     type         = "83"
     start_sector = "8390656"
     filesystem   = "ext4"
