@@ -1,6 +1,0 @@
-mode: ContinuousDeployment
-branches:
-  main:
-    regex: ^latest$
-  pull-request:
-    tag: pr
