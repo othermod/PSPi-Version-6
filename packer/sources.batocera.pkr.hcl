@@ -84,7 +84,7 @@ source "arm" "batocera_cm4_arm64" {
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   # file_target_extension = "gz"
   # file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
-  image_build_method    = "reuse"
+  image_build_method    = "resize"
   image_path            = "PSPi6.Batocera38.CM4.${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
@@ -101,10 +101,12 @@ source "arm" "batocera_cm4_arm64" {
 
   # configure root partition
   image_partitions {
+    name         = "share"
     type         = "83"
     start_sector = "8390656"
     filesystem   = "ext4"
     size         = "0"
+    mountpoint   = "/userdata"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
