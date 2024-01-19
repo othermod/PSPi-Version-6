@@ -1,15 +1,11 @@
 build {
   name = "retropie"
 
-  source "arm.retropie_zero_arm" {
-    name = "zero_arm"
-  }
-  source "arm.retropie_zero2_arm64" {
-    name = "zero2_arm64"
-  }
-  source "arm.retropie_cm4_arm64" {
-    name = "cm4_arm64"
-  }
+  sources = [
+    "arm.retropie_zero_arm",
+    "arm.retropie_zero2_arm6",
+    "arm.retropie_cm4_arm64"
+  ]
 
   # Configure raspberry pi
   provisioner "shell" {

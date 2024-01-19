@@ -1,33 +1,14 @@
 build {
   name = "batocera"
-
-  # source "source.arm.batocera_zero_arm_base" {
-  #   name = "zero_arm_base"
-  # }
-  # source "source.arm.batocera_zero2_arm64_base" {
-  #   name = "zero2_arm64_base"
-  # }
-  # source "source.arm.batocera_cm4_arm64_base" {
-  #   name = "cm4_arm64_base"
-  # }
-  # source "source.arm.batocera_zero_arm" {
-  #   name = "zero_arm"
-  # }
-  # source "source.arm.batocera_zero2_arm64" {
-  #   name = "zero2_arm64"
-  # }
-  # source "arm.batocera_cm4_arm64" {
-  #   name = "cm4_arm64"
-  # }
   # Don't need to build base unless updating its upstream source
   sources = [
     ####
-    # "source.arm.batocera_zero_arm_base",
-    # "source.arm.batocera_zero2_arm64_base",
-    # "source.arm.batocera_cm4_arm64_base",
+    # "arm.batocera_zero_arm_base",
+    # "arm.batocera_zero2_arm64_base",
+    # "arm.batocera_cm4_arm64_base",
     ####
-    # "source.arm.batocera_zero_arm",
-    # "source.arm.batocera_zero2_arm64",
+    # "arm.batocera_zero_arm",
+    # "arm.batocera_zero2_arm64",
     "arm.batocera_cm4_arm64"
   ]
 

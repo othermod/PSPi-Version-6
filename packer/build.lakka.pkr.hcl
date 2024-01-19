@@ -1,8 +1,10 @@
 build {
+  name = "lakka"
+
   # Don't need to build base unless updating its upstream source
   sources = [
-    "source.arm.lakka_zero_zero2_arm",
-    "source.arm.lakka_cm4_arm64"
+    "arm.lakka_zero_zero2_arm",
+    "arm.lakka_cm4_arm64"
   ]
 
   # Upload config.txt
