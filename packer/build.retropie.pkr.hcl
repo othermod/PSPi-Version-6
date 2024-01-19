@@ -1,9 +1,9 @@
 build {
   # specify the build source image
   sources = [
-    "source.arm.retropie.zero_arm",
-    "source.arm.retropie.zero2_arm64",
-    "source.arm.retropie.cm4_arm64"
+    "source.arm.retropie_zero_arm",
+    "source.arm.retropie_zero2_arm64",
+    "source.arm.retropie_cm4_arm64"
   ]
 
   # Configure raspberry pi

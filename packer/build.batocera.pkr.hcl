@@ -16,7 +16,7 @@ build {
   # source "source.arm.batocera_zero2_arm64" {
   #   name = "zero2_arm64"
   # }
-  source "source.arm.batocera_cm4_arm64" {
+  source "arm.batocera_cm4_arm64" {
     name = "cm4_arm64"
   }
   # Don't need to build base unless updating its upstream source
