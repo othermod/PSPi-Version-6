@@ -8,7 +8,7 @@ build {
     ####
     # "source.arm.batocera_zero_arm",
     # "source.arm.batocera_zero2_arm64",
-    "source.arm.batocera.cm4_arm64"
+    "arm.batocera.cm4_arm64"
   ]
 
   # Upload config.txt
