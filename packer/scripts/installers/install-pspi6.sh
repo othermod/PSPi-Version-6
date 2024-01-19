@@ -3,7 +3,7 @@
 ##  File:  install-pspi6.sh
 ##  Desc: This script is used to install PSPi Version 6. It contains the necessary installation steps and dependencies required for the installation process.
 ################################################################################
-set -x 
+set -x
 
 detect_architecture() {
     local arch
@@ -26,8 +26,11 @@ detect_os_and_setup_services() {
     Batocera)
         batocera_setup
         ;;
-    Debian | Raspios | RetroPie | Ubuntu)
+    Debian | Raspios | RetroPie)
         raspbian_setup
+        ;;
+    Ubuntu)
+        ubuntu_setup
         ;;
     Lakka)
         lakka_setup
