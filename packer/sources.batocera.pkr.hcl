@@ -1,3 +1,12 @@
+# Base images are used as a (hopefully) temporary measure to resolve complications with SHARE partition.
+# Have been unable to solve without needing to do an initial boot on hardware
+# The base build should only require config.txt & overlays in order to guarantee a good initial boot on hardware
+# After initial boot, SD card is manually captured with Win32DiskImager and Shrunk with PiShrink. This can be done with WSL if on windows)
+# pishrink.sh -v -Z -a imagename.img
+# https://win32diskimager.org/
+# https://github.com/Drewsif/PiShrink
+# Base image is then rehosted to be used for a final build
+# Base image should not need to be updated unless we're changing source image from batocera 
 source "arm" "batocera_zero_arm_base" {
   file_urls             = ["https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz"]
   file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz.sha256"
@@ -82,9 +91,10 @@ source "arm" "batocera_cm4_arm64_base" {
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
+# Final image builds from base image
 source "arm" "batocera_cm4_arm64" {
   file_urls             = ["https://stpspiproduseast001.blob.core.windows.net/pspi6/PSPi6.Batocera38.CM4.Base.img.xz"]
-  file_checksum         = "04227087EE546F5B24B5D1B2D2EB2E9FD2D4F6FDB429854DCAFE9A8C6DCB6534"
+  file_checksum_url     = "https://stpspiproduseast001.blob.core.windows.net/pspi6/PSPi6.Batocera38.CM4.Base.img.xz.sha256"
   file_checksum_type    = "sha256"
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
