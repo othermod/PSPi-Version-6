@@ -1,5 +1,5 @@
-name: build
-
+name: Build Packer Image
+description: 'Build PSPi image'
 inputs:
   build:
     description: 'Comma seperated list of images to build'

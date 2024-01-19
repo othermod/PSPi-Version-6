@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: build
-        uses: ./.github/actions/build.yml
+      - name: Build Image
+        uses: ./.github/actions/build-image
         with:
           build: '${{ matrix.os }}*'
