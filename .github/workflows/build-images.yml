@@ -54,7 +54,7 @@ jobs:
           done
         working-directory: packer/plugins/packer-builder-arm
 
-      - name: Generate filehash
+      - name: Generate sha256 filehash
         run: |
           for i in $(ls *.img.xz)
           do

@@ -1,13 +1,11 @@
-source "arm" "lakka_zero_arm" {
-  file_urls = ["./Lakka-RPi2.arm-4.3-Base.img.gz"]
-  # file_checksum_url     = "file:./Lakka-RPi2.arm-4.3-Base.img.sha256"
-  # file_urls             = ["https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz"]
-  # file_checksum_url     = "https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz.sha256"
+source "arm" "lakka_zero_zero2_arm" {
+  file_urls             = ["https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz"]
+  file_checksum_url     = "https://github.com/libretro/Lakka-LibreELEC/releases/download/v4.3/Lakka-RPi.arm-4.3.img.gz.sha256"
   file_checksum_type    = "none"
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Lakka 4.3 32bit Zero ${var.pspi_version}.img"
+  image_path            = "PSPi6.Lakka.4.3.Zero.Zero2.${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
   image_setup_extra = [
@@ -55,7 +53,7 @@ source "arm" "lakka_cm4_arm64" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi 6 Lakka 4.3 64bit CM4 ${var.pspi_version}.img"
+  image_path            = "PSPi6.Lakka.4.3.CM4.${var.pspi_version}.img"
   image_size            = "4G"
   image_type            = "dos"
 

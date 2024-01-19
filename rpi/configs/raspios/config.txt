@@ -20,9 +20,6 @@ max_framebuffers=1
 # Use the kernel's default instead.
 disable_fw_kms_setup=1
 
-# Run in 64-bit mode
-arm_64bit=1
-
 # Disable compensation for displays with overscan
 disable_overscan=1
 
@@ -51,6 +48,9 @@ over_voltage=-2
 
 [cm4]
 
+# Run in 64-bit mode
+arm_64bit=1
+
 # Set GPIO pins for 24-Bit DPI Mode 7
 gpio=0=a2,np
 gpio=1=a2,np
@@ -77,6 +77,9 @@ arm_freq_min=300
 core_freq_min=200
 
 [pi0]
+
+# Run in 64-bit mode
+arm_64bit=0
 
 gpu_mem_256=128
 gpu_mem_512=256

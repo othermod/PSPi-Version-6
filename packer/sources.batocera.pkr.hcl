@@ -14,7 +14,7 @@ source "arm" "batocera_zero_arm_base" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi6.Batocera36.Zero.Base.img" 
+  image_path            = "PSPi6.Batocera36.Zero.Base.${var.pspi_version}.img" 
   image_size            = "8G" 
   image_type            = "dos"
 
@@ -42,7 +42,7 @@ source "arm" "batocera_zero2_arm64_base" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi6.Batocera36.Zero2.Base.img" 
+  image_path            = "PSPi6.Batocera36.Zero2.Base.${var.pspi_version}.img" 
   image_size            = "8G" 
   image_type            = "dos"
 
@@ -70,7 +70,7 @@ source "arm" "batocera_cm4_arm64_base" {
   file_target_extension = "gz"
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
-  image_path            = "PSPi6.Batocera38.CM4.Base.img"
+  image_path            = "PSPi6.Batocera38.CM4.Base.${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
 
@@ -99,7 +99,7 @@ source "arm" "batocera_cm4_arm64" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.Batocera38.CM4.img"
+  image_path            = "PSPi6.Batocera38.CM4.${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
 

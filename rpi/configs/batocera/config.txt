@@ -2,9 +2,6 @@
 # http://rpf.io/configtxt
 # Some settings may impact device functionality. See link above for details
 
-# Load the 64-bit kernel
-arm_64bit=1
-
 # Kernel
 kernel=boot/linux
 initramfs boot/initrd.lz4
@@ -67,6 +64,9 @@ over_voltage=-2
 
 [cm4]
 
+# Load the 64-bit kernel
+arm_64bit=1
+
 # Enable DRM VC4 V3D driver
 dtoverlay=vc4-fkms-v3d
 max_framebuffers=1
@@ -103,6 +103,9 @@ arm_freq_min=300
 core_freq_min=200
 
 [pi0]
+
+# Load the 64-bit kernel
+arm_64bit=0
 
 gpu_mem_256=128
 gpu_mem_512=256

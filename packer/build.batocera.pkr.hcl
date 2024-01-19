@@ -1,9 +1,11 @@
 build {
-  # Don't need to build base unless we're updating its upstream source
+  # Don't need to build base unless updating its upstream source
   sources = [
+    ####
     # "source.arm.batocera_zero_arm_base",
     # "source.arm.batocera_zero2_arm64_base",
     # "source.arm.batocera_cm4_arm64_base",
+    ####
     # "source.arm.batocera_zero_arm",
     # "source.arm.batocera_zero2_arm64",
     "source.arm.batocera_cm4_arm64"
@@ -11,7 +13,7 @@ build {
 
   # Upload config.txt
   provisioner "file" {
-    source = "${path.root}/../rpi/configs/batocera.txt"
+    source = "${path.root}/../rpi/configs/batocera/config.txt"
     destination = "/boot/config.txt"
   }
 

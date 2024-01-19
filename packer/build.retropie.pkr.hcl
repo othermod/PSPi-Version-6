@@ -14,13 +14,6 @@ build {
     ]
   }
 
-  # Reboot
-  provisioner "shell" {
-    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    inline            = ["echo 'Reboot VM'", "reboot"]
-  }
-
   # Update OS & Install Dependencies
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
@@ -29,19 +22,35 @@ build {
     ]
   }
 
-  # Create upload folder
+  # Reboot
   provisioner "shell" {
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline          = [
-      "mkdir ${var.packer_folder}", 
-      "chmod 777 ${var.packer_folder}"
-    ]
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    inline            = ["echo 'Reboot VM'", "reboot"]
   }
 
-  # Upload pspi6 installer & config files
+  # Upload config.txt
   provisioner "file" {
-    source = "${path.root}/../rpi"
-    destination = "${var.temp_folder}"
+    source = "${path.root}/../rpi/configs/raspios/config.txt"
+    destination = "/boot/config.txt"
+  }
+
+  # Upload overlays
+  provisioner "file" {
+    source = "${path.root}/../rpi/overlays/"
+    destination = "/boot/overlays"
+  }
+
+  # Upload drivers
+  provisioner "file" {
+    source = "${path.root}/../rpi/drivers/bin/"
+    destination = "/usr/bin/"
+  }
+
+  # Upload services
+  provisioner "file" {
+    source = "${path.root}/../rpi/services/"
+    destination = "/etc/systemd/system/"
   }
   
   # Install pspi6 drivers & services
@@ -68,5 +77,5 @@ build {
     scripts = [
       "${path.root}scripts/installers/cleanup.sh"
     ]
-  }  
+  }
 }
