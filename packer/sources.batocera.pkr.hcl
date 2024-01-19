@@ -21,7 +21,7 @@ source "arm" "batocera_zero_arm" {
 
   # configure root partition
   image_partitions {
-    name         = "root"
+    name         = "share"
     type         = "83"
     start_sector = "8390656"
     filesystem   = "ext4"
@@ -59,7 +59,7 @@ source "arm" "batocera_zero2_arm64" {
 
   # configure root partition
   image_partitions {
-    name         = "root"
+    name         = "share"
     type         = "83"
     start_sector = "8390656"
     filesystem   = "ext4"
