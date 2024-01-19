@@ -1,4 +1,7 @@
 build {
+  dynamic "source" {
+    for_each 
+  }
   # Don't need to build base unless updating its upstream source
   sources = [
     ####
@@ -8,7 +11,9 @@ build {
     ####
     # "source.arm.batocera_zero_arm",
     # "source.arm.batocera_zero2_arm64",
-    "source.arm.batocera_cm4_arm64"
+    "source.arm.batocera_cm4_arm64" {
+      name = "batocera.cm4_arm64"
+    }
   ]
 
   # Upload config.txt

@@ -18,4 +18,4 @@ jobs:
       - name: Build Image
         uses: ./.github/actions/build-image
         with:
-          build: '${{ matrix.os }}*'
+          build: '${{ matrix.os }}.*'
