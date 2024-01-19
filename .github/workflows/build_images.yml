@@ -11,6 +11,7 @@ jobs:
   build-images:
     strategy:
       matrix:
+        # Resolves to the packer image name
         os: [batocera, raspios, retropie]
     runs-on: ubuntu-latest
     steps:
