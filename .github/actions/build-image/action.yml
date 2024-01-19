@@ -26,6 +26,7 @@ runs:
       run: |
         sudo apt-get update
         sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils
+      shell: bash
 
     - name: Install packer-builder-arm
       run: |
@@ -35,11 +36,13 @@ runs:
         cd packer-builder-arm
         go mod download
         go build -v .
+      shell: bash
 
     - name: Build images
       run: |
         sudo packer build -only ${{ inputs.build }}-var pspi_version=v${{ steps.gitversion.outputs.majorMinorPatch }} "$GITHUB_WORKSPACE/packer/"
       working-directory: packer/plugins/packer-builder-arm
+      shell: bash
 
     - name: Shrink images
       run: |
@@ -50,6 +53,7 @@ runs:
           sudo ./pishrink.sh -v -Z -a "$i"
         done
       working-directory: packer/plugins/packer-builder-arm
+      shell: bash
 
     - name: Generate sha256 filehash
       run: |
@@ -58,6 +62,7 @@ runs:
           sha256sum "$i" | awk '{print $1}' > "$i.sha256"
         done
       working-directory: packer/plugins/packer-builder-arm
+      shell: bash
         
     # - name: Create Release
     #   uses: softprops/action-gh-release@v0.1.15
