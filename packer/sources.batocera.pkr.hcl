@@ -8,6 +8,7 @@
 # Base image is then rehosted to be used for a final build
 # Base image should not need to be updated unless we're changing source image from batocera 
 source "arm" "batocera_zero_arm_base" {
+  name                  = "batocera.zero_arm_base"
   file_urls             = ["https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz"]
   file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2835/stable/last/batocera-bcm2835-36-20230310.img.gz.sha256"
   file_checksum_type    = "sha256"
@@ -36,6 +37,7 @@ source "arm" "batocera_zero_arm_base" {
 }
 
 source "arm" "batocera_zero2_arm64_base" {
+  name                  = "batocera.zero2_arm64_base"
   file_urls             = ["https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gz"]
   file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2836/stable/last/batocera-bcm2836-36-20230311.img.gz.sha256"
   file_checksum_type    = "sha256"
@@ -64,6 +66,7 @@ source "arm" "batocera_zero2_arm64_base" {
 }
 
 source "arm" "batocera_cm4_arm64_base" {
+  name                  = "batocera.cm4_arm64_base"
   file_urls             = ["https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz"]
   file_checksum_url     = "https://mirrors.o2switch.fr/batocera/bcm2711/stable/last/batocera-bcm2711-bcm2711-38-20231014.img.gz.sha256"
   file_checksum_type    = "sha256"
@@ -93,6 +96,7 @@ source "arm" "batocera_cm4_arm64_base" {
 
 # Final image builds from base image
 source "arm" "batocera_cm4_arm64" {
+  name                  = "batocera.cm4_arm64"
   file_urls             = ["https://stpspiproduseast001.blob.core.windows.net/pspi6/PSPi6.Batocera38.CM4.Base.img.xz"]
   file_checksum_url     = "https://stpspiproduseast001.blob.core.windows.net/pspi6/PSPi6.Batocera38.CM4.Base.img.xz.sha256"
   file_checksum_type    = "sha256"

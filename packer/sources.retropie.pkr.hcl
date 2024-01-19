@@ -1,4 +1,5 @@
 source "arm" "retropie_zero_arm" {
+  name                   = "retropie.zero_arm"
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi1_zero.img.gz"]
   file_checksum         = "95A6F84453DF36318830DE7E8507170E"
   file_checksum_type    = "md5"
@@ -37,6 +38,7 @@ source "arm" "retropie_zero_arm" {
 }
 
 source "arm" "retropie_zero2_arm64" {
+  name                   = "retropie.zero2_arm64"
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi2_3_zero2w.img.gz"]
   file_checksum         = "224e64d8820fc64046ba3850f481c87e"
   file_checksum_type    = "md5"
@@ -75,6 +77,7 @@ source "arm" "retropie_zero2_arm64" {
 }
 
 source "arm" "retropie_cm4_arm64" {
+  name                   = "retropie.cm4_arm64"
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi4_400.img.gz"]
   file_checksum         = "b5daa6e7660a99c246966f3f09b4014b"
   file_checksum_type    = "md5"

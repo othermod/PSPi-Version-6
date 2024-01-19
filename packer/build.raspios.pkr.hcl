@@ -1,12 +1,8 @@
 build {
   # specify the build source image
   sources = [
-    "source.arm.raspios_zero_arm" {
-      name = "raspios.zero_arm"
-    },
-    "source.arm.raspios_cm4_zero2_arm64" {
-      name = "raspios.cm4_zero2_arm64"
-    }
+    "source.arm.raspios_zero_arm",
+    "source.arm.raspios_cm4_zero2_arm64"
   ]
 
   # Configure raspberry pi
