@@ -6,7 +6,7 @@ source "arm" "raspios_zero_arm" {
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
   image_path            = "PSPi6.PiOS4.3.Zero.${var.pspi_version}.img"
-  image_size            = "3.5G"
+  image_size            = "6G"
   image_type            = "dos"
 
   # configure boot partition
@@ -44,7 +44,7 @@ source "arm" "raspios_cm4_zero2_arm64" {
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
   image_path            = "PSPi6.PiOS4.3.CM4-Zero2.${var.pspi_version}.img"
-  image_size            = "3.5G"
+  image_size            = "6G"
   image_type            = "dos"
 
   # configure boot partition
