@@ -30,8 +30,8 @@ build {
   }
 
   # Upload custom.sh
-  # provisioner "file" {
-  #   source = "${path.root}/../rpi/scripts/batocera/custom.sh"
-  #   destination = "/userdata/system/custom.sh"
-  # }
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/batocera/custom.sh"
+    destination = "/userdata/system/custom.sh"
+  }
 }
