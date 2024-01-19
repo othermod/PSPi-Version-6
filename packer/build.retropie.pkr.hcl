@@ -3,7 +3,7 @@ build {
 
   sources = [
     "arm.retropie_zero_arm",
-    "arm.retropie_zero2_arm6",
+    "arm.retropie_zero2_arm64",
     "arm.retropie_cm4_arm64"
   ]
 

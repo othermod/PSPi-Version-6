@@ -1,12 +1,10 @@
 build {
   name = "raspios"
 
-  source "arm.raspios_zero_arm" {
-    name = "zero_arm"
-  }
-  source "arm.raspios_cm4_zero2_arm64" {
-    name = "cm4_zero2_arm64"
-  }
+  sources = [
+    "arm.raspios_zero_arm",
+    "arm.raspios_cm4_zero2_arm64"
+  ]
 
   # Configure raspberry pi
   provisioner "shell" {
