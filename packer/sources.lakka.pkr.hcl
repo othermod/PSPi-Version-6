@@ -6,7 +6,7 @@ source "arm" "lakka_zero_zero2_arm" {
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi6.Lakka.4.3.Zero.Zero2.${var.pspi_version}.img"
-  image_size            = "8G"
+  image_size            = "3G"
   image_type            = "dos"
   image_setup_extra = [
     [
@@ -54,7 +54,7 @@ source "arm" "lakka_cm4_arm64" {
   file_unarchive_cmd    = ["gunzip", "$ARCHIVE_PATH"]
   image_build_method    = "reuse"
   image_path            = "PSPi6.Lakka.4.3.CM4.${var.pspi_version}.img"
-  image_size            = "4G"
+  image_size            = "3G"
   image_type            = "dos"
 
   # configure boot partition
