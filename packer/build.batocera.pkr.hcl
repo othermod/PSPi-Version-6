@@ -27,9 +27,9 @@ build {
   # Upload drivers
   provisioner "file" {
     only = [
-      "source.arm.batocera_zero_arm", 
-      "source.arm.batocera_zero2_arm64", 
-      "source.arm.batocera.cm4_arm64"
+      "batocera.arm.batocera_zero_arm", 
+      "batocera.arm.batocera_zero2_arm64", 
+      "batocera.arm.batocera.cm4_arm64"
     ]
     source = "${path.root}/../rpi/drivers/bin/"
     destination = "/boot/drivers"
@@ -38,9 +38,9 @@ build {
   # Upload custom.sh
   provisioner "file" {
     only = [
-      "source.arm.batocera_zero_arm", 
-      "source.arm.batocera_zero2_arm64", 
-      "source.arm.batocera.cm4_arm64"
+      "batocera.arm.batocera_zero_arm", 
+      "batocera.arm.batocera_zero2_arm64", 
+      "batocera.arm.batocera.cm4_arm64"
     ]
     source = "${path.root}/../rpi/scripts/batocera/custom.sh"
     destination = "/userdata/system/custom.sh"
@@ -49,9 +49,9 @@ build {
   # Upload resize.sh
   provisioner "file" {
     only = [
-      "source.arm.batocera_zero_arm", 
-      "source.arm.batocera_zero2_arm64", 
-      "source.arm.batocera.cm4_arm64"
+      "batocera.arm.batocera_zero_arm", 
+      "batocera.arm.batocera_zero2_arm64", 
+      "batocera.arm.batocera.cm4_arm64"
     ]
     source = "${path.root}/../rpi/scripts/batocera/resize.sh"
     destination = "/userdata/system/resize.sh"
