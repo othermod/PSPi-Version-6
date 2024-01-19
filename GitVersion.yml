@@ -1,4 +1,4 @@
-mode: Mainline
+mode: ContinuousDeployment
 branches:
   main:
     regex: ^latest$
