@@ -34,4 +34,10 @@ build {
     source = "${path.root}/../rpi/scripts/batocera/custom.sh"
     destination = "/userdata/system/custom.sh"
   }
+
+  # Upload resize.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/batocera/resize.sh"
+    destination = "/userdata/system/resize.sh"
+  }
 }
