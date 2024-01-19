@@ -103,7 +103,7 @@ jobs:
           generate_release_notes: true
           tag_name: ${{ github.sha }}
           name: ${{ github.sha }}
-          draft: true
+          draft: false
           fail_on_unmatched_files: true
           files: |
             packer/plugins/packer-builder-arm/*.img.xz
