@@ -7,11 +7,6 @@ build {
   source "arm.raspios_cm4_zero2_arm64" {
     name = "cm4_zero2_arm64"
   }
-  # specify the build source image
-  # sources = [
-  #   "source.arm.raspios_zero_arm",
-  #   "source.arm.raspios_cm4_zero2_arm64"
-  # ]
 
   # Configure raspberry pi
   provisioner "shell" {
