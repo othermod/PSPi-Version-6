@@ -1,8 +1,5 @@
 /* TODO
-1. The switch on the left can be used for enabling/disabling wifi, and the LED can signal when wifi is connected
-2. Add volume osd indicator
-3. is two-way communication possible now? would it need to be in main.c?
-4. switch to coulomb counting after the percent is estimated initially
+1. switch to coulomb counting after the percent is estimated initially
 */
 #include <fcntl.h>
 #include <unistd.h>
@@ -12,7 +9,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <alsa/asoundlib.h>
-
 #include <assert.h>
 #include "imageGraphics.h"
 #include "imageLayer.h"
@@ -24,17 +20,17 @@
 #define VOL_INCREASE 1
 #define VOL_DECREASE -1
 
-#define SENSE_RESISTOR_MILLIOHM 50 // maybe allow the Pi to change this and store in EEPROM
+#define SENSE_RESISTOR_MILLIOHM 50
 #define RESISTOR_A_KOHM 150
 #define RESISTOR_B_KOHM 10
 #define BATTERY_INTERNAL_RESISTANCE_MILLIOHM 250
 #define DISCHARGING 0
 #define CHARGING 1
 #define CHARGED 2
-#define DISABLE_WIFI true
+#define DISABLE_WIFI_DURING_SLEEP true
 
 uint8_t brightness = 0;
-bool governorSwitch;
+bool leftSwitch;
 bool notCharging = 1;
 
 snd_mixer_t *handle;
@@ -96,12 +92,7 @@ int change_volume(int operation, long change_value) {
         return -1;
     }
 
-    // Calculate the volume percentage as an unsigned integer
     volume = (unsigned int) (((float)(outvol - MIN_VOLUME) / (MAX_VOLUME - MIN_VOLUME)) * 100);
-
-    // Print the outvol and volume values
-    //printf("Volume level: %ld\n", outvol);
-    //printf("Volume percentage: %u%%\n", volume);
 
     snd_mixer_selem_set_playback_volume_all(elem, outvol);
 
@@ -206,14 +197,8 @@ void drawBattery(IMAGE_LAYER_T * batteryLayer) {
     batteryColor = & red;
   }
   // draw the battery outline and fill with color
-  RGBA8_T * outlineColor;
-  outlineColor = & white;
-  if (governorSwitch&notCharging) {
-    outlineColor = & blue;
-  }
-
-  imageBoxFilledRGB(image, 1, 0, 30, 14, outlineColor);
-  imageBoxFilledRGB(image, 0, 4, 2, 10, outlineColor);
+  imageBoxFilledRGB(image, 1, 0, 30, 14, & white);
+  imageBoxFilledRGB(image, 0, 4, 2, 10, & white);
   imageBoxFilledRGB(image, 2, 1, 29, 13, & black);
   imageBoxFilledRGB(image, 1, 5, 3, 9, & black);
 
@@ -289,7 +274,6 @@ void drawMute(IMAGE_LAYER_T * muteLayer) {
   changeSourceAndUpdateImageLayer(muteLayer);
 }
 
-
 void drawVolume(IMAGE_LAYER_T * volumeLayer) {
   IMAGE_T * image = & (volumeLayer -> image);
     imageBoxFilledRGB(image,0, 0, 110, 21, & white);
@@ -330,46 +314,7 @@ int is_pi4_or_cm4() {
     if (new && (model == 0x11 || model == 0x14)) {
         return 1;  // It's either a 4B or CM4
     }
-
     return 0;  // Not a 4B or CM4
-}
-
-int get_cpu_count() {
-    FILE* file = fopen("/proc/cpuinfo", "r");
-    if (file == NULL) {
-        perror("Failed to open /proc/cpuinfo");
-        exit(1);
-    }
-
-    int count = 0;
-    char line[256];
-    while (fgets(line, sizeof(line), file)) {
-        if (strncmp(line, "processor", 9) == 0) {
-            count++;
-        }
-    }
-
-    fclose(file);
-    return count;
-}
-
-void set_all_cpus_governor(int mode) {
-    const char* governorSwitch = mode ? "powersave" : "ondemand";
-    int cpu_count = get_cpu_count();
-
-    for (int i = 0; i < cpu_count; i++) {
-        char path[100];
-        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor", i);
-
-        FILE* file = fopen(path, "w");
-        if (file == NULL) {
-            perror("Failed to open the governorSwitch file");
-            exit(1);
-        }
-
-        fprintf(file, "%s", governorSwitch);
-        fclose(file);
-    }
 }
 
 int main() {
@@ -453,8 +398,7 @@ int main() {
     uint8_t showVolume = 0;
     isMute = shared_data->STATUS & 0b10000000;
     brightness = shared_data->STATUS & 0b00000111;
-    governorSwitch = shared_data->STATUS & 0b01000000; // make sure the correct governorSwitch is set when the program starts
-    set_all_cpus_governor(governorSwitch);
+    leftSwitch = shared_data->STATUS & 0b01000000; // make sure the correct leftSwitch is set when the program starts
     drawMute(& muteLayer);
     // set initial battery condition
     battery.voltageSYSx16 = shared_data->SENSE_SYS * 8;
@@ -463,18 +407,16 @@ int main() {
     while (1) {
 
       if (shared_data->STATUS & 0b00100000) { //if hold switch is down
-          set_all_cpus_governor(1); // set governorSwitch to powersave
           system("killall -STOP retroarch");
-          if (DISABLE_WIFI) {
+          if (DISABLE_WIFI_DURING_SLEEP) {
             system("ifconfig wlan0 down");
           }
           while (shared_data->STATUS & 0b00100000){ // dont do anything until hold switch is up
             usleep(1000000); //sleep for a second.
           }
-          set_all_cpus_governor(governorSwitch&notCharging); // get governors whatever mode it was previously in
           // need to reset the battery % when returning from sleep.
           system("killall -CONT retroarch");
-          if (DISABLE_WIFI) {
+          if (DISABLE_WIFI_DURING_SLEEP) {
             system("ifconfig wlan0 up");
           }
       }
@@ -486,16 +428,15 @@ int main() {
       calculateAmperage();
       calculateVoltage();
       calculateBatteryStatus();
-
-
-
         if ((previousCharging != battery.chargeIndicator)|(battery.percent != previousPercent)) {
           notCharging = 1;
           if (battery.chargeIndicator) { // if plugged in (charging or charged)
              notCharging = 0;
           }
-          set_all_cpus_governor(governorSwitch&notCharging);
-          drawBattery(& batteryLayer); // make sure this is only done if something changes
+          if (!leftSwitch) {
+            drawBattery(& batteryLayer); // make sure this is only done if something changes
+          }
+
         }
 
         if (previousStatus != shared_data->STATUS) {
@@ -513,18 +454,17 @@ int main() {
           //see whether mute status changed
           if (isMute != (shared_data->STATUS & 0b10000000)) {
             isMute = shared_data->STATUS & 0b10000000;
-            //if (isMute){
               drawMute(& muteLayer);
-            //} else {
-              //clearLayer( & muteLayer);
-          //  }
           }
-          //see whether powersave status changed
-          // perhaps the left switch and hold switch should activate powersave
-          if (governorSwitch != (shared_data->STATUS & 0b01000000)) {
-            governorSwitch = shared_data->STATUS & 0b01000000;
-              set_all_cpus_governor(governorSwitch&notCharging);
+
+          //see whether left switch status changed
+          if (leftSwitch != (shared_data->STATUS & 0b01000000)) {
+            leftSwitch = shared_data->STATUS & 0b01000000;
+            if (leftSwitch) {
+              clearLayer( & batteryLayer);
+            } else {
               drawBattery(& batteryLayer);
+            }
           }
           previousStatus = shared_data->STATUS;
         }
