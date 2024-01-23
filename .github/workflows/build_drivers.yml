@@ -1,0 +1,23 @@
+name: Build PSPi6 Drivers
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build Makefile
+        run: |
+          make
+        working-directory: rpi/drivers
+        shell: bash
