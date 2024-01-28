@@ -52,14 +52,14 @@ runs:
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
-    - name: Generate sha256 filehash
-      run: |
-        for i in *;
-        do
-          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
-        done
-      working-directory: ${{ runner.temp }}/packer/drivers/bin
-      shell: bash
+    # - name: Generate sha256 filehash
+    #   run: |
+    #     for i in *;
+    #     do
+    #       sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+    #     done
+    #   working-directory: ${{ runner.temp }}/packer/drivers/bin
+    #   shell: bash
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
