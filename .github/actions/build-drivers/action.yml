@@ -44,48 +44,25 @@ runs:
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
-    # - name: Extract drivers from image
-    #   run: |
-    #     mv PSPi6.Drivers-64bit.tar.gz $RUNNER_TEMP
-    #     cd $RUNNER_TEMP
-    #     tar --extract --file=PSPi6.Drivers-64bit.tar.gz /packer/drivers/bin
-    #     rm PSPi6.Drivers-64bit.tar.gz
-    #   working-directory: packer/plugins/packer-builder-arm
-    #   shell: bash
+    - name: Extract drivers from image
+      run: |
+        mv PSPi6.Drivers.tar.gz $RUNNER_TEMP
+        cd $RUNNER_TEMP
+        tar --extract --file=PSPi6.Drivers.tar.gz ./packer/drivers/bin
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
 
-    # - name: Shrink images
-    #   run: |
-    #     wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
-    #     chmod +x pishrink.sh
-    #     for i in $(ls *.img)
-    #     do
-    #       sudo ./pishrink.sh -v -Z -a "$i"
-    #     done
-    #   working-directory: packer/plugins/packer-builder-arm
-    #   shell: bash
+    - name: Generate sha256 filehash
+      run: |
+        for i in *;
+        do
+          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+        done
+      working-directory: $RUNNER_TEMP/packer/drivers/bin
+      shell: bash
 
-    # - name: Generate sha256 filehash
-    #   run: |
-    #     for i in gamepad main mouse osd
-    #     do
-    #       sha256sum "$i" | awk '{print $1}' > "$i.sha256"
-    #     done
-    #   working-directory: $RUNNER_TEMP
-    #   shell: bash
-
-    # - name: Upload Artifact
-    #   uses: actions/upload-artifact@v2
-    #   with:
-    #     name: drivers
-    #     path: packer/drivers/bin/     
-        
-    - name: Create Release
-      uses: softprops/action-gh-release@v0.1.15
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
       with:
-        generate_release_notes: true
-        tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
-        name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
-        draft: true
-        fail_on_unmatched_files: true
-        files: |
-          packer/plugins/packer-builder-arm/*.tar.gz
+        name: drivers
+        path: $RUNNER_TEMP/packer/drivers/bin/

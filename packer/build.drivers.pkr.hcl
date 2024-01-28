@@ -24,11 +24,4 @@ build {
       "${path.root}scripts/installers/build-drivers.sh"
     ]
   }
-
-  # Download compiled drivers
-  # provisioner "file" {
-  #   direction   = "download"
-  #   source      = "/packer/drivers/bin/"
-  #   destination = "${path.root}/drivers/bin/"
-  # }
 }
