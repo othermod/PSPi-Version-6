@@ -2,10 +2,10 @@ build {
   name = "drivers"
 
   sources = [
-    # "arm.drivers_32bit",
-    "arm.drivers_64bit"
+    "arm.drivers_raspios_lite_arm64"
   ]
 
+  # Create /packer directory
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = ["mkdir /packer", "chmod 777 /packer"]
@@ -17,7 +17,7 @@ build {
     destination = "/packer/drivers/"
   }
 
-  # Build Drivers
+  # Build drivers
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
