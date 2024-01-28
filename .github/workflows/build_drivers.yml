@@ -1,23 +1,21 @@
-name: Build PSPi6 Drivers
+name: Build Images
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+  push: 
   pull_request:
     branches:
       - main
 
 jobs:
-  build:
+  build-images:
+    strategy:
+      matrix:
+        driver: ["32", "64"]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Build Makefile
-        run: |
-          make
-        working-directory: rpi/drivers
-        shell: bash
+      - uses: actions/checkout@v4
+      - name: Build Drivers
+        uses: ./.github/actions/build-drivers
+        with:
+          build: 'drivers.${{ matrix.driver }}-bit'
