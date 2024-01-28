@@ -44,7 +44,7 @@ source "arm" "drivers_64bit" {
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
   image_path            = "PSPi6.Drivers-64bit.tar.gz"
-  image_size            = "2.5G"
+  image_size            = "3G"
   image_type            = "dos"
 
   # configure boot partition
