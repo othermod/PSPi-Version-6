@@ -2,7 +2,7 @@ build {
   name = "drivers"
 
   sources = [
-    "arm.drivers_32bit",
+    # "arm.drivers_32bit",
     "arm.drivers_64bit"
   ]
 
