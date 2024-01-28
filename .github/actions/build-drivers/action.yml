@@ -58,11 +58,11 @@ runs:
         do
           sha256sum "$i" | awk '{print $1}' > "$i.sha256"
         done
-      working-directory: $RUNNER_TEMP/packer/drivers/bin
+      working-directory: ${{ runner.temp }}/packer/drivers/bin
       shell: bash
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
         name: drivers
-        path: $RUNNER_TEMP/packer/drivers/bin/
+        path: ${{ runner.temp }}/packer/drivers/bin/
