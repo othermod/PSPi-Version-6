@@ -26,9 +26,9 @@ build {
   }
 
   # Download compiled drivers
-  provisioner "file" {
-    direction   = "download"
-    source      = "/packer/drivers/bin/"
-    destination = "${path.root}/drivers/bin/"
-  }
+  # provisioner "file" {
+  #   direction   = "download"
+  #   source      = "/packer/drivers/bin/"
+  #   destination = "${path.root}/drivers/bin/"
+  # }
 }

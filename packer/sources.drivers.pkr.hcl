@@ -5,7 +5,7 @@ source "arm" "drivers_32bit" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.Drivers-32bit.${var.pspi_version}.img"
+  image_path            = "PSPi6.Drivers-32bit.${var.pspi_version}.tar.gz"
   image_size            = "8G"
   image_type            = "dos"
 
@@ -43,7 +43,7 @@ source "arm" "drivers_64bit" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.Drivers-64bit.${var.pspi_version}.img"
+  image_path            = "PSPi6.Drivers-64bit.tar.gz"
   image_size            = "8G"
   image_type            = "dos"
 

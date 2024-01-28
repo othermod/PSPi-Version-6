@@ -50,6 +50,14 @@ runs:
         name: drivers
         path: packer/drivers/bin/
 
+    - name: Extract drivers from image
+      run: |
+        mv PSPi6.Drivers-64bit.tar.gz $RUNNER_TEMP
+        cd $RUNNER_TEMP
+        tar --extract --file=PSPi6.Drivers-64bit.tar.gz /packer/drivers/bin
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
     # - name: Shrink images
     #   run: |
     #     wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
@@ -61,23 +69,23 @@ runs:
     #   working-directory: packer/plugins/packer-builder-arm
     #   shell: bash
 
-    # - name: Generate sha256 filehash
-    #   run: |
-    #     for i in $(ls *.img.xz)
-    #     do
-    #       sha256sum "$i" | awk '{print $1}' > "$i.sha256"
-    #     done
-    #   working-directory: packer/plugins/packer-builder-arm
-    #   shell: bash
+    - name: Generate sha256 filehash
+      run: |
+        for i in gamepad main mouse osd
+        do
+          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+        done
+      working-directory: $RUNNER_TEMP
+      shell: bash
         
-    # - name: Create Release
-    #   uses: softprops/action-gh-release@v0.1.15
-    #   with:
-    #     generate_release_notes: true
-    #     tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
-    #     name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
-    #     draft: true
-    #     fail_on_unmatched_files: true
-    #     files: |
-    #       packer/plugins/packer-builder-arm/*.img.xz
-    #       packer/plugins/packer-builder-arm/*.img.xz.sha256
+    - name: Create Release
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        generate_release_notes: true
+        tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
+        name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          $RUNNER_TEMP/*
+          !($RUNNER_TEMP/*.tar.gz)
