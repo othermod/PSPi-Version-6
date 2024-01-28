@@ -8,7 +8,7 @@ on:
       - main
 
 jobs:
-  build-images:
+  build-drivers:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
