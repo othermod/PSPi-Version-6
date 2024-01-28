@@ -6,15 +6,6 @@ build {
     "arm.drivers_64bit"
   ]
 
-  # Install Dependencies
-  provisioner "shell" {
-    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "apt-get update",
-      "apt-get install make -y"
-    ]
-  }
-
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = ["mkdir /packer", "chmod 777 /packer"]
