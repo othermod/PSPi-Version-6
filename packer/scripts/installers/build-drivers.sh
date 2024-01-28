@@ -8,5 +8,8 @@
 apt-get update
 apt-get install make libraspberrypi-dev raspberrypi-kernel-headers -y
 
+cd /packer/drivers/lib
+make
+
 cd /packer/drivers
 make
