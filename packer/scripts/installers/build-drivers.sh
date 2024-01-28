@@ -1,7 +1,7 @@
 #!/bin/bash -e
 ################################################################################
 ##  File:  build-drivers.sh
-##  Desc:  Update OS & Install any required packages for PSPi
+##  Desc:  Installs required dependencies for PSPi6 drivers & builds them
 ################################################################################
 
 # Install Dependencies
