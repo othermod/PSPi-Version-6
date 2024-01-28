@@ -1,5 +1,5 @@
-name: Build Packer Image
-description: 'Build PSPi image'
+name: Build Drivers
+description: 'Build PSPi drivers'
 inputs:
   build:
     description: 'Comma seperated list of images to build'
@@ -38,7 +38,7 @@ runs:
         go build -v .
       shell: bash
 
-    - name: Build images
+    - name: Build driver image
       run: |
         sudo packer build -only ${{ inputs.build }} -var pspi_version=v${{ steps.gitversion.outputs.majorMinorPatch }} "$GITHUB_WORKSPACE/packer/"
       working-directory: packer/plugins/packer-builder-arm
