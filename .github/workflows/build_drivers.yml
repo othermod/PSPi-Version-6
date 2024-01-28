@@ -9,13 +9,10 @@ on:
 
 jobs:
   build-images:
-    strategy:
-      matrix:
-        driver: ["32", "64"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build Drivers
         uses: ./.github/actions/build-drivers
         with:
-          build: 'drivers.${{ matrix.driver }}-bit'
+          build: 'drivers.*'
