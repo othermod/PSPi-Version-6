@@ -6,10 +6,8 @@
 
 # Install Dependencies
 apt-get update
-apt-get install make libraspberrypi-dev raspberrypi-kernel-headers -y
-
-cd /packer/drivers/lib
-make
+apt-get install make libraspberrypi-dev raspberrypi-kernel-headers libpng-dev -y
 
 cd /packer/drivers
-make
+make clean
+make all
