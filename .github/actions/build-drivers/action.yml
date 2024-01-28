@@ -13,14 +13,14 @@ runs:
       with:
         fetch-depth: 0
 
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v0
-      with:
-        versionSpec: '5.x'
+    # - name: Install GitVersion
+    #   uses: gittools/actions/gitversion/setup@v0
+    #   with:
+    #     versionSpec: '5.x'
 
-    - name: Determine Version
-      id:   gitversion
-      uses: gittools/actions/gitversion/execute@v0      
+    # - name: Determine Version
+    #   id:   gitversion
+    #   uses: gittools/actions/gitversion/execute@v0      
 
     - name: Install dependencies
       run: |
@@ -52,18 +52,9 @@ runs:
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
-    # - name: Generate sha256 filehash
-    #   run: |
-    #     for i in *;
-    #     do
-    #       sha256sum "$i" | awk '{print $1}' > "$i.sha256"
-    #     done
-    #   working-directory: ${{ runner.temp }}/packer/drivers/bin
-    #   shell: bash
-
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: drivers
         path: ${{ runner.temp }}/packer/drivers/bin/
-        if-no-files-found:: error
+        if-no-files-found: error
