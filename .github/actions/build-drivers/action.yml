@@ -7,16 +7,7 @@ inputs:
 
 runs:
   using: "composite"
-  steps:
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v0
-      with:
-        versionSpec: '5.x'
-
-    - name: Determine Version
-      id:   gitversion
-      uses: gittools/actions/gitversion/execute@v0      
-
+  steps:   
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -41,7 +32,7 @@ runs:
 
     - name: Build driver image
       run: |
-        sudo packer build -only ${{ inputs.build }} -var pspi_version=v${{ steps.gitversion.outputs.majorMinorPatch }} "$GITHUB_WORKSPACE/packer/"
+        sudo packer build -only ${{ inputs.build }} "$GITHUB_WORKSPACE/packer/"
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
