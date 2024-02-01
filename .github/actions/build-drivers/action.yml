@@ -41,7 +41,7 @@ runs:
     - name: Empty driver bin folder
       run: |
         rm -rf $GITHUB_WORKSPACE/rpi/drivers/bin/*
-        ls $GITHUB_WORKSPACE/rpi/drivers/bin/*
+        ls $GITHUB_WORKSPACE/rpi/drivers/bin/
       shell: bash
 
     - name: Build driver image
