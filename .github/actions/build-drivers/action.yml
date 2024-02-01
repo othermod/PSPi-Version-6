@@ -47,15 +47,23 @@ runs:
 
     - name: Extract drivers from image
       run: |
-        mv PSPi6.Drivers.tar.gz $RUNNER_TEMP
+        mv *.tar.gz $RUNNER_TEMP
         cd $RUNNER_TEMP
-        tar --extract --file=PSPi6.Drivers.tar.gz ./packer/drivers/bin
+        tar --extract --file=PSPi6.Drivers_32bit.tar.gz ./packer/drivers/bin_32
+        tar --extract --file=PSPi6.Drivers_64bit.tar.gz ./packer/drivers/bin_64
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: drivers
-        path: ${{ runner.temp }}/packer/drivers/bin/
+        name: drivers_32bit
+        path: ${{ runner.temp }}/packer/drivers/bin_32/
+        if-no-files-found: error
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: drivers_64bit
+        path: ${{ runner.temp }}/packer/drivers/bin_64/
         if-no-files-found: error

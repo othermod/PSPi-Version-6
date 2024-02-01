@@ -2,6 +2,7 @@ build {
   name = "drivers"
 
   sources = [
+    "arm.drivers_raspios_lite_armhf",
     "arm.drivers_raspios_lite_arm64"
   ]
 
