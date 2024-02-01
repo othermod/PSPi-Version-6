@@ -4,19 +4,10 @@ inputs:
   build:
     description: 'Comma seperated list of images to build'
     required: true
-  commit:
-    description: 'Commit SHA'
-    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ inputs.commit == '' && github.sha || inputs.commit }}
-        fetch-depth: 0
-
     - name: Install GitVersion
       uses: gittools/actions/gitversion/setup@v0
       with:
