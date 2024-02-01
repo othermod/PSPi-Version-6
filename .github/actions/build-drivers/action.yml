@@ -1,0 +1,61 @@
+name: Build Drivers
+description: 'Build PSPi drivers'
+inputs:
+  build:
+    description: 'Comma seperated list of images to build'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0
+      with:
+        versionSpec: '5.x'
+
+    - name: Determine Version
+      id:   gitversion
+      uses: gittools/actions/gitversion/execute@v0      
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils
+      shell: bash
+
+    - name: Install packer-builder-arm
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/packer/plugins
+        cd $GITHUB_WORKSPACE/packer/plugins
+        git clone https://github.com/mkaczanowski/packer-builder-arm
+        cd packer-builder-arm
+        go mod download
+        go build -v .
+      shell: bash
+
+    - name: Empty driver bin folder
+      run: |
+        rm -rf $GITHUB_WORKSPACE/rpi/drivers/bin/*
+        ls $GITHUB_WORKSPACE/rpi/drivers/bin/
+      shell: bash
+
+    - name: Build driver image
+      run: |
+        sudo packer build -only ${{ inputs.build }} -var pspi_version=v${{ steps.gitversion.outputs.majorMinorPatch }} "$GITHUB_WORKSPACE/packer/"
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
+    - name: Extract drivers from image
+      run: |
+        mv PSPi6.Drivers.tar.gz $RUNNER_TEMP
+        cd $RUNNER_TEMP
+        tar --extract --file=PSPi6.Drivers.tar.gz ./packer/drivers/bin
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: drivers
+        path: ${{ runner.temp }}/packer/drivers/bin/
+        if-no-files-found: error
