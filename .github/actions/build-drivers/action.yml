@@ -49,8 +49,10 @@ runs:
       run: |
         mv *.tar.gz $RUNNER_TEMP
         cd $RUNNER_TEMP
-        tar --extract --file=PSPi6.Drivers_32bit.tar.gz ./packer/drivers/bin_32
-        tar --extract --file=PSPi6.Drivers_64bit.tar.gz ./packer/drivers/bin_64
+        tar --extract --file=PSPi6.Drivers_32bit.tar.gz ./packer/drivers/bin
+        mv ./packer/drivers/bin ./packer/drivers/bin_32
+        tar --extract --file=PSPi6.Drivers_64bit.tar.gz ./packer/drivers/bin
+        mv ./packer/drivers/bin ./packer/drivers/bin_64
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
