@@ -11,16 +11,32 @@
 #include <net/if.h>
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
+#include <linux/uinput.h>
+
+#include <time.h>
 
 #define INTERFACE_NAME "wlan0"
 
+uint8_t dualJoystick = 0;
+bool isDim = 0;
+bool isIdle = 0;
+uint32_t previousStatus;
 bool WiFiEnabled = false;
-bool WiFiConnected = false;  // the program needs to set the led as soon as it loads.
+bool WiFiConnected = false;
+uint8_t loop_counter = 0;
+uint16_t Count = 0;
+uint32_t timeAtLastChange;
+bool fast = 0;
 
-// Define your data structure
+uint8_t brightness;
+#define DATASIZE 11
+
+// fix these names
+uint8_t JOYSTICKS;
+uint32_t DIMMING;
+
 typedef struct {
-    uint8_t buttonA;
-    uint8_t buttonB;
+    uint16_t BUTTONS;
     uint8_t SENSE_SYS;
     uint8_t SENSE_BAT;
     uint8_t STATUS;
@@ -30,7 +46,10 @@ typedef struct {
     uint8_t JOY_RY;
     uint8_t CRCA;  // 16-bit CRC
     uint8_t CRCB;  // 16-bit CRC
-} ControllerData;
+} SharedData;
+
+SharedData *mappedMemory;
+SharedData previousData;
 
 // CRC16 calculation function
 uint16_t computeCRC16_CCITT(const uint8_t *data, uint8_t length) {
@@ -50,22 +69,224 @@ uint16_t computeCRC16_CCITT(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
-int main(int argc, char *argv[]) {
-  int disableCRC = 0;
+int setup_uinput_device(int uinput_fd) {
+    struct uinput_user_dev uidev;
+    memset(&uidev, 0, sizeof(uidev));
 
-    // Check command-line arguments
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--nocrc") == 0) {
-            disableCRC = 1;
-            printf("CRC Disabled\n");
+    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi-Controller");
+    uidev.id.bustype = BUS_USB;
+    uidev.id.vendor = 0x1234;
+    uidev.id.product = 0x5678;
+    uidev.id.version = 1;
+    uidev.absmin[ABS_X] = 40;
+    uidev.absmax[ABS_X] = 215;
+    uidev.absflat[ABS_X] = 20;
+    uidev.absfuzz[ABS_X] = 20;
+    uidev.absmin[ABS_Y] = 40;
+    uidev.absmax[ABS_Y] = 215;
+    uidev.absflat[ABS_Y] = 20;
+    uidev.absfuzz[ABS_Y] = 20;
+    if (dualJoystick) {
+      uidev.absmin[ABS_RX] = 40;  // Adjust these values as per your needs
+      uidev.absmax[ABS_RX] = 215;
+      uidev.absflat[ABS_RX] = 20;
+      uidev.absfuzz[ABS_RX] = 20;
+      uidev.absmin[ABS_RY] = 40;
+      uidev.absmax[ABS_RY] = 215;
+      uidev.absflat[ABS_RY] = 20;
+      uidev.absfuzz[ABS_RY] = 20;
+    }
+    ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
+    if (ret < 0) {
+        perror("Failed to write to uinput device in setup_uinput_device");
+        return -1;
+    }
+
+    ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
+    for(int i = 0; i < 16; i++) {
+        ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
+    }
+    if (dualJoystick) {
+      ioctl(uinput_fd, UI_SET_KEYBIT, BTN_0);  // New button 1
+      ioctl(uinput_fd, UI_SET_KEYBIT, BTN_1);  // New button 2
+    }
+
+    ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
+    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
+    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Y);
+    if (dualJoystick) {
+      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RX);
+      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RY);
+    }
+
+    return ioctl(uinput_fd, UI_DEV_CREATE);
+}
+
+void update_controller_data(int uinput_fd) {
+    struct input_event event;
+
+    // Update all button states
+    for(int i = 0; i < 16; i++) {
+        event.type = EV_KEY;
+        event.code = BTN_TRIGGER_HAPPY1 + i;
+        event.value = (mappedMemory->BUTTONS >> i) & 1;
+
+        // Send the button event to uinput
+        ssize_t ret = write(uinput_fd, &event, sizeof(event));
+        if (ret < 0) {
+            perror("Failed to write button event in update_controller_data");
+            // Handle error as appropriate
         }
     }
 
-  int i2c_fd;
-  ControllerData controller_data;
+    if (dualJoystick) {
+      // Handle the additional buttons encoded in JOY_RX and JOY_RY
+      uint8_t button_rx = mappedMemory->JOY_RX & 1; // Extract bit 0
+      uint8_t button_ry = mappedMemory->JOY_RY & 1; // Extract bit 0
 
+      event.type = EV_KEY;
+      event.code = BTN_0;  // Button from JOY_RX
+      event.value = button_rx;
+      write(uinput_fd, &event, sizeof(event));
+
+      event.code = BTN_1;  // Button from JOY_RY
+      event.value = button_ry;
+      write(uinput_fd, &event, sizeof(event));
+    }
+
+    // Update joystick positions
+    event.type = EV_ABS;
+    event.code = ABS_X;
+    event.value = mappedMemory->JOY_LX;
+    write(uinput_fd, &event, sizeof(event));
+
+    event.code = ABS_Y;
+    event.value = mappedMemory->JOY_LY;
+    write(uinput_fd, &event, sizeof(event));
+
+    // Send the SYN event
+    event.type = EV_SYN;
+    event.code = SYN_REPORT;
+    event.value = 0;
+    write(uinput_fd, &event, sizeof(event));
+
+    if (dualJoystick) {
+      event.type = EV_ABS;
+      event.code = ABS_RX;
+      event.value = mappedMemory->JOY_RX;
+      write(uinput_fd, &event, sizeof(event));
+
+      event.code = ABS_RY;
+      event.value = mappedMemory->JOY_RY;
+      write(uinput_fd, &event, sizeof(event));
+
+      // Send the SYN event
+      event.type = EV_SYN;
+      event.code = SYN_REPORT;
+      event.value = 0;
+      write(uinput_fd, &event, sizeof(event));
+    }
+}
+
+void dimmingFunction(int i2c_fd) {
+  uint32_t Status = 0;
+  // Combine the values into Status
+  Status |= (uint32_t)mappedMemory->BUTTONS << 18; // Shifted to the highest 8 bits
+
+  //Status |= (uint32_t)mappedMemory->STATUS << 8;     // Next 8 bits
+  Status |= (uint32_t)(mappedMemory->JOY_LX >> 4) << 4; // Next 4 bits
+  Status |= (uint32_t)(mappedMemory->JOY_LY >> 4);      // Last 4 bits
+
+  if (previousStatus == Status) {
+    if (isIdle==0) {
+      timeAtLastChange = time(NULL);
+    }
+    isIdle = 1;
+    if (timeAtLastChange + DIMMING <= time(NULL) ) {
+      if (!isDim) {
+        uint8_t i2cData[4];
+        i2cData[0] = 0x22; // Command byte
+        i2cData[1] = 1;
+        write(i2c_fd, i2cData, 4);
+        isDim = 1;
+        //printf("Current time (raw): %ld\n", time(NULL));
+        brightness = mappedMemory->STATUS&0b00000111;
+        brightness++;
+        //printf("Brightness %d\n", brightness);
+      }
+
+    }
+  } else {
+    isIdle = 0;
+    if (isDim) {
+      timeAtLastChange = time(NULL); // this seems like its in the wrong place. how is it functioning?
+      uint8_t temp = mappedMemory->STATUS&0b00000111;
+
+      if (temp == 0b00000000) {
+        uint8_t i2cData[4];
+        i2cData[0] = 0x22; // Command byte
+        i2cData[1] = brightness;
+        write(i2c_fd, i2cData, 4);
+      }
+
+      isDim = 0;
+      //printf("Current time (raw): %ld\n", timeAtLastChange);
+    }
+  }
+
+  previousStatus = Status;
+}
+
+
+int main(int argc, char *argv[]) {
+  int i2c_fd;
   int shm_fd;
-  ControllerData *shared_data;
+
+  int uinput_fd;
+  uinput_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+  if(uinput_fd < 0) {
+      perror("Could not open uinput device");
+      return 1;
+  }
+
+  if (setup_uinput_device(uinput_fd) != 0) {
+      perror("Error setting up uinput device");
+      return 1;
+  }
+
+  int enableCRC = 1;
+  JOYSTICKS = 1;
+  DIMMING = 0;
+
+    // Check command-line arguments
+    for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--nocrc") == 0) {
+        enableCRC = 0;
+        printf("CRC Disabled\n");
+    } else if (strcmp(argv[i], "--joysticks") == 0) {
+        if (i + 1 < argc) {
+            JOYSTICKS = atoi(argv[++i]);
+            if (JOYSTICKS < 0 || JOYSTICKS > 2) {
+                printf("Invalid number of joysticks. Must be between 0 and 2.\n");
+                return 1;
+            }
+            printf("Number of joysticks: %d\n", JOYSTICKS);
+        } else {
+            printf("No number specified for --joysticks\n");
+            return 1;
+        }
+    } else if (strcmp(argv[i], "--dim") == 0) {
+        if (i + 1 < argc && atoi(argv[i + 1]) >= 1 && atoi(argv[i + 1]) <= 3600) {
+            DIMMING = atoi(argv[++i]);
+            printf("Dimming enabled: %d seconds\n", DIMMING);
+        } else {
+            DIMMING = 120; // default value
+            printf("Dimming enabled: default 120 seconds\n");
+        }
+    } else if (strcmp(argv[i], "--fast") == 0) {
+      fast = 1;
+    }
+}
 
     // Open i2c device
     i2c_fd = open("/dev/i2c-1", O_RDWR);
@@ -82,8 +303,8 @@ int main(int argc, char *argv[]) {
     }
 
     shm_fd = shm_open("my_shm", O_CREAT | O_RDWR, 0666);
-    ftruncate(shm_fd, sizeof(ControllerData));
-    shared_data = mmap(0, sizeof(ControllerData), PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    ftruncate(shm_fd, sizeof(SharedData));
+    mappedMemory = mmap(0, sizeof(SharedData), PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
     int crcCount = 0;
     int poweroffCounter = 0;
@@ -114,33 +335,29 @@ int main(int argc, char *argv[]) {
     req.ifi.ifi_family = AF_UNSPEC;
     req.ifi.ifi_index = ifindex;
 
-    uint8_t loop_counter = 0;
-
     while (1) {
         // Read data from i2c device
-        if (read(i2c_fd, &controller_data, sizeof(ControllerData)) != sizeof(ControllerData)) {
+        if (read(i2c_fd, mappedMemory, DATASIZE) != DATASIZE) {
             perror("Failed to read from i2c device");
             sleep(1);
             continue;
         }
 
         // Conditionally perform CRC check
-        if (!disableCRC) {
-            uint16_t computedCRC = computeCRC16_CCITT((const uint8_t*)&controller_data, 9);
-            uint16_t receivedCRC = (controller_data.CRCA << 8) | controller_data.CRCB;
+        if (enableCRC) {
+            uint16_t computedCRC = computeCRC16_CCITT((const uint8_t*) & *mappedMemory, 9);
+            uint16_t receivedCRC = (mappedMemory->CRCA << 8) | mappedMemory->CRCB;
 
             if (computedCRC != receivedCRC) {
                 crcCount++;
-                printf("CRC error detected. Retrying...\n");
-                printf("%d errors detected since startup.\n", crcCount);
+                //printf("CRC error detected. Retrying...\n");
+                //printf("%d errors detected since startup.\n", crcCount);
                 continue;
             }
         }
 
-        // Copy data to shared memory
-        *shared_data = controller_data;
         // issue shutdown when button pressed or when battery is very low
-        if (((controller_data.STATUS >> 4) & 1) | (controller_data.SENSE_SYS <= 128)) {
+        if (((mappedMemory->STATUS >> 4) & 1) | (mappedMemory->SENSE_SYS <= 128)) {
           poweroffCounter++;
           if (poweroffCounter > 10) { // need to hold button for a small amount of time to initiate poweroff
             system("poweroff");
@@ -150,11 +367,11 @@ int main(int argc, char *argv[]) {
           poweroffCounter = 0;
         }
 
-        if (controller_data.STATUS & 0b00100000) {
+        if (mappedMemory->STATUS & 0b00100000) {
           usleep(100000); // sleep a lot longer when the hold switch is down
         }
 
-        if (!loop_counter) { // its a uint8_t. checks whenever it rolls over. runs every 4 seconds
+        if (!loop_counter) { // checks whenever it rolls over
             send(fd, &req, req.nlh.nlmsg_len, 0);
             int len = recv(fd, buf, sizeof(buf), 0);
             struct nlmsghdr *nh = (struct nlmsghdr *)buf;
@@ -170,21 +387,34 @@ int main(int argc, char *argv[]) {
                   i2cData[0] = 0x20; // Command byte
                   i2cData[1] = WiFiConnected ? 1 : 0;// Data byte: 1 for connected, 0 for disconnected
                   write(i2c_fd, i2cData, 4);
-                  //printf("%s is %s\n", INTERFACE_NAME, WiFiEnabled ? "enabled" : "disabled");
-                  //printf("%s is %s\n", INTERFACE_NAME, WiFiConnected ? "connected" : "disconnected");
                 }
             }
         }
 
         loop_counter++; // Increment counter
 
+        if (DIMMING) {
+          dimmingFunction(i2c_fd);
+        }
+
+        if (memcmp(&previousData, mappedMemory, sizeof(SharedData)) != 0) {
+          update_controller_data(uinput_fd);
+          previousData = *mappedMemory;
+          }
+
         // Wait for 16ms before reading again
-        usleep(16000);
+        if (fast) {
+          usleep(8000);
+        } else {
+          usleep(16000);
+        }
     }
 
     // Cleanup
     close(fd);
     close(i2c_fd);
+    ioctl(uinput_fd, UI_DEV_DESTROY);
+    close(uinput_fd);
 
     return 0;
 }
