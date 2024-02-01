@@ -2,6 +2,12 @@ name: Build Drivers
 
 on:
   workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit SHA1'
+        required: false
+        default: ''
+        type: string
   push: 
   pull_request:
     branches:
@@ -12,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit == '' && github.sha || inputs.commit }}
       - name: Build Drivers
         uses: ./.github/actions/build-drivers
         with:
