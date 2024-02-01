@@ -18,10 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.commit == '' && github.sha || inputs.commit }}
-          fetch-depth: 0
       - name: Build Drivers
         uses: ./.github/actions/build-drivers
         with:
           build: 'drivers.*'
+          commit: ${{ inputs.commit == '' && github.sha || inputs.commit }}
