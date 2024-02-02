@@ -18,7 +18,7 @@
 #define INTERFACE_NAME "wlan0"
 
 int enableCRC = 1;
-
+bool enableGamepad = 1;
 bool isDim = 0;
 bool isIdle = 0;
 uint32_t previousStatus;
@@ -223,7 +223,6 @@ void dimmingFunction(int i2c_fd) {
         brightness++;
         //printf("Brightness %d\n", brightness);
       }
-
     }
   } else {
     isIdle = 0;
@@ -246,7 +245,6 @@ void dimmingFunction(int i2c_fd) {
   previousStatus = Status;
 }
 
-
 int main(int argc, char *argv[]) {
   // Check command-line arguments
   for (int i = 1; i < argc; i++) {
@@ -257,6 +255,7 @@ int main(int argc, char *argv[]) {
       printf("  --joysticks <num>  Set number of joysticks, where <num> is between 0 and 2\n");
       printf("  --dim <seconds>    Enable dimming after <seconds>, between 1 and 3600\n");
       printf("  --fast             Enable fast mode (double input polling rate)\n");
+      printf("  --nogamepad        Display the gamepad\n");
       printf("  --help, -h         Display this help and exit\n");
       return 0;
     } else if (strcmp(argv[i], "--nocrc") == 0) {
@@ -285,6 +284,9 @@ int main(int argc, char *argv[]) {
   } else if (strcmp(argv[i], "--fast") == 0) {
     printf("Gotta go fast\n");
     fast = 1;
+  } else if (strcmp(argv[i], "--nogamepad") == 0) {
+    printf("Gamepad disabled\n");
+    enableGamepad = 0;
   }
 }
 
@@ -297,15 +299,12 @@ int main(int argc, char *argv[]) {
       perror("Could not open uinput device");
       return 1;
   }
-
-  if (setup_uinput_device(uinput_fd) != 0) {
-      perror("Error setting up uinput device");
-      return 1;
+  if (enableGamepad) {
+    if (setup_uinput_device(uinput_fd) != 0) {
+        perror("Error setting up uinput device");
+        return 1;
+    }
   }
-
-
-
-
 
     // Open i2c device
     i2c_fd = open("/dev/i2c-1", O_RDWR);
@@ -361,7 +360,6 @@ int main(int argc, char *argv[]) {
             sleep(1);
             continue;
         }
-
         // Conditionally perform CRC check
         if (enableCRC) {
             uint16_t computedCRC = computeCRC16_CCITT((const uint8_t*) & *mappedMemory, 9);
@@ -415,11 +413,12 @@ int main(int argc, char *argv[]) {
         if (DIMMING) {
           dimmingFunction(i2c_fd);
         }
-
-        if (memcmp(&previousData, mappedMemory, sizeof(SharedData)) != 0) {
-          update_controller_data(uinput_fd);
-          previousData = *mappedMemory;
-          }
+        if (enableGamepad) {
+          if (memcmp(&previousData, mappedMemory, sizeof(SharedData)) != 0) {
+            update_controller_data(uinput_fd);
+            previousData = *mappedMemory;
+            }
+        }
 
         // Wait for 16ms before reading again
         if (fast) {
