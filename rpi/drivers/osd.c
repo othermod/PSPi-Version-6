@@ -23,7 +23,7 @@
 #define SENSE_RESISTOR_MILLIOHM 50
 #define RESISTOR_A_KOHM 150
 #define RESISTOR_B_KOHM 10
-#define BATTERY_INTERNAL_RESISTANCE_MILLIOHM 250
+#define BATTERY_INTERNAL_RESISTANCE_MILLIOHM 256
 #define DISCHARGING 0
 #define CHARGING 1
 #define CHARGED 2
@@ -145,6 +145,8 @@ void calculateAmperage() {
   battery.finalAmperage = battery.senseRVoltageDifference*(1000 / SENSE_RESISTOR_MILLIOHM);
 
 }
+
+
 
 void calculateVoltage() {
   battery.rawVoltage = battery.voltageSYSx16;
@@ -401,9 +403,9 @@ int main() {
     leftSwitch = shared_data->STATUS & 0b01000000; // make sure the correct leftSwitch is set when the program starts
     drawMute(& muteLayer);
     // set initial battery condition
-    battery.voltageSYSx16 = shared_data->SENSE_SYS * 8;
-    battery.voltageBATx16 = shared_data->SENSE_SYS * 8;
-    battery.indicatorVoltage = battery.voltageSYSx16 * 3000 / 1024;
+    battery.voltageSYSx16 = shared_data->SENSE_SYS * 16;
+    battery.voltageBATx16 = shared_data->SENSE_SYS * 16;
+    battery.indicatorVoltage = 3800;
     while (1) {
 
       if (shared_data->STATUS & 0b00100000) { //if hold switch is down
