@@ -7,7 +7,7 @@ set -x
 
 # Install Dependencies
 apt-get update
-apt-get install make libraspberrypi-dev raspberrypi-kernel-headers libpng-dev libasound2-dev -y
+apt-get install make libraspberrypi-dev raspberrypi-kernel-headers libpng-dev libasound2-dev git -y
 
 cd /packer/drivers
 make clean
