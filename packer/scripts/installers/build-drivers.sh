@@ -23,4 +23,4 @@ make check
 make install
 
 # Patch OSD Driver
-patchelf --replace-needed libbcm_host.so.0 libbcm_host.so ../osd
+patchelf --replace-needed libbcm_host.so.0 libbcm_host.so ../bin/osd
