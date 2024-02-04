@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -O3 -lrt
 
 # Define the targets for your programs
-PROGRAMS = osd main mouse gamepad
+PROGRAMS = osd main mouse
 
 # Define all as the first target
 all: lib $(PROGRAMS)
@@ -20,9 +20,6 @@ main:
 
 mouse:
 	$(CC) -o bin/mouse mouse.c $(CFLAGS)
-
-gamepad:
-	$(CC) -o bin/gamepad gamepad.c $(CFLAGS)
 
 # Clean target for cleaning up
 clean:

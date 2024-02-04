@@ -17,7 +17,8 @@
 
 #define INTERFACE_NAME "wlan0"
 
-uint8_t dualJoystick = 0;
+int enableCRC = 1;
+bool enableGamepad = 1;
 bool isDim = 0;
 bool isIdle = 0;
 uint32_t previousStatus;
@@ -32,8 +33,8 @@ uint8_t brightness;
 #define DATASIZE 11
 
 // fix these names
-uint8_t JOYSTICKS;
-uint32_t DIMMING;
+uint8_t JOYSTICKS = 1;
+uint32_t DIMMING = 0;
 
 typedef struct {
     uint16_t BUTTONS;
@@ -78,15 +79,18 @@ int setup_uinput_device(int uinput_fd) {
     uidev.id.vendor = 0x1234;
     uidev.id.product = 0x5678;
     uidev.id.version = 1;
-    uidev.absmin[ABS_X] = 40;
-    uidev.absmax[ABS_X] = 215;
-    uidev.absflat[ABS_X] = 20;
-    uidev.absfuzz[ABS_X] = 20;
-    uidev.absmin[ABS_Y] = 40;
-    uidev.absmax[ABS_Y] = 215;
-    uidev.absflat[ABS_Y] = 20;
-    uidev.absfuzz[ABS_Y] = 20;
-    if (dualJoystick) {
+
+    if (JOYSTICKS) {
+      uidev.absmin[ABS_X] = 40;
+      uidev.absmax[ABS_X] = 215;
+      uidev.absflat[ABS_X] = 20;
+      uidev.absfuzz[ABS_X] = 20;
+      uidev.absmin[ABS_Y] = 40;
+      uidev.absmax[ABS_Y] = 215;
+      uidev.absflat[ABS_Y] = 20;
+      uidev.absfuzz[ABS_Y] = 20;
+    }
+    if (JOYSTICKS==2) {
       uidev.absmin[ABS_RX] = 40;  // Adjust these values as per your needs
       uidev.absmax[ABS_RX] = 215;
       uidev.absflat[ABS_RX] = 20;
@@ -96,6 +100,7 @@ int setup_uinput_device(int uinput_fd) {
       uidev.absflat[ABS_RY] = 20;
       uidev.absfuzz[ABS_RY] = 20;
     }
+
     ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
     if (ret < 0) {
         perror("Failed to write to uinput device in setup_uinput_device");
@@ -106,15 +111,17 @@ int setup_uinput_device(int uinput_fd) {
     for(int i = 0; i < 16; i++) {
         ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
     }
-    if (dualJoystick) {
+    if (JOYSTICKS==2) {
       ioctl(uinput_fd, UI_SET_KEYBIT, BTN_0);  // New button 1
       ioctl(uinput_fd, UI_SET_KEYBIT, BTN_1);  // New button 2
     }
+    if (JOYSTICKS) {
+      ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
+      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
+      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Y);
+    }
 
-    ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
-    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
-    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Y);
-    if (dualJoystick) {
+    if (JOYSTICKS==2) {
       ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RX);
       ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RY);
     }
@@ -139,7 +146,7 @@ void update_controller_data(int uinput_fd) {
         }
     }
 
-    if (dualJoystick) {
+    if (JOYSTICKS == 2) {
       // Handle the additional buttons encoded in JOY_RX and JOY_RY
       uint8_t button_rx = mappedMemory->JOY_RX & 1; // Extract bit 0
       uint8_t button_ry = mappedMemory->JOY_RY & 1; // Extract bit 0
@@ -154,23 +161,25 @@ void update_controller_data(int uinput_fd) {
       write(uinput_fd, &event, sizeof(event));
     }
 
-    // Update joystick positions
-    event.type = EV_ABS;
-    event.code = ABS_X;
-    event.value = mappedMemory->JOY_LX;
-    write(uinput_fd, &event, sizeof(event));
+    if (JOYSTICKS) {
+      // Update joystick positions
+      event.type = EV_ABS;
+      event.code = ABS_X;
+      event.value = mappedMemory->JOY_LX;
+      write(uinput_fd, &event, sizeof(event));
 
-    event.code = ABS_Y;
-    event.value = mappedMemory->JOY_LY;
-    write(uinput_fd, &event, sizeof(event));
+      event.code = ABS_Y;
+      event.value = mappedMemory->JOY_LY;
+      write(uinput_fd, &event, sizeof(event));
 
-    // Send the SYN event
-    event.type = EV_SYN;
-    event.code = SYN_REPORT;
-    event.value = 0;
-    write(uinput_fd, &event, sizeof(event));
+      // Send the SYN event
+      event.type = EV_SYN;
+      event.code = SYN_REPORT;
+      event.value = 0;
+      write(uinput_fd, &event, sizeof(event));
+    }
 
-    if (dualJoystick) {
+    if (JOYSTICKS == 2) {
       event.type = EV_ABS;
       event.code = ABS_RX;
       event.value = mappedMemory->JOY_RX;
@@ -214,7 +223,6 @@ void dimmingFunction(int i2c_fd) {
         brightness++;
         //printf("Brightness %d\n", brightness);
       }
-
     }
   } else {
     isIdle = 0;
@@ -237,8 +245,51 @@ void dimmingFunction(int i2c_fd) {
   previousStatus = Status;
 }
 
-
 int main(int argc, char *argv[]) {
+  // Check command-line arguments
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+      printf("Usage: [options]\n");
+      printf("Options:\n");
+      printf("  --nocrc            Disable CRC checks\n");
+      printf("  --joysticks <num>  Set number of joysticks, where <num> is between 0 and 2\n");
+      printf("  --dim <seconds>    Enable dimming after <seconds>, between 1 and 3600\n");
+      printf("  --fast             Enable fast mode (double input polling rate)\n");
+      printf("  --nogamepad        Display the gamepad\n");
+      printf("  --help, -h         Display this help and exit\n");
+      return 0;
+    } else if (strcmp(argv[i], "--nocrc") == 0) {
+      enableCRC = 0;
+      printf("CRC Disabled\n");
+  } else if (strcmp(argv[i], "--joysticks") == 0) {
+      if (i + 1 < argc) {
+          JOYSTICKS = atoi(argv[++i]);
+          if (JOYSTICKS < 0 || JOYSTICKS > 2) {
+              printf("Invalid number of joysticks. Must be between 0 and 2.\n");
+              return 1;
+          }
+          printf("Number of joysticks: %d\n", JOYSTICKS);
+      } else {
+          printf("No number specified for --joysticks\n");
+          return 1;
+      }
+  } else if (strcmp(argv[i], "--dim") == 0) {
+      if (i + 1 < argc && atoi(argv[i + 1]) >= 1 && atoi(argv[i + 1]) <= 3600) {
+          DIMMING = atoi(argv[++i]);
+          printf("Dimming enabled: %d seconds\n", DIMMING);
+      } else {
+          DIMMING = 120; // default value
+          printf("Dimming enabled: default 120 seconds\n");
+      }
+  } else if (strcmp(argv[i], "--fast") == 0) {
+    printf("Gotta go fast\n");
+    fast = 1;
+  } else if (strcmp(argv[i], "--nogamepad") == 0) {
+    printf("Gamepad disabled\n");
+    enableGamepad = 0;
+  }
+}
+
   int i2c_fd;
   int shm_fd;
 
@@ -248,45 +299,12 @@ int main(int argc, char *argv[]) {
       perror("Could not open uinput device");
       return 1;
   }
-
-  if (setup_uinput_device(uinput_fd) != 0) {
-      perror("Error setting up uinput device");
-      return 1;
-  }
-
-  int enableCRC = 1;
-  JOYSTICKS = 1;
-  DIMMING = 0;
-
-    // Check command-line arguments
-    for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--nocrc") == 0) {
-        enableCRC = 0;
-        printf("CRC Disabled\n");
-    } else if (strcmp(argv[i], "--joysticks") == 0) {
-        if (i + 1 < argc) {
-            JOYSTICKS = atoi(argv[++i]);
-            if (JOYSTICKS < 0 || JOYSTICKS > 2) {
-                printf("Invalid number of joysticks. Must be between 0 and 2.\n");
-                return 1;
-            }
-            printf("Number of joysticks: %d\n", JOYSTICKS);
-        } else {
-            printf("No number specified for --joysticks\n");
-            return 1;
-        }
-    } else if (strcmp(argv[i], "--dim") == 0) {
-        if (i + 1 < argc && atoi(argv[i + 1]) >= 1 && atoi(argv[i + 1]) <= 3600) {
-            DIMMING = atoi(argv[++i]);
-            printf("Dimming enabled: %d seconds\n", DIMMING);
-        } else {
-            DIMMING = 120; // default value
-            printf("Dimming enabled: default 120 seconds\n");
-        }
-    } else if (strcmp(argv[i], "--fast") == 0) {
-      fast = 1;
+  if (enableGamepad) {
+    if (setup_uinput_device(uinput_fd) != 0) {
+        perror("Error setting up uinput device");
+        return 1;
     }
-}
+  }
 
     // Open i2c device
     i2c_fd = open("/dev/i2c-1", O_RDWR);
@@ -342,7 +360,6 @@ int main(int argc, char *argv[]) {
             sleep(1);
             continue;
         }
-
         // Conditionally perform CRC check
         if (enableCRC) {
             uint16_t computedCRC = computeCRC16_CCITT((const uint8_t*) & *mappedMemory, 9);
@@ -396,11 +413,12 @@ int main(int argc, char *argv[]) {
         if (DIMMING) {
           dimmingFunction(i2c_fd);
         }
-
-        if (memcmp(&previousData, mappedMemory, sizeof(SharedData)) != 0) {
-          update_controller_data(uinput_fd);
-          previousData = *mappedMemory;
-          }
+        if (enableGamepad) {
+          if (memcmp(&previousData, mappedMemory, sizeof(SharedData)) != 0) {
+            update_controller_data(uinput_fd);
+            previousData = *mappedMemory;
+            }
+        }
 
         // Wait for 16ms before reading again
         if (fast) {

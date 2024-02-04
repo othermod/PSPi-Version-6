@@ -17,8 +17,7 @@
 #define AXIS_THRESHOLD_HIGH 142
 
 typedef struct {
-    uint8_t buttonA;
-    uint8_t buttonB;
+    uint16_t BUTTONS;
     uint8_t SENSE_SYS;
     uint8_t SENSE_BAT;
     uint8_t STATUS;
@@ -59,8 +58,16 @@ int main(int argc, char * argv[]) {
 
     int virtualMouse = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     ioctl(virtualMouse, UI_SET_EVBIT, EV_KEY);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_BACK);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_FORWARD);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_LEFTMETA);
     ioctl(virtualMouse, UI_SET_KEYBIT, BTN_LEFT);
     ioctl(virtualMouse, UI_SET_KEYBIT, BTN_RIGHT);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_LEFT);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_RIGHT);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_UP);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_DOWN);
+    ioctl(virtualMouse, UI_SET_KEYBIT, KEY_ENTER);
     ioctl(virtualMouse, UI_SET_EVBIT, EV_REL);
     ioctl(virtualMouse, UI_SET_RELBIT, REL_X);
     ioctl(virtualMouse, UI_SET_RELBIT, REL_Y);
@@ -94,10 +101,21 @@ int main(int argc, char * argv[]) {
         shouldEmit = true;
     }
 
-    if (previous_data.buttonA != current_data.buttonA) {
-        emit(virtualMouse, EV_KEY, BTN_LEFT, ((current_data.buttonA >> 0x03) & 1));
-        emit(virtualMouse, EV_KEY, BTN_RIGHT, ((current_data.buttonA >> 0x06) & 1));
-        previous_data.buttonA = current_data.buttonA;
+    if (previous_data.BUTTONS != current_data.BUTTONS) {
+
+      emit(virtualMouse, EV_KEY, KEY_ENTER, ((current_data.BUTTONS >> 0x02) & 1));
+      emit(virtualMouse, EV_KEY, BTN_LEFT, ((current_data.BUTTONS >> 0x03) & 1));
+      emit(virtualMouse, EV_KEY, BTN_RIGHT, ((current_data.BUTTONS >> 0x06) & 1));
+      emit(virtualMouse, EV_KEY, KEY_FORWARD, ((current_data.BUTTONS >> 0x07) & 1));
+      emit(virtualMouse, EV_KEY, KEY_BACK, ((current_data.BUTTONS >> 0x08) & 1));
+      emit(virtualMouse, EV_KEY, KEY_LEFT, ((current_data.BUTTONS >> 0x09) & 1));
+      emit(virtualMouse, EV_KEY, KEY_UP, ((current_data.BUTTONS >> 0x0A) & 1));
+      emit(virtualMouse, EV_KEY, KEY_DOWN, ((current_data.BUTTONS >> 0x0B) & 1));
+      emit(virtualMouse, EV_KEY, KEY_RIGHT, ((current_data.BUTTONS >> 0x0C) & 1));
+      emit(virtualMouse, EV_KEY, KEY_LEFTMETA, ((current_data.BUTTONS >> 0x0F) & 1));
+
+
+        previous_data.BUTTONS = current_data.BUTTONS;
         shouldEmit = true;
     }
 
