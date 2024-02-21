@@ -28,6 +28,7 @@ uint8_t loop_counter = 0;
 uint16_t Count = 0;
 uint32_t timeAtLastChange;
 bool fast = 0;
+bool hasWiFi = 1; // Assume WiFi is available initially
 
 uint8_t brightness;
 #define DATASIZE 11
@@ -227,7 +228,7 @@ void dimmingFunction(int i2c_fd) {
   } else {
     isIdle = 0;
     if (isDim) {
-      timeAtLastChange = time(NULL); // this seems like its in the wrong place. how is it functioning?
+      timeAtLastChange = time(NULL); // this is done already. should be deleted.
       uint8_t temp = mappedMemory->STATUS&0b00000111;
 
       if (temp == 0b00000000) {
@@ -327,31 +328,34 @@ int main(int argc, char *argv[]) {
     int crcCount = 0;
     int poweroffCounter = 0;
 
-    // Setup for WiFi status checking
-    int ifindex = if_nametoindex(INTERFACE_NAME);
-    if (ifindex == 0) {
-        perror("Error getting interface index");
-        return 1;
-    }
+    char buf[4096];
+    int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 
     struct {
         struct nlmsghdr nlh;
         struct ifinfomsg ifi;
     } req;
 
-    char buf[4096];
-    int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-    if (fd == -1) {
-        perror("Error creating socket");
-        return 1;
+    // Setup for WiFi status checking
+    int ifindex = if_nametoindex(INTERFACE_NAME);
+    if (ifindex == 0) {
+        perror("Error getting interface index");
+        hasWiFi = 0; // WiFi interface not found, set hasWiFi to false
+    } else {
+
+      if (fd == -1) {
+          perror("Error creating socket");
+          return 1;
+      }
+
+      memset(&req, 0, sizeof(req));
+      req.nlh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+      req.nlh.nlmsg_flags = NLM_F_REQUEST;
+      req.nlh.nlmsg_type = RTM_GETLINK;
+      req.ifi.ifi_family = AF_UNSPEC;
+      req.ifi.ifi_index = ifindex;
     }
 
-    memset(&req, 0, sizeof(req));
-    req.nlh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-    req.nlh.nlmsg_flags = NLM_F_REQUEST;
-    req.nlh.nlmsg_type = RTM_GETLINK;
-    req.ifi.ifi_family = AF_UNSPEC;
-    req.ifi.ifi_index = ifindex;
 
     while (1) {
         // Read data from i2c device
@@ -388,7 +392,7 @@ int main(int argc, char *argv[]) {
           usleep(100000); // sleep a lot longer when the hold switch is down
         }
 
-        if (!loop_counter) { // checks whenever it rolls over
+        if (hasWiFi && !loop_counter) { // checks whenever it rolls over
             send(fd, &req, req.nlh.nlmsg_len, 0);
             int len = recv(fd, buf, sizeof(buf), 0);
             struct nlmsghdr *nh = (struct nlmsghdr *)buf;
