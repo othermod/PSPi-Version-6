@@ -12,7 +12,7 @@ build {
     inline          = ["mkdir /packer", "chmod 777 /packer"]
   }
 
-  # Upload drivers
+  # Upload driver source
   provisioner "file" {
     source      = "${path.root}/../rpi/drivers/"
     destination = "/packer/drivers/"

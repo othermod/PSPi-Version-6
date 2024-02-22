@@ -2,10 +2,11 @@ name: Build Drivers
 
 on:
   workflow_dispatch:
-  push: 
   pull_request:
     branches:
       - main
+    paths:
+      - 'rpi/drivers/**'
 
 jobs:
   build-drivers:
