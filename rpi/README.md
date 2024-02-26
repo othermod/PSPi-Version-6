@@ -1,5 +1,7 @@
 # Installation Instructions
 
+The following instructions only apply if you want to make your own custom image from scratch. I already ran the script on all the images that I created, and running it again will break things. If you just want to get up and running, follow the instructions in the [PSPi 6 Wiki](https://github.com/othermod/PSPi-Version-6/wiki/Operating-Systems)
+
 ***
 
 ## Copy Necessary Files (Applies to All Operating Systems)
