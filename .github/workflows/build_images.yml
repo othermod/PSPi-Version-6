@@ -3,12 +3,16 @@ name: Build Images
 on:
   workflow_dispatch:
   push: 
+    branches:
+      - main
   pull_request:
     branches:
       - main
     paths:
       - 'packer/**'
       - 'rpi/drivers/**'
+      - 'rpi/configs/**'
+      - 'rpi/services/**'
 
 jobs:
   build-drivers:

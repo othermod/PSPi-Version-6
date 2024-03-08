@@ -56,4 +56,15 @@ build {
     source = "${path.root}/../rpi/scripts/batocera/resize.sh"
     destination = "/userdata/system/resize.sh"
   }
+
+  # Upload multimedia_keys.conf
+  provisioner "file" {
+    only = [
+      "batocera.arm.batocera_zero_arm", 
+      "batocera.arm.batocera_zero2_arm64", 
+      "batocera.arm.batocera.cm4_arm64"
+    ]
+    source = "${path.root}/../rpi/configs/batocera/multimedia_keys.conf"
+    destination = "/userdata/system/configs/multimedia_keys.conf"
+  }
 }
