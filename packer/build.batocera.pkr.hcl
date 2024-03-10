@@ -3,13 +3,15 @@ build {
   # Don't need to build base unless updating its upstream source
   sources = [
     ####
-    # "arm.batocera_zero_arm_base",
-    # "arm.batocera_zero2_arm64_base",
-    # "arm.batocera_cm4_arm64_base",
+    # "arm.batocera36_zero_arm_base",
+    # "arm.batocera36_zero2_arm64_base",
+    # "arm.batocera38_cm4_arm64_base",
+    # "arm.batocera39_cm4_arm64_base"
     ####
-    # "arm.batocera_zero_arm",
-    # "arm.batocera_zero2_arm64",
-    "arm.batocera_cm4_arm64"
+    # "arm.batocera36_zero_arm",
+    # "arm.batocera36_zero2_arm64",
+    "arm.batocera38_cm4_arm64",
+    "arm.batocera39_cm4_arm64"
   ]
 
   # Upload config.txt
@@ -27,9 +29,10 @@ build {
   # Upload drivers
   provisioner "file" {
     only = [
-      "batocera.arm.batocera_zero_arm", 
-      "batocera.arm.batocera_zero2_arm64", 
-      "batocera.arm.batocera.cm4_arm64"
+      "arm.batocera36_zero_arm", 
+      "arm.batocera36_zero2_arm64", 
+      "arm.batocera38_cm4_arm64",
+      "arm.batocera39_cm4_arm64"
     ]
     source = "${path.root}/../rpi/drivers/bin/"
     destination = "/boot/drivers"
@@ -38,9 +41,10 @@ build {
   # Upload custom.sh
   provisioner "file" {
     only = [
-      "batocera.arm.batocera_zero_arm", 
-      "batocera.arm.batocera_zero2_arm64", 
-      "batocera.arm.batocera.cm4_arm64"
+      "arm.batocera36_zero_arm", 
+      "arm.batocera36_zero2_arm64", 
+      "arm.batocera38_cm4_arm64",
+      "arm.batocera39_cm4_arm64"
     ]
     source = "${path.root}/../rpi/scripts/batocera/custom.sh"
     destination = "/userdata/system/custom.sh"
@@ -49,9 +53,10 @@ build {
   # Upload resize.sh
   provisioner "file" {
     only = [
-      "batocera.arm.batocera_zero_arm", 
-      "batocera.arm.batocera_zero2_arm64", 
-      "batocera.arm.batocera.cm4_arm64"
+      "arm.batocera36_zero_arm", 
+      "arm.batocera36_zero2_arm64", 
+      "arm.batocera38_cm4_arm64",
+      "arm.batocera39_cm4_arm64"
     ]
     source = "${path.root}/../rpi/scripts/batocera/resize.sh"
     destination = "/userdata/system/resize.sh"
@@ -60,9 +65,10 @@ build {
   # Upload multimedia_keys.conf
   provisioner "file" {
     only = [
-      "batocera.arm.batocera_zero_arm", 
-      "batocera.arm.batocera_zero2_arm64", 
-      "batocera.arm.batocera.cm4_arm64"
+      "arm.batocera36_zero_arm", 
+      "arm.batocera36_zero2_arm64", 
+      "arm.batocera38_cm4_arm64",
+      "arm.batocera39_cm4_arm64"
     ]
     source = "${path.root}/../rpi/configs/batocera/multimedia_keys.conf"
     destination = "/userdata/system/configs/multimedia_keys.conf"
