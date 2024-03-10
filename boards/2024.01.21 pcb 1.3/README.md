@@ -1,4 +1,4 @@
-# PSPi 6 PCB 1.2 Notes and Fixes
+# PSPi 6 PCB 1.3 Notes and Fixes
 
 ## Ordering Notes
 - All boards in this project are 0.8mm thick. The default size for PCBs is 1.6mm, so make sure to change it.
