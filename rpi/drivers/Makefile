@@ -13,19 +13,19 @@ lib:
 
 # Individual program targets
 osd:
-	$(CC) -o osd osd.c $(CFLAGS) -I./common -L./lib -lbcm_host -lraspidmx -lasound
+	$(CC) -o bin/osd osd.c $(CFLAGS) -I./common -L./lib -lbcm_host -lraspidmx -lasound
 
 main:
-	$(CC) -o main main.c $(CFLAGS)
+	$(CC) -o bin/main main.c $(CFLAGS)
 
 mouse:
-	$(CC) -o mouse mouse.c $(CFLAGS)
+	$(CC) -o bin/mouse mouse.c $(CFLAGS)
 
 # Clean target for cleaning up
 clean:
 	rm -f common/*.o
 	rm -f lib/*.a
 	$(MAKE) -C lib clean
-	rm -f $(PROGRAMS)
+	rm -f bin/$(PROGRAMS)
 
 .PHONY: all lib clean

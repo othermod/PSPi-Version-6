@@ -1,0 +1,101 @@
+name: Build Drivers
+description: 'Build PSPi drivers'
+inputs:
+  build:
+    description: 'Comma seperated list of images to build'
+    required: true
+  createRelease:
+    description: 'Create a release'
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    # Checkout repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    # Install GitVersion
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0
+      with:
+        versionSpec: '5.x'
+
+    # Determine version
+    - name: Determine Version
+      id:   gitversion
+      uses: gittools/actions/gitversion/execute@v0 
+
+    # Install packer dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils
+      shell: bash
+
+    # Install packer arm plugin
+    - name: Install packer-builder-arm
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/packer/plugins
+        cd $GITHUB_WORKSPACE/packer/plugins
+        git clone https://github.com/mkaczanowski/packer-builder-arm
+        cd packer-builder-arm
+        go mod download
+        go build -v .
+      shell: bash
+
+    # Build driver image
+    - name: Build driver image
+      run: |
+        sudo packer build -only ${{ inputs.build }} "$GITHUB_WORKSPACE/packer/"
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
+    # Extract drivers from image & zip for release
+    - name: Extract drivers from image
+      run: |
+        mv *.tar.gz $RUNNER_TEMP
+        cd $RUNNER_TEMP
+        mkdir -p ./drivers
+
+        # Extract & rename 32bit drivers
+        tar --extract --file=PSPi6.Drivers_32bit.tar.gz ./packer/drivers/bin
+        for i in $(ls ./packer/drivers/bin)
+        do
+          mv "./packer/drivers/bin/$i" "./drivers/${i}_32"
+        done
+
+        # Extract & rename 64bit drivers
+        tar --extract --file=PSPi6.Drivers_64bit.tar.gz ./packer/drivers/bin
+        for i in $(ls ./packer/drivers/bin)
+        do
+          mv "./packer/drivers/bin/$i" "./drivers/${i}_64"
+        done
+
+        # Zip drivers
+        zip drivers.zip ./drivers/* -r
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
+    # Upload drivers as artifact
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: drivers
+        path: ${{ runner.temp }}/drivers/
+        if-no-files-found: error
+
+    # Create github release
+    - name: Create Release
+      if: ${{ inputs.createRelease }} == 'true'
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        generate_release_notes: true
+        tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
+        name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          ${{ runner.temp }}/drivers.zip
