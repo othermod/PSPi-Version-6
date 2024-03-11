@@ -50,6 +50,18 @@ build {
     destination = "/userdata/system/custom.sh"
   }
 
+  # Upload libraries
+  provisioner "file" {
+    only = [
+      "arm.batocera36_zero_arm", 
+      "arm.batocera36_zero2_arm64", 
+      "arm.batocera38_cm4_arm64",
+      "arm.batocera39_cm4_arm64"
+    ]
+    source = "${path.root}/../rpi/libraries/batocera/"
+    destination = "/boot/libraries"
+  }  
+
   # Upload resize.sh
   provisioner "file" {
     only = [
