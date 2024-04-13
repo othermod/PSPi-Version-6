@@ -13,6 +13,11 @@ dtparam=i2c_baudrate=25000
 #disable HDMI audio
 hdmi_ignore_edid_audio=1
 
+#enable the real time clock
+dtoverlay=i2c-rtc,pcf8563
+
+#arm_64bit=0
+
 #Configure DPI signal
 framebuffer_width=800
 framebuffer_height=480
@@ -21,8 +26,6 @@ display_default_lcd=1
 dpi_group=2
 dpi_mode=87
 dpi_output_format=503863
-
-over_voltage=-2
 
 [board-type=0x14]
 # This applies to CM4 only
