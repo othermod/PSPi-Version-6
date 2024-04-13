@@ -36,6 +36,10 @@ Access the editable schematics and PCBs on EasyEDA:
 ## Current Bugs
 No known bugs
 
+![Top](top.png)
+![Bottom](bottom.png)
+
+
 ## Alternate Parts
 
 | Name                   | Manufacturer Part     | Alternate Part 1   | Alternate Part 2   | Alternate Part 3   |
