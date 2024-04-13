@@ -30,5 +30,8 @@ dtparam=ant2
 # Set up CM4 audio pin
 dtoverlay=audiocm4
 
+#poweroff
+dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes
+
 arm_freq_min=300
 core_freq_min=200
