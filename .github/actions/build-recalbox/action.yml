@@ -1,0 +1,117 @@
+name: Build Recalbox Image
+description: 'Build PSPi Recalbox image'
+  
+runs:
+  using: "composite"
+  steps:
+    # Checkout repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+      
+    # Download driver artifacts
+    - name: Download Drivers
+      uses: actions/download-artifact@v4
+      with:
+        path: rpi/drivers/bin
+        merge-multiple: true
+
+    # Install GitVersion
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0
+      with:
+        versionSpec: '5.x'
+
+    # Determine version
+    - name: Determine Version
+      id:   gitversion
+      uses: gittools/actions/gitversion/execute@v0      
+
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install squashfs-tools -y
+      shell: bash
+
+    # Download recalbox image
+    - name: Download image files
+      run: |
+        # Raspberry Pi4 x64
+        mkdir -p downloads
+        mkdir -p images
+        cd downloads
+        # wget -nv -O recalbox-rpi4_64.img.xz "https://upgrade.recalbox.com/latest/download-wizard/rpi4_64/recalbox-rpi4_64.img.xz"
+        wget -nv -O recalbox-rpi4_64.img.xz "https://stpspiproduseast001.blob.core.windows.net/pspi6/recalbox-rpi4_64.img.xz"
+        unxz recalbox-rpi4_64.img.xz
+        mv recalbox-rpi4_64.img ../images/
+      working-directory: ${{ runner.temp }}
+      shell: bash
+
+    # Inject pspi files into recalbox
+    - name: Inject files into recalbox
+      run: |
+        mkdir -p completed_images
+        cd images
+        for i in $(ls *.img)
+        do
+          echo "Make mount directory and mount image"
+          sudo mkdir -p /mnt/rootfs
+          sudo mount -o loop,offset=$((512*2048)) "$i" /mnt/rootfs
+          echo "Add files to /boot"
+          sudo cp $GITHUB_WORKSPACE/rpi/configs/recalbox/config.txt /mnt/rootfs/config.txt
+          sudo cp $GITHUB_WORKSPACE/rpi/configs/recalbox/recalbox-user-config.txt /mnt/rootfs/recalbox-user-config.txt
+          sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/rootfs/overlays/
+          sudo mkdir -p /mnt/rootfs/drivers
+          sudo cp $GITHUB_WORKSPACE/rpi/drivers/bin/* /mnt/rootfs/drivers/
+          echo "Copy recalbox squashfs to working directory"
+          sudo cp /mnt/rootfs/boot/recalbox ./recalbox
+          echo "Unpack recalbox squashfs"
+          unsquashfs recalbox
+          echo "Add custom.sh to recalbox"
+          cp $GITHUB_WORKSPACE/rpi/scripts/recalbox/custom.sh ./squashfs-root/recalbox/share_init/system/custom.sh
+          chmod +x ./squashfs-root/recalbox/share_init/system/custom.sh
+          echo "Update S12populateshare to copy custom.sh into system at boot"
+          sed -i "`wc -l < ./squashfs-root/etc/init.d/S12populateshare`i\\# copy pspi custom.sh\\" ./squashfs-root/etc/init.d/S12populateshare
+          sed -i "`wc -l < ./squashfs-root/etc/init.d/S12populateshare`i\\cp "/recalbox/share_init/system/custom.sh" "/recalbox/share/system/custom.sh"\\" ./squashfs-root/etc/init.d/S12populateshare
+          echo "Add driver libraries"
+          cp $GITHUB_WORKSPACE/rpi/libraries/recalbox/* ./squashfs-root/usr/lib/
+          echo "Repack recalbox squashfs"
+          mksquashfs squashfs-root filesystem.squashfs -comp xz
+          echo "Copy recalbox squashfs back to image"
+          sudo cp filesystem.squashfs /mnt/rootfs/boot/recalbox
+          echo "Unmount image"
+          sudo umount /mnt/rootfs
+          echo "Recompress image"
+          xz -z "$i"
+          echo "Rename image"
+          mv "$i.xz" "PSPi6.Recalbox9.1.CM4.img.xz"
+          echo "Move image to completed_images"
+          mv "PSPi6.Recalbox9.1.CM4.img.xz" ../completed_images/
+        done
+      working-directory: ${{ runner.temp }}
+      shell: bash
+
+    # Generate sha256 filehash of image files
+    - name: Generate sha256 filehash
+      run: |
+        for i in $(ls *.img.xz)
+        do
+          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+        done
+      working-directory: ${{ runner.temp }}/completed_images
+      shell: bash
+
+    # Update github release
+    - name: Update Release
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        generate_release_notes: true
+        tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
+        name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          ${{ runner.temp }}/completed_images/*.img.xz
+          ${{ runner.temp }}/completed_images/*.img.xz.sha256

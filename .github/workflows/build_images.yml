@@ -44,3 +44,11 @@ jobs:
           AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
           AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
           AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}
+  build-recalbox:
+    runs-on: ubuntu-latest
+    needs: build-drivers
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Recalbox
+        uses: ./.github/actions/build-recalbox

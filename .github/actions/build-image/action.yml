@@ -27,7 +27,7 @@ runs:
         fetch-depth: 0
       
     # Download driver artifacts
-    - name: Download 32bit Drivers
+    - name: Download Drivers
       uses: actions/download-artifact@v4
       with:
         path: rpi/drivers/bin
@@ -60,7 +60,7 @@ runs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils
+        sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils squashfs-tools -y
       shell: bash
 
     # Install packer arm plugin

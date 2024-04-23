@@ -16,7 +16,7 @@ source "arm" "recalbox_zero_arm" {
     start_sector = "2048"
     filesystem   = "vfat"
     size         = "3G"
-    mountpoint   = "/"
+    mountpoint   = "/boot"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
@@ -44,7 +44,7 @@ source "arm" "recalbox_zero2_arm64" {
     start_sector = "2048"
     filesystem   = "vfat"
     size         = "3G"
-    mountpoint   = "/"
+    mountpoint   = "/boot"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
@@ -72,7 +72,7 @@ source "arm" "recalbox_cm4_arm64" {
     start_sector = "2048"
     filesystem   = "vfat"
     size         = "3G"
-    mountpoint   = "/"
+    mountpoint   = "/boot"
   }
 
   image_chroot_env             = ["PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"]
