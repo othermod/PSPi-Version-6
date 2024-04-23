@@ -1,0 +1,19 @@
+name: Build Drivers
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'rpi/drivers/**'
+
+jobs:
+  build-drivers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Drivers
+        uses: ./.github/actions/build-drivers
+        with:
+          build: 'drivers.*'
