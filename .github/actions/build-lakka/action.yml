@@ -1,0 +1,113 @@
+name: Build Lakka Image
+description: 'Build PSPi Recalbox image'
+  
+runs:
+  using: "composite"
+  steps:
+    # Checkout repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+      
+    # Download driver artifacts
+    # - name: Download Drivers
+    #   uses: actions/download-artifact@v4
+    #   with:
+    #     path: rpi/drivers/bin
+    #     merge-multiple: true
+
+    # Install GitVersion
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0
+      with:
+        versionSpec: '5.x'
+
+    # Determine version
+    - name: Determine Version
+      id:   gitversion
+      uses: gittools/actions/gitversion/execute@v0      
+
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install squashfs-tools -y
+      shell: bash
+
+    # Download recalbox image
+    - name: Download image files
+      run: |
+        # Raspberry Pi4 x64
+        mkdir -p downloads
+        mkdir -p images
+        cd downloads
+        wget -nv -O Lakka-RPi4.aarch64-5.0.img.gz "https://github.com/libretro/Lakka-LibreELEC/releases/download/v5.0/Lakka-RPi4.aarch64-5.0.img.gz"
+        gunzip Lakka-RPi4.aarch64-5.0.img.gz
+        mv recalbox-rpi4_64.img ../images/
+      working-directory: ${{ runner.temp }}
+      shell: bash
+
+    # Inject pspi files into recalbox
+    - name: Inject files into recalbox
+      run: |
+        mkdir -p completed_images
+        cd images
+        for i in $(ls *.img)
+        do
+          echo "Make mount directory and mount image"
+          sudo losetup -Pf Lakka-RPi4.aarch64-5.0.img
+          sudo mkdir /mnt/loop0p1
+          sudo mount /dev/loop0p1 /mnt/loop0p1
+          echo "Add files to /boot"
+          sudo cp $GITHUB_WORKSPACE/rpi/configs/lakka/config.txt /mnt/loop0p1/config.txt
+          sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/loop0p1/overlays/
+          sudo mkdir -p /mnt/loop0p1/drivers
+          # sudo cp $GITHUB_WORKSPACE/rpi/drivers/bin/* /mnt/loop0p1/drivers/
+          echo "Copy squashfs to working directory"
+          cp /mnt/loop0p1/SYSTEM ./SYSTEM
+          echo "Unpack SYSTEM squashfs"
+          unsquashfs SYSTEM
+          echo "Add custom.sh"
+          cp $GITHUB_WORKSPACE/rpi/scripts/lakka/autostart_64.sh ./squashfs-root/usr/config/autostart.sh
+          chmod +x ./squashfs-root/usr/config/autostart.sh
+          echo "Add driver libraries"
+          # cp $GITHUB_WORKSPACE/rpi/libraries/recalbox/* ./squashfs-root/usr/lib/
+          echo "Repack recalbox squashfs"
+          mksquashfs squashfs-root filesystem.squashfs -comp xz
+          echo "Copy recalbox squashfs back to image"
+          sudo cp filesystem.squashfs /mnt/loop0p1/SYSTEM
+          echo "Unmount image"
+          sudo losetup -d /dev/loop0
+          echo "Recompress image"
+          xz -z "$i"
+          echo "Rename image"
+          mv "$i.xz" "PSPi6.Lakka5.CM4.img.xz"
+          echo "Move image to completed_images"
+          mv "PSPi6.Lakka5.CM4.img.xz" ../completed_images/
+        done
+      working-directory: ${{ runner.temp }}
+      shell: bash
+
+    # Generate sha256 filehash of image files
+    - name: Generate sha256 filehash
+      run: |
+        for i in $(ls *.img.xz)
+        do
+          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+        done
+      working-directory: ${{ runner.temp }}/completed_images
+      shell: bash
+
+    # Update github release
+    - name: Update Release
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        generate_release_notes: true
+        tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
+        name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          ${{ runner.temp }}/completed_images/*.img.xz
+          ${{ runner.temp }}/completed_images/*.img.xz.sha256
