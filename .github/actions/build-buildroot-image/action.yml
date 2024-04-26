@@ -1,0 +1,151 @@
+name: Build Lakka Image
+description: 'Build PSPi Recalbox image'
+inputs:
+  os:
+    description: 'Operating system to build'
+    required: true
+  download_url:
+    description: 'Download URL for image'
+    required: true
+  compressed_image_name:
+    description: 'Name of downloaded compressed image file'
+    required: true
+  image_name:
+    description: 'Name of uncompressed image file'
+    required: true
+  pspi_image_name:
+    description: 'Name of the pspi artifact image'
+    required: true
+  version:
+    description: 'gitversion version output'
+    required: true
+  AZCOPY_TENANT_ID:
+    description: 'Azure Tenant ID'
+    required: true
+  AZCOPY_SPA_CLIENT_SECRET:
+    description: 'Azure Service Principal Client Secret'
+    required: true
+  AZCOPY_SPA_APPLICATION_ID:
+    description: 'Azure Service Principal Application ID'
+    required: true
+  AZCOPY_STORAGE_ACCOUNT_NAME:
+    description: 'Azure Storage Account Name'
+    required: true
+  
+runs:
+  using: "composite"
+  steps:
+    # Download driver artifacts
+    - name: Download Drivers
+      uses: actions/download-artifact@v4
+      with:
+        path: rpi/drivers/bin
+        merge-multiple: true  
+
+    # Login to az, this step isn't necessary here but it will fail the workflow early if there's issues with the service principal
+    - name: Login with azcopy
+      run: |
+        export AZCOPY_AUTO_LOGIN_TYPE=SPN
+        export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
+        export AZCOPY_SPA_CLIENT_SECRET=${{ inputs.AZCOPY_SPA_CLIENT_SECRET }}
+        export AZCOPY_TENANT_ID=${{ inputs.AZCOPY_TENANT_ID }}
+        az login --service-principal -u ${{ inputs.AZCOPY_SPA_APPLICATION_ID }} -p ${{ inputs.AZCOPY_SPA_CLIENT_SECRET }} --tenant ${{ inputs.AZCOPY_TENANT_ID }}
+
+        azcopy list "https://stpspiproduseast001.blob.core.windows.net/pspi6/"
+      shell: bash  
+
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install squashfs-tools -y
+      shell: bash
+
+    # Download image
+    - name: Download image file
+      run: |
+        mkdir -p downloads
+        mkdir -p images
+        cd downloads
+        wget -nv -O ${{ inputs.compressed_image_name }} ${{ inputs.download_url }}
+        if [[ ${{ inputs.compressed_image_name }} == *.gz ]]; then
+          gunzip ${{ inputs.compressed_image_name }}
+        elif [[ ${{ inputs.compressed_image_name }} == *.xz ]]; then
+          unxz ${{ inputs.compressed_image_name }}
+        else
+          echo "Unknown image type"
+          exit 1
+        fi
+        mv *.img ../images/
+      working-directory: ${{ runner.temp }}
+      shell: bash
+
+    - name: Build Image
+      shell: bash
+      run: $GITHUB_ACTION_PATH/build-${{ inputs.os }}.sh
+      working-directory: ${{ runner.temp }}
+      env:
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+        IMAGE_NAME: ${{ inputs.image_name }}
+        PSPI_IMAGE_NAME: ${{ inputs.pspi_image_name }}
+
+    # Generate sha256 filehash of image files
+    - name: Generate sha256 filehash
+      run: |
+        for i in $(ls *.img.gz)
+        do
+          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+        done
+      working-directory: ${{ runner.temp }}/completed_images
+      shell: bash
+
+    # COunt images larger than 2GB and set SKIP_RELEASE variable
+    - name: detect large images
+      id: detect-large-images
+      run: |
+        count="$(find -type f -name "*.gz" -size +2G | wc -l)"
+        if [ "$count" -ge 1 ]
+        then
+          echo "Found images larger than 2G, will not add to release"
+          echo "SKIP_RELEASE=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "Found images smaller than 2G, will add to release"
+          echo "SKIP_RELEASE=false" >> "$GITHUB_OUTPUT"
+        fi
+      working-directory: ${{ runner.temp }}/completed_images
+      shell: bash
+
+    # Upload files to azure storage account
+    - name: Upload files to storage account
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true'
+      run: |
+        export AZCOPY_AUTO_LOGIN_TYPE=SPN
+        export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
+        export AZCOPY_SPA_CLIENT_SECRET=${{ inputs.AZCOPY_SPA_CLIENT_SECRET }}
+        export AZCOPY_TENANT_ID=${{ inputs.AZCOPY_TENANT_ID }}
+        az login --service-principal -u ${{ inputs.AZCOPY_SPA_APPLICATION_ID }} -p ${{ inputs.AZCOPY_SPA_CLIENT_SECRET }} --tenant ${{ inputs.AZCOPY_TENANT_ID }}
+
+        for i in $(ls *.img.gz)
+        do
+          azcopy copy "$i" "https://${{ inputs.AZCOPY_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/pspi6/$i"
+        done
+
+        for i in $(ls *.img.gz.sha256)
+        do
+          azcopy copy "$i" "https://${{ inputs.AZCOPY_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/pspi6/$i"
+        done
+      working-directory: ${{ runner.temp }}/completed_images
+      shell: bash
+
+    # Update github release
+    - name: Update Release
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false'
+      uses: softprops/action-gh-release@v0.1.15
+      with:
+        tag_name: v${{ inputs.version }}
+        name: Release v${{ inputs.version }}
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          ${{ runner.temp }}/completed_images/*.img.gz
+          ${{ runner.temp }}/completed_images/*.img.gz.sha256

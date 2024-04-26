@@ -2,21 +2,46 @@ name: Build Images
 
 on:
   workflow_dispatch:
-  push: 
+  push:
     branches:
       - main
   pull_request:
     branches:
       - main
     paths:
+      - '.github/**'
       - 'packer/**'
       - 'rpi/drivers/**'
       - 'rpi/configs/**'
       - 'rpi/services/**'
+      - 'rpi/scripts/**'
 
 jobs:
+  run-gitversion:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.gitversion.outputs.majorMinorPatch }}
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Install GitVersion
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0
+        with:
+          versionSpec: '5.x'
+
+      # Determine version
+      - name: Determine Version
+        id:   gitversion
+        uses: gittools/actions/gitversion/execute@v0
+
   build-drivers:
     runs-on: ubuntu-latest
+    needs: run-gitversion
     steps:
       - uses: actions/checkout@v4
 
@@ -25,30 +50,82 @@ jobs:
         with:
           build: 'drivers.*'
           createRelease: true
-  build-images:
+          version: ${{ needs.run-gitversion.outputs.version }}
+
+  build-packer-images:
     strategy:
       matrix:
         # Resolves to the packer image name
-        os: [batocera, raspios, retropie, kali_cm4, kali_zero2]
+        os: [raspios, retropie, kali_cm4, kali_zero2]
     runs-on: ubuntu-latest
-    needs: build-drivers
+    needs:
+      - build-drivers
+      - run-gitversion
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Build & Publish Images
         id: build-image
-        uses: ./.github/actions/build-image
+        uses: ./.github/actions/build-packer-image
         with:
           build: '${{ matrix.os }}.*'
           AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
           AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
           AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
           AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}
-  build-recalbox:
+          version: ${{ needs.run-gitversion.outputs.version }}
+
+  build-buildroot-images:
+    strategy:
+      matrix:
+        image:
+          - OS: lakka
+            DOWNLOAD_URL: "https://github.com/libretro/Lakka-LibreELEC/releases/download/v5.0/Lakka-RPi4.aarch64-5.0.img.gz"
+            COMPRESSED_IMAGE_NAME: "Lakka-RPi4.aarch64-5.0.img.gz"
+            IMAGE_NAME: "Lakka-RPi4.aarch64-5.0.img"
+            PSPI_IMAGE_NAME: "Lakka5.0-CM4-PSPi6-v${{ needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ needs.run-gitversion.outputs.version }}
+          - os: recalbox
+            DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpi4_64/recalbox-rpi4_64.img.xz"
+            COMPRESSED_IMAGE_NAME: "recalbox-rpi4_64.img.xz"
+            IMAGE_NAME: "recalbox-rpi4_64.img"
+            PSPI_IMAGE_NAME: "Recalbox9.1-CM4-PSPi6-v${{ needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ needs.run-gitversion.outputs.version }}
+          # - os: recalbox
+          #   DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpizero2/recalbox-rpizero2.img.xz"
+          #   COMPRESSED_IMAGE_NAME: "recalbox-rpizero2.img.xz"
+          #   IMAGE_NAME: "recalbox-rpizero2.img"
+          #   PSPI_IMAGE_NAME: "Recalbox9.1-Zero2-PSPi6-v${{ needs.run-gitversion.outputs.version }}.img.gz"
+          #   VERSION: ${{ needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-39-20240228.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img.gz"
+            IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img"
+            PSPI_IMAGE_NAME: "Batocera39-CM4-PSPi6-v${{ needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-bcm2836-39-20240301.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2836-bcm2836-39-20240301.img.gz"
+            IMAGE_NAME: "batocera-bcm2836-bcm2836-39-20240301.img"
+            PSPI_IMAGE_NAME: "Batocera39-Zero2-PSPi6-v${{ needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ needs.run-gitversion.outputs.version }}
     runs-on: ubuntu-latest
-    needs: build-drivers
+    needs:
+      - build-drivers
+      - run-gitversion
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Recalbox
-        uses: ./.github/actions/build-recalbox
+      - name: Build & Publish Images
+        uses: ./.github/actions/build-buildroot-image
+        with:
+          os: ${{ matrix.image.OS }}
+          download_url: ${{ matrix.image.DOWNLOAD_URL }}
+          compressed_image_name: ${{ matrix.image.COMPRESSED_IMAGE_NAME }}
+          image_name: ${{ matrix.image.IMAGE_NAME }}
+          pspi_image_name: ${{ matrix.image.PSPI_IMAGE_NAME }}
+          version: ${{ matrix.image.VERSION }}
+          AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
+          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
+          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
+          AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}

@@ -16,7 +16,10 @@ inputs:
   AZCOPY_STORAGE_ACCOUNT_NAME:
     description: 'Azure Storage Account Name'
     required: true
-  
+  version:
+    description: 'gitversion version output'
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -25,7 +28,7 @@ runs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
-      
+
     # Download driver artifacts
     - name: Download Drivers
       uses: actions/download-artifact@v4
@@ -44,17 +47,6 @@ runs:
 
         azcopy list "https://stpspiproduseast001.blob.core.windows.net/pspi6/"
       shell: bash
-
-    # Install GitVersion
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v0
-      with:
-        versionSpec: '5.x'
-
-    # Determine version
-    - name: Determine Version
-      id:   gitversion
-      uses: gittools/actions/gitversion/execute@v0      
 
     # Install dependencies for packer
     - name: Install dependencies
@@ -77,7 +69,7 @@ runs:
     # Build images
     - name: Build images
       run: |
-        sudo packer build -only ${{ inputs.build }} -var pspi_version=v${{ steps.gitversion.outputs.majorMinorPatch }} "$GITHUB_WORKSPACE/packer/"
+        sudo packer build -only ${{ inputs.build }} -var pspi_version=v${{ inputs.version }} "$GITHUB_WORKSPACE/packer/"
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
@@ -88,7 +80,7 @@ runs:
         chmod +x pishrink.sh
         for i in $(ls *.img)
         do
-          sudo ./pishrink.sh -v -Z -a "$i"
+          sudo ./pishrink.sh -v -z -a "$i"
         done
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
@@ -96,15 +88,32 @@ runs:
     # Generate sha256 filehash of image files
     - name: Generate sha256 filehash
       run: |
-        for i in $(ls *.img.xz)
+        for i in $(ls *.img.gz)
         do
           sha256sum "$i" | awk '{print $1}' > "$i.sha256"
         done
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
+    # COunt images larger than 2GB and set SKIP_RELEASE variable
+    - name: detect large images
+      id: detect-large-images
+      run: |
+        count="$(find -type f -name "*.gz" -size +2G | wc -l)"
+        if [ "$count" -ge 1 ]
+        then
+          echo "Found images larger than 2G, will not add to release"
+          echo "SKIP_RELEASE=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "Found images smaller than 2G, will add to release"
+          echo "SKIP_RELEASE=false" >> "$GITHUB_OUTPUT"
+        fi
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
     # Upload files to azure storage account
     - name: Upload files to storage account
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true'
       run: |
         export AZCOPY_AUTO_LOGIN_TYPE=SPN
         export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
@@ -112,52 +121,27 @@ runs:
         export AZCOPY_TENANT_ID=${{ inputs.AZCOPY_TENANT_ID }}
         az login --service-principal -u ${{ inputs.AZCOPY_SPA_APPLICATION_ID }} -p ${{ inputs.AZCOPY_SPA_CLIENT_SECRET }} --tenant ${{ inputs.AZCOPY_TENANT_ID }}
 
-        for i in $(ls *.img.xz)
+        for i in $(ls *.img.gz)
         do
           azcopy copy "$i" "https://${{ inputs.AZCOPY_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/pspi6/$i"
         done
 
-        for i in $(ls *.img.xz.sha256)
+        for i in $(ls *.img.gz.sha256)
         do
           azcopy copy "$i" "https://${{ inputs.AZCOPY_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/pspi6/$i"
         done
-      working-directory: packer/plugins/packer-builder-arm
-      shell: bash
-
-    # Delete images larger than 2GB and set skipRelease flag
-    - name: delete large images
-      id: delete-large-images
-      run: |
-        # Delete images larger than 2G
-        find -type f -name "*img.xz" -size +2G -delete
-
-        # Skip updating github release if there's no longer any images to add
-        count="$(find -type f -name "*.xz" | wc -l)"
-        if [ "$count" == "0" ]
-        then
-          echo "No images to add to release"
-          echo "SKIP_RELEASE=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "Found images to add to release"
-          echo "SKIP_RELEASE=false" >> "$GITHUB_OUTPUT"
-        fi
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
     # Update github release
     - name: Update Release
-      if: steps.delete-large-images.outputs.SKIP_RELEASE == 'false'
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false'
       uses: softprops/action-gh-release@v0.1.15
       with:
-        generate_release_notes: true
-        tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
-        name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
+        tag_name: v${{ inputs.version }}
+        name: Release v${{ inputs.version }}
         draft: true
         fail_on_unmatched_files: true
         files: |
-          packer/plugins/packer-builder-arm/*.img.xz
-          packer/plugins/packer-builder-arm/*.img.xz.sha256
-
-      
-
-      
+          packer/plugins/packer-builder-arm/*.img.gz
+          packer/plugins/packer-builder-arm/*.img.gz.sha256

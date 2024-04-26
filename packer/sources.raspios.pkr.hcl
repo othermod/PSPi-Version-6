@@ -5,7 +5,7 @@ source "arm" "raspios_zero_arm" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.PiOS4.3.Zero.${var.pspi_version}.img"
+  image_path            = "PiOS4.3-Zero-PSPi6-${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
 
@@ -43,7 +43,7 @@ source "arm" "raspios_cm4_zero2_arm64" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.PiOS4.3.CM4-Zero2.${var.pspi_version}.img"
+  image_path            = "PiOS4.3-CM4.Zero2-PSPi6-${var.pspi_version}.img"
   image_size            = "8G"
   image_type            = "dos"
 

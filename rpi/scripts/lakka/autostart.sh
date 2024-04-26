@@ -17,7 +17,6 @@ detect_architecture() {
 
 detect_architecture
 
-modprobe i2c-dev
-/boot/drivers/main$ARCH_SUFFIX --dim &
+/flash/drivers/main$ARCH_SUFFIX --dim &
 sleep 1
-/boot/drivers/osd$ARCH_SUFFIX &
+/flash/drivers/osd$ARCH_SUFFIX &
