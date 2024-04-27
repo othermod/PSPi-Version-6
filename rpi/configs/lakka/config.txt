@@ -21,66 +21,6 @@ hdmi_ignore_cec_init=1
 # Include distribution specific config file if it exists.
 ################################################################################
 
-[cm4]
-# Enable DRM VC4 V3D driver
-dtoverlay=vc4-fkms-v3d
-max_framebuffers=1
-
-# Set GPIO pins to 24-Bit DPI Mode 7
-# GPIO 0 and 1 needed for DPI Clock and Data Enable
-gpio=0=a2,np
-gpio=1=a2,np
-# Set GPIO pins 2 and 3 to I2C Mode. These can be used for other things, if needed.
-gpio=2=a0,np
-gpio=3=a0,np
-# Set up color pins
-gpio=4-27=a2,np
-
-dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
-
-# Enable USB
-dtoverlay=dwc2,dr_mode=host
-
-# Disable WiFi and Bluetooth
-#dtoverlay=disable-wifi
-#dtoverlay=disable-bt
-
-# Disables pci-e link to prevent warning at boot
-dtoverlay=disable-pcie
-
-#enable external PSP antenna
-dtparam=ant2
-
-# Set up CM4 audio pin
-dtoverlay=oldaudiocm4
-
-arm_freq_min=300
-core_freq_min=200
-
-[pi0]
-gpu_mem_256=128
-gpu_mem_512=256
-gpu_mem_1024=256
-
-# Set GPIO pins for 21-Bit DPI
-gpio=0=a2,np
-gpio=1=a2,np
-gpio=2=a0,np
-gpio=3=a0,np
-gpio=5-11=a2,np
-gpio=13-19=a2,np
-gpio=21-27=a2,np
-
-dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 32000000 6
-
-# Zero-specific settings
-dtparam=act_led_gpio=20
-dtoverlay=audiozero
-dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
-dtparam=act_led_activelow=no
-
-arm_freq_min=500
-core_freq_min=200
 
 [all]
 include distroconfig.txt
@@ -112,4 +52,8 @@ dpi_group=2
 dpi_mode=87
 dpi_output_format=503863
 
-over_voltage=-2
+[board-type=0x14]
+include cm4.txt
+
+[pi0]
+include pi0.txt
