@@ -76,11 +76,11 @@ runs:
     # Create github release
     - name: Create Release
       if: ${{ inputs.createRelease }} == 'true'
-      uses: softprops/action-gh-release@v0.1.15
+      uses: softprops/action-gh-release@v2
       with:
-        generate_release_notes: true
         tag_name: v${{ inputs.version }}
-        name: Release v${{ inputs.version }}
+        name: v${{ inputs.version }}
+        body_path: .github/workflows/RELEASE_FORMAT.txt
         draft: true
         fail_on_unmatched_files: true
         files: |

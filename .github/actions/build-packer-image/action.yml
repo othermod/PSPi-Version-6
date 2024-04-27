@@ -103,6 +103,7 @@ runs:
         if [ "$count" -ge 1 ]
         then
           echo "Found images larger than 2G, will not add to release"
+          echo "::notice file=${{ inputs.pspi_image_name }},title=large-image::Image larger than 2GB found. Please update release notes with storage account link."
           echo "SKIP_RELEASE=true" >> "$GITHUB_OUTPUT"
         else
           echo "Found images smaller than 2G, will add to release"
@@ -136,10 +137,11 @@ runs:
     # Update github release
     - name: Update Release
       if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false'
-      uses: softprops/action-gh-release@v0.1.15
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
-        name: Release v${{ inputs.version }}
+        name: v${{ inputs.version }}
+        body_path: .github/workflows/RELEASE_FORMAT.txt
         draft: true
         fail_on_unmatched_files: true
         files: |
