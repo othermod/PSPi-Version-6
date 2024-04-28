@@ -15,6 +15,8 @@ sudo mount -o loop,offset=$((512*2048)) $IMAGE_NAME /mnt/image
 # Add files to /boot
 echo "Add files to /boot"
 sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/config.txt /mnt/image/config.txt
+sudo cp $GITHUB_WORKSPACE/rpi/configs/cm4.txt /mnt/image/cm4.txt
+sudo cp $GITHUB_WORKSPACE/rpi/configs/pi0.txt /mnt/image/pi0.txt
 sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/image/overlays/
 sudo mkdir -p /mnt/image/drivers
 sudo cp $GITHUB_WORKSPACE/rpi/drivers/bin/* /mnt/image/drivers/

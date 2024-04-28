@@ -2,32 +2,39 @@
 # http://rptl.io/configtxt
 # Some settings may impact device functionality. See link above for details
 
-# Uncomment some or all of these to enable the optional hardware interfaces
-dtparam=i2c_arm=on
-
-# Enable audio (loads snd_bcm2835)
-dtparam=audio=on
+# Enable 64-bit ARM architecture
+arm_64bit=1
 
 # Automatically load initramfs files, if found
 auto_initramfs=1
-
-# Enable DRM VC4 V3D driver
-dtoverlay=vc4-fkms-v3d
-dtoverlay=dwc2,dr_mode=host
-max_framebuffers=1
 
 # Don't have the firmware create an initial video= setting in cmdline.txt.
 # Use the kernel's default instead.
 disable_fw_kms_setup=1
 
-# Disable compensation for displays with overscan
+# Disable overscan to remove black borders on the screen
 disable_overscan=1
 
-# Run as fast as firmware / board allows
-arm_boost=1
-
-# Don't show splash screen
+# Disable the rainbow splash screen at startup
 disable_splash=1
+
+# Enable I2C interface
+dtparam=i2c_arm=on
+
+# Disable I2S interface
+dtparam=i2s=off
+
+# Disable SPI interface
+dtparam=spi=off
+
+# Automatically load overlays for detected DSI displays
+display_auto_detect=0
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=on
+
+# Enable bluetooth
+dtparam=krnbt=on
 
 # Reduce I2C speed to avoid clock bug in Raspberry Pi I2C
 dtparam=i2c_baudrate=25000
@@ -35,14 +42,25 @@ dtparam=i2c_baudrate=25000
 # Disable HDMI audio
 hdmi_ignore_edid_audio=1
 
-# Configure DPI signal
+# Set framebuffer width and height for the LCD display
 framebuffer_width=800
 framebuffer_height=480
+
+# Enable DPI LCD
 enable_dpi_lcd=1
+
+# Set the LCD display as the default display
 display_default_lcd=1
+
+# Set DPI group and mode for the LCD display
 dpi_group=2
 dpi_mode=87
+
+# Set DPI output format for the LCD display
 dpi_output_format=503863
+
+# Power off the Raspberry Pi when GPIO pin 44 is triggered
+# dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
 
 [board-type=0x14]
 include cm4.txt

@@ -1,5 +1,14 @@
-# Load the 64-bit kernel
-arm_64bit=1
+# Enable VC4 FKMS V3D driver for graphics acceleration
+dtoverlay=vc4-fkms-v3d
+
+# Enable I2C
+dtparam=i2c_arm=on
+
+# Run as fast as firmware/board allows
+arm_boost=1
+
+# Set maximum number of framebuffers to 1
+max_framebuffers=1
 
 # Set GPIO pins to 24-Bit DPI Mode 7
 # GPIO 0 and 1 needed for DPI Clock and Data Enable
@@ -11,23 +20,23 @@ gpio=3=a0,np
 # Set up color pins
 gpio=4-27=a2,np
 
+# Set DPI timings for 800x480 resolution at 60Hz
 dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
 
 # Enable USB
 dtoverlay=dwc2,dr_mode=host
 
-# Disable WiFi and Bluetooth
-#dtoverlay=disable-wifi
-#dtoverlay=disable-bt
-
 # Disables pci-e link to prevent warning at boot
 dtoverlay=disable-pcie
 
-#enable external PSP antenna
+# Enable antenna
 dtparam=ant2
 
 # Set up CM4 audio pin
 dtoverlay=audiocm4
 
+# Set minimum ARM frequency to 300
 arm_freq_min=300
+
+# Set minimum core frequency to 200
 core_freq_min=200

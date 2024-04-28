@@ -18,6 +18,8 @@ sudo mount -o loop,offset=$((512*8192)) $devicePath /mnt/image
 # Add files to /boot
 echo "Add files to /boot"
 sudo cp $GITHUB_WORKSPACE/rpi/configs/lakka/config.txt /mnt/image/config.txt
+sudo cp $GITHUB_WORKSPACE/rpi/configs/cm4.txt /mnt/image/cm4.txt
+sudo cp $GITHUB_WORKSPACE/rpi/configs/pi0.txt /mnt/image/pi0.txt
 sudo cp $GITHUB_WORKSPACE/rpi/configs/lakka/distroconfig.txt /mnt/image/distroconfig.txt
 sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/image/overlays/
 sudo mkdir -p /mnt/image/drivers
