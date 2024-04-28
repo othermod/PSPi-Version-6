@@ -44,62 +44,8 @@ dpi_group=2
 dpi_mode=87
 dpi_output_format=503863
 
-over_voltage=-2
+[board-type=0x14]
+include cm4.txt
 
-[cm4]
-# 64-bit kernel for Raspberry Pi 4 is called kernel8l (armv8a)
-kernel=kernel8l-alt.img
-
-# Run in 64-bit mode
-arm_64bit=1
-
-# Set GPIO pins for 24-Bit DPI Mode 7
-gpio=0=a2,np
-gpio=1=a2,np
-gpio=2=a0,np
-gpio=3=a0,np
-gpio=4-27=a2,np
-
-dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 25000000 6
-
-# Disable WiFi and Bluetooth (Optional)
-#dtoverlay=disable-wifi
-#dtoverlay=disable-bt
-
-# Disables PCI-E link to prevent warning at boot
-dtoverlay=disable-pcie
-
-# Enable external PSP antenna
-dtparam=ant2
-
-# Set up CM4 audio pin
-dtoverlay=audiocm4
-
-arm_freq_min=300
-core_freq_min=200
-
-[pi02]
-gpu_mem_256=128
-gpu_mem_512=256
-gpu_mem_1024=256
-
-# Set GPIO pins for 21-Bit DPI
-gpio=0=a2,np
-gpio=1=a2,np
-gpio=2=a0,np
-gpio=3=a0,np
-gpio=5-11=a2,np
-gpio=13-19=a2,np
-gpio=21-27=a2,np
-
-dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 32000000 6
-
-dtparam=act_led_gpio=20
-dtoverlay=audiozero
-dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
-dtparam=act_led_activelow=no
-
-arm_freq_min=500
-core_freq_min=200
-
-[all]
+[pi0]
+include pi0.txt
