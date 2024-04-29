@@ -63,7 +63,16 @@ dpi_output_format=503863
 # dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
 
 [board-type=0x14]
+# Enable 64-bit ARM architecture
+arm_64bit=1
+
+# 64-bit kernel for Raspberry Pi 4 is called kernel8l (armv8a)
+kernel=kernel8l-alt.img
+
 include cm4.txt
 
 [pi0]
+# Enable 64-bit ARM architecture
+arm_64bit=0
+
 include pi0.txt

@@ -7,7 +7,7 @@
 df -h
 
 apt-get update
-apt full-upgrade -y
+# apt full-upgrade -y
 
 # Install & enable i2c
 set +e

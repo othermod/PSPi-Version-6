@@ -12,7 +12,7 @@ jobs:
   run-gitversion:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.gitversion.outputs.majorMinorPatch }}
+      version: ${{ steps.gitversion.outputs.SemVer }}
     steps:
       # Checkout repository
       - name: Checkout code

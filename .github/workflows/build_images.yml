@@ -25,7 +25,7 @@ jobs:
   run-gitversion:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.gitversion.outputs.majorMinorPatch }}
+      version: ${{ steps.gitversion.outputs.SemVer }}
     steps:
       # Checkout repository
       - name: Checkout code
@@ -90,36 +90,42 @@ jobs:
             DOWNLOAD_URL: "https://github.com/libretro/Lakka-LibreELEC/releases/download/v5.0/Lakka-RPi4.aarch64-5.0.img.gz"
             COMPRESSED_IMAGE_NAME: "Lakka-RPi4.aarch64-5.0.img.gz"
             IMAGE_NAME: "Lakka-RPi4.aarch64-5.0.img"
+            CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Lakka5.0-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - OS: lakka
             DOWNLOAD_URL: "https://github.com/libretro/Lakka-LibreELEC/releases/download/v5.0/Lakka-RPi3.aarch64-5.0.img.gz"
             COMPRESSED_IMAGE_NAME: "Lakka-RPi3.aarch64-5.0.img.gz"
             IMAGE_NAME: "Lakka-RPi3.aarch64-5.0.img"
+            CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Lakka5.0-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: recalbox
             DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpi4_64/recalbox-rpi4_64.img.xz"
             COMPRESSED_IMAGE_NAME: "recalbox-rpi4_64.img.xz"
             IMAGE_NAME: "recalbox-rpi4_64.img"
+            CHECKSUM_TYPE: "sha1"
             PSPI_IMAGE_NAME: "Recalbox9.1-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: recalbox
             DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpizero2/recalbox-rpizero2.img.xz"
             COMPRESSED_IMAGE_NAME: "recalbox-rpizero2.img.xz"
             IMAGE_NAME: "recalbox-rpizero2.img"
+            CHECKSUM_TYPE: "sha1"
             PSPI_IMAGE_NAME: "Recalbox9.1-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: batocera
             DOWNLOAD_URL: "https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-39-20240228.img.gz"
             COMPRESSED_IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img.gz"
             IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img"
+            CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Batocera39-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: batocera
             DOWNLOAD_URL: "https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-bcm2836-39-20240301.img.gz"
             COMPRESSED_IMAGE_NAME: "batocera-bcm2836-bcm2836-39-20240301.img.gz"
             IMAGE_NAME: "batocera-bcm2836-bcm2836-39-20240301.img"
+            CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Batocera39-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
     runs-on: ubuntu-latest
@@ -138,6 +144,7 @@ jobs:
           image_name: ${{ matrix.image.IMAGE_NAME }}
           pspi_image_name: ${{ matrix.image.PSPI_IMAGE_NAME }}
           version: ${{ matrix.image.VERSION }}
+          checksum_type: ${{ matrix.image.CHECKSUM_TYPE }}
           AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
           AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
           AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}

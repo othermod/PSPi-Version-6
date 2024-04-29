@@ -1,6 +1,3 @@
-# Enable 64-bit ARM architecture
-arm_64bit=1
-
 # Set GPU memory allocation for different RAM sizes
 gpu_mem_256=128
 gpu_mem_512=256

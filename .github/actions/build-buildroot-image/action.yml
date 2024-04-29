@@ -1,5 +1,5 @@
-name: Build Lakka Image
-description: 'Build PSPi Recalbox image'
+name: Build Buildroot Image
+description: 'Build PSPi image'
 inputs:
   os:
     description: 'Operating system to build'
@@ -18,6 +18,9 @@ inputs:
     required: true
   version:
     description: 'gitversion version output'
+    required: true
+  checksum_type:
+    description: 'Checksum type'
     required: true
   AZCOPY_TENANT_ID:
     description: 'Azure Tenant ID'
@@ -68,6 +71,19 @@ runs:
         mkdir -p images
         cd downloads
         wget -nv -O ${{ inputs.compressed_image_name }} ${{ inputs.download_url }}
+
+        # Check file extension of downloaded checksum
+        if [[ ${{ inputs.checksum_type }} == sha256 ]]; then
+          sha256sum -c $GITHUB_ACTION_PATH/checksums.sha256 --ignore-missing
+        elif [[ ${{ inputs.checksum_type }} == sha1 ]]; then
+          sha1sum -c $GITHUB_ACTION_PATH/checksums.sha1 --ignore-missing
+        elif [[ ${{ inputs.checksum_type }} == md5 ]]; then
+          md5sum -c $GITHUB_ACTION_PATH/checksums.md5 --ignore-missing
+        else
+          echo "Unknown checksum file extension"
+          exit 1
+        fi
+
         if [[ ${{ inputs.compressed_image_name }} == *.gz ]]; then
           gunzip ${{ inputs.compressed_image_name }}
         elif [[ ${{ inputs.compressed_image_name }} == *.xz ]]; then
@@ -107,7 +123,7 @@ runs:
         if [ "$count" -ge 1 ]
         then
           echo "Found images larger than 2G, will not add to release"
-          echo "::notice file=${{ inputs.pspi_image_name }},title=large-image::Image larger than 2GB found. Please update release notes with storage account link."
+          echo "::notice title=large-image::Image larger than 2GB found. Please update release notes with storage account link."
           echo "SKIP_RELEASE=true" >> "$GITHUB_OUTPUT"
         else
           echo "Found images smaller than 2G, will add to release"
