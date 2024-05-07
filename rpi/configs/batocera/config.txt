@@ -9,10 +9,6 @@ arm_64bit=1
 kernel=boot/linux
 initramfs boot/initrd.lz4
 
-# Firmware configurations
-start_file=start4.elf
-fixup_file=fixup4.dat
-
 # Sets the initial CEC name of the device
 cec_osd_name=batocera
 
