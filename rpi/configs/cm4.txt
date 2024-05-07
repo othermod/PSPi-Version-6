@@ -1,14 +1,8 @@
-# Enable VC4 FKMS V3D driver for graphics acceleration
-dtoverlay=vc4-fkms-v3d
-
 # Enable I2C
 dtparam=i2c_arm=on
 
 # Run as fast as firmware/board allows
 arm_boost=1
-
-# Set maximum number of framebuffers to 1
-max_framebuffers=1
 
 # Set GPIO pins to 24-Bit DPI Mode 7
 # GPIO 0 and 1 needed for DPI Clock and Data Enable
