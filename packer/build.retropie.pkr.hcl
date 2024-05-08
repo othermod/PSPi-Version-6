@@ -55,7 +55,7 @@ build {
 
   # Upload drivers
   provisioner "file" {
-    source = "${path.root}/../rpi/drivers/bin/"
+    source = "${path.root}/../rpi/configs/retropie/drivers/"
     destination = "/usr/bin/"
   }
 
