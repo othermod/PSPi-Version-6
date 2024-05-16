@@ -63,7 +63,7 @@ runs:
     # Build images
     - name: Build images
       run: |
-        sudo packer build -only ${{ inputs.build }} -var pspi_version=v${{ inputs.version }} "$GITHUB_WORKSPACE/packer/"
+        sudo packer build -only ${{ inputs.build }}.* -var pspi_version=v${{ inputs.version }} "$GITHUB_WORKSPACE/packer/"
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
@@ -89,7 +89,7 @@ runs:
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
-    # COunt images larger than 2GB and set SKIP_RELEASE variable
+    # Count images larger than 2GB and set SKIP_RELEASE variable
     - name: detect large images
       id: detect-large-images
       run: |
@@ -108,7 +108,7 @@ runs:
 
     # Upload files to azure storage account
     - name: Upload files to storage account
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true'
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true' && github.ref == 'refs/heads/main'
       run: |
         export AZCOPY_AUTO_LOGIN_TYPE=SPN
         export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
@@ -130,7 +130,7 @@ runs:
 
     # Update github release
     - name: Update Release
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false'
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
@@ -139,5 +139,15 @@ runs:
         draft: true
         fail_on_unmatched_files: true
         files: |
+          packer/plugins/packer-builder-arm/*.img.gz
+          packer/plugins/packer-builder-arm/*.img.gz.sha256
+
+    - name: Upload artifacts
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && github.ref != 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.build }}
+        retention-days: 7
+        path: |
           packer/plugins/packer-builder-arm/*.img.gz
           packer/plugins/packer-builder-arm/*.img.gz.sha256

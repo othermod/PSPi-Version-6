@@ -134,7 +134,7 @@ runs:
 
     # Upload files to azure storage account
     - name: Upload files to storage account
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true'
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true' && github.ref == 'refs/heads/main'
       run: |
         export AZCOPY_AUTO_LOGIN_TYPE=SPN
         export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
@@ -156,7 +156,7 @@ runs:
 
     # Update github release
     - name: Update Release
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false'
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
@@ -165,5 +165,15 @@ runs:
         draft: true
         fail_on_unmatched_files: true
         files: |
+          ${{ runner.temp }}/completed_images/*.img.gz
+          ${{ runner.temp }}/completed_images/*.img.gz.sha256
+
+    - name: Upload artifacts
+      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && github.ref != 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.pspi_image_name }}
+        retention-days: 7
+        path: |
           ${{ runner.temp }}/completed_images/*.img.gz
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
