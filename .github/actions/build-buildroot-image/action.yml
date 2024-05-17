@@ -43,19 +43,7 @@ runs:
       uses: actions/download-artifact@v4
       with:
         path: rpi/drivers/bin
-        merge-multiple: true  
-
-    # Login to az, this step isn't necessary here but it will fail the workflow early if there's issues with the service principal
-    - name: Login with azcopy
-      run: |
-        export AZCOPY_AUTO_LOGIN_TYPE=SPN
-        export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
-        export AZCOPY_SPA_CLIENT_SECRET=${{ inputs.AZCOPY_SPA_CLIENT_SECRET }}
-        export AZCOPY_TENANT_ID=${{ inputs.AZCOPY_TENANT_ID }}
-        az login --service-principal -u ${{ inputs.AZCOPY_SPA_APPLICATION_ID }} -p ${{ inputs.AZCOPY_SPA_CLIENT_SECRET }} --tenant ${{ inputs.AZCOPY_TENANT_ID }}
-
-        azcopy list "https://stpspiproduseast001.blob.core.windows.net/pspi6/"
-      shell: bash  
+        merge-multiple: true
 
     # Install dependencies
     - name: Install dependencies
