@@ -122,9 +122,9 @@ jobs:
             PSPI_IMAGE_NAME: "Batocera39-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: batocera
-            DOWNLOAD_URL: "https://updates.batocera.org/bcm2836/stable/last/batocera-bcm2836-bcm2836-39-20240301.img.gz"
-            COMPRESSED_IMAGE_NAME: "batocera-bcm2836-bcm2836-39-20240301.img.gz"
-            IMAGE_NAME: "batocera-bcm2836-bcm2836-39-20240301.img"
+            DOWNLOAD_URL: "https://updates.batocera.org/bcm2837/stable/last/batocera-bcm2837-bcm2837-39-20240301.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img.gz"
+            IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img"
             CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Batocera39-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
