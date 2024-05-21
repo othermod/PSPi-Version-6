@@ -57,7 +57,11 @@ dpi_output_format=503863
 # dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
 
 [board-type=0x14]
+dtoverlay=vc4-fkms-v3d,cma-512
+
 include cm4.txt
 
 [pi0]
+dtoverlay=vc4-fkms-v3d
+
 include pi0.txt

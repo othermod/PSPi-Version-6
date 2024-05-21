@@ -87,16 +87,16 @@ jobs:
       matrix:
         image:
           - OS: lakka
-            DOWNLOAD_URL: "https://github.com/libretro/Lakka-LibreELEC/releases/download/v5.0/Lakka-RPi4.aarch64-5.0.img.gz"
-            COMPRESSED_IMAGE_NAME: "Lakka-RPi4.aarch64-5.0.img.gz"
-            IMAGE_NAME: "Lakka-RPi4.aarch64-5.0.img"
+            DOWNLOAD_URL: "https://nightly.builds.lakka.tv/5.x/2024-05-02/RPi4.aarch64/Lakka-RPi4.aarch64-5.x-20240502-2f60c70.img.gz"
+            COMPRESSED_IMAGE_NAME: "Lakka-RPi4.aarch64-5.x-20240502-2f60c70.img.gz"
+            IMAGE_NAME: "Lakka-RPi4.aarch64-5.x-20240502-2f60c70.img"
             CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Lakka5.0-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - OS: lakka
-            DOWNLOAD_URL: "https://github.com/libretro/Lakka-LibreELEC/releases/download/v5.0/Lakka-RPi3.aarch64-5.0.img.gz"
-            COMPRESSED_IMAGE_NAME: "Lakka-RPi3.aarch64-5.0.img.gz"
-            IMAGE_NAME: "Lakka-RPi3.aarch64-5.0.img"
+            DOWNLOAD_URL: "https://nightly.builds.lakka.tv/5.x/2024-05-02/RPi3.aarch64/Lakka-RPi3.aarch64-5.x-20240502-2f60c70.img.gz"
+            COMPRESSED_IMAGE_NAME: "Lakka-RPi3.aarch64-5.x-20240502-2f60c70.img.gz"
+            IMAGE_NAME: "Lakka-RPi3.aarch64-5.x-20240502-2f60c70.img"
             CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Lakka5.0-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}

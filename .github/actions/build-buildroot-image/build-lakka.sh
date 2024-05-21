@@ -62,6 +62,9 @@ df -h /mnt/image
 echo "Copy squashfs back to image"
 sudo cp filesystem.squashfs /mnt/image/SYSTEM
 
+# Update md5sum file
+sudo md5sum /mnt/image/SYSTEM > /mnt/image/SYSTEM.md5
+
 # unmount
 echo "Unmount image"
 sudo umount /mnt/image
