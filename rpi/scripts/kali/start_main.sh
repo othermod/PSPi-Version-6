@@ -1,6 +1,7 @@
 #!/bin/bash
 
-. /flash/pspi.conf
+. /boot/pspi.conf
+modprobe i2c-dev
 
 echo "enable_dim: $enable_dim"
 echo "dim_seconds: $dim_seconds"
@@ -8,7 +9,6 @@ echo "fast_mode: $fast_mode"
 echo "disable_crc: $disable_crc"
 echo "disable_gamepad: $disable_gamepad"
 echo "joysticks: $joysticks"
-echo "disable_osd: $disable_osd"
 
 params=""
 
@@ -48,9 +48,4 @@ fi
 
 echo "Starting PSPi with parameters: $params"
 
-/flash/drivers/main$ARCH_SUFFIX $params &
-
-if [ "$disable_osd" = "false" ]; then
-    sleep 1
-    /flash/drivers/osd$ARCH_SUFFIX &
-fi
+/usr/bin/main$ARCH_SUFFIX $params

@@ -16,7 +16,7 @@ source "arm" "raspios_cm4_zero2_arm64" {
     start_sector = "8192"
     filesystem   = "vfat"
     size         = "512M"
-    mountpoint   = "/boot"
+    mountpoint   = "/boot/firmware"
   }
 
   # configure root partition

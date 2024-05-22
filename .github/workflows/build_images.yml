@@ -7,6 +7,17 @@ on:
         description: 'Release Version'
         required: true
         default: '0.0.0'
+      createRelease:
+        description: 'Create a release'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      createRelease:
+        description: 'Create a release'
+        type: boolean
+        default: false
+
   push:
     branches:
       - main
@@ -54,7 +65,7 @@ jobs:
         uses: ./.github/actions/build-drivers
         with:
           build: 'drivers.*'
-          createRelease: true
+          createRelease: ${{ inputs.createRelease }}
           version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
 
   build-packer-images:
@@ -75,6 +86,7 @@ jobs:
         id: build-image
         uses: ./.github/actions/build-packer-image
         with:
+          createRelease: ${{ inputs.createRelease }}
           build: ${{ matrix.os }}
           AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
           AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
@@ -138,6 +150,7 @@ jobs:
       - name: Build & Publish Images
         uses: ./.github/actions/build-buildroot-image
         with:
+          createRelease: ${{ inputs.createRelease }}
           os: ${{ matrix.image.OS }}
           download_url: ${{ matrix.image.DOWNLOAD_URL }}
           compressed_image_name: ${{ matrix.image.COMPRESSED_IMAGE_NAME }}

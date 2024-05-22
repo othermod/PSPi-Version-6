@@ -19,6 +19,9 @@ inputs:
   version:
     description: 'gitversion version output'
     required: true
+  createRelease:
+    description: 'Create a release'
+    default: 'false'
   checksum_type:
     description: 'Checksum type'
     required: true
@@ -122,7 +125,7 @@ runs:
 
     # Upload files to azure storage account
     - name: Upload files to storage account
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true' && github.ref == 'refs/heads/main'
+      if: (steps.detect-large-images.outputs.SKIP_RELEASE == 'true' && ( inputs.createRelease == 'true' || github.ref == 'refs/heads/main'))
       run: |
         export AZCOPY_AUTO_LOGIN_TYPE=SPN
         export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
@@ -144,7 +147,7 @@ runs:
 
     # Update github release
     - name: Update Release
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && github.ref == 'refs/heads/main'
+      if: (steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && ( inputs.createRelease == 'true' || github.ref == 'refs/heads/main'))
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}

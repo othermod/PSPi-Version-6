@@ -54,7 +54,7 @@ Password: `root`
 This image does not support customisations via Raspberry Pi Imager
 
 Username: `root`  
-Password: `recalbox`
+Password: `recalboxroot`
 </details>
 
 <details>

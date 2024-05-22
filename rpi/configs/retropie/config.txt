@@ -2,9 +2,6 @@
 # http://rptl.io/configtxt
 # Some settings may impact device functionality. See link above for details
 
-# Enable 64-bit ARM architecture
-arm_64bit=1
-
 # Automatically load initramfs files, if found
 auto_initramfs=1
 
@@ -68,16 +65,22 @@ dpi_output_format=503863
 # Enable the PCF8563 Real Time Clock module
 dtoverlay=i2c-rtc,pcf8563
 
-# Enable the VC4 FKMS V3D overlay for graphics acceleration
-dtoverlay=vc4-fkms-v3d
-
 # Limit the number of framebuffers to 1 for better performance
 max_framebuffers=1
 
 [board-type=0x14]
+# Enable the VC4 FKMS V3D overlay for graphics acceleration
+dtoverlay=vc4-fkms-v3d,cma-512
+
 include cm4.txt
 
+# Set up CM4 audio pin
+dtoverlay=oldaudiocm4
+
 [pi0]
+# Enable the VC4 FKMS V3D overlay for graphics acceleration
+dtoverlay=vc4-fkms-v3d
+
 include pi0.txt
 
 [all]

@@ -56,6 +56,9 @@ dpi_output_format=503863
 # Power off the Raspberry Pi when GPIO pin 44 is triggered
 # dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
 
+# Enable the PCF8563 Real Time Clock module
+dtoverlay=i2c-rtc,pcf8563
+
 [board-type=0x14]
 dtoverlay=vc4-fkms-v3d,cma-512
 

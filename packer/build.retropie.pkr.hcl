@@ -31,7 +31,7 @@ build {
 
   # Upload config.txt
   provisioner "file" {
-    source = "${path.root}/../rpi/configs/raspios/config.txt"
+    source = "${path.root}/../rpi/configs/retropie/config.txt"
     destination = "/boot/config.txt"
   }
 
@@ -47,6 +47,12 @@ build {
     destination = "/boot/pi0.txt"
   }
 
+  # Upload pspi.conf
+  provisioner "file" {
+    source = "${path.root}/../rpi/configs/pspi.conf"
+    destination = "/boot/pspi.conf"
+  }
+
   # Upload overlays
   provisioner "file" {
     source = "${path.root}/../rpi/overlays/"
@@ -57,6 +63,18 @@ build {
   provisioner "file" {
     source = "${path.root}/../rpi/configs/retropie/drivers/"
     destination = "/usr/bin/"
+  }
+
+  # Upload start_main.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/retropie/start_main.sh"
+    destination = "/usr/local/bin/start_main.sh"
+  }
+
+  # Upload start_osd.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/retropie/start_osd.sh"
+    destination = "/usr/local/bin/start_osd.sh"
   }
 
   # Upload services

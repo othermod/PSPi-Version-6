@@ -5,35 +5,14 @@
 ################################################################################
 set -x
 
-detect_architecture() {
-    local arch
-    arch=$(uname -m)
-    case "$arch" in
-    x86_64 | aarch64)
-        echo "64-bit OS detected"
-        ARCH_SUFFIX="_64"
-        ;;
-    *)
-        echo "32-bit OS detected"
-        ARCH_SUFFIX="_32"
-        ;;
-    esac
-}
-
 detect_os_and_setup_services() {
     echo "Operating System Detected: $OS"
     case "$OS" in
-    Debian | Raspios | Kali)
-        raspios_setup
+    Debian | Raspios | Kali | ubuntu)
+        default_setup
         ;;
     RetroPie)
         retropie_setup
-        ;;
-    Ubuntu)
-        ubuntu_setup
-        ;;
-    Lakka)
-        lakka_setup
         ;;
     *)
         unknown_setup
@@ -45,7 +24,7 @@ unknown_setup() {
     echo "Unknown or unsupported OS. Manual setup may be required."
 }
 
-raspios_setup() {
+default_setup() {
     echo "Configuring RaspiOS..."
 
     enable_i2c
@@ -54,48 +33,30 @@ raspios_setup() {
 }
 
 retropie_setup() {
-    echo "Configuring Retropie..."
+    echo "Configuring RetroPie..."
 
     enable_i2c
-    set_binary_permissions
+    # set_binary_permissions
+    echo "Setting permissions on binaries..."
+    chmod +x /usr/bin/main_32
+    chmod +x /usr/bin/mouse_32
+    chmod +x /usr/bin/osd_32
+    chmod +x /usr/local/bin/start_main.sh
+    chmod +x /usr/local/bin/start_osd.sh
     add_services "main osd"
-}
-
-ubuntu_setup() {
-    echo "Configuring Ubuntu..."
-
-    set_binary_permissions
-    add_services "main osd mouse"
-}
-
-lakka_setup() {
-    echo "Configuring Lakka..."
-
-    # Make autostart executable
-    chmod +x /storage/.config/autostart.sh
-
-    # Modify a line in retroarch.cfg
-    sed -i '/input_quit_gamepad_combo/c\input_quit_gamepad_combo = "4"' /storage/.config/retroarch/retroarch.cfg
-    echo "Modified input_quit_gamepad_combo in retroarch.cfg."
 }
 
 set_binary_permissions() {
     echo "Setting permissions on binaries..."
-    case "$ARCH_SUFFIX" in
-    _64)
-        chmod +x /usr/bin/main_64
-        chmod +x /usr/bin/mouse_64
-        chmod +x /usr/bin/osd_64
-        ;;
-    _32)
-        chmod +x /usr/bin/main_32
-        chmod +x /usr/bin/mouse_32
-        chmod +x /usr/bin/osd_32
-        ;;
-    *)
-        echo "Unknown or unsupported architecture."
-        ;;
-    esac
+    chmod +x /usr/bin/main_64
+    chmod +x /usr/bin/mouse_64
+    chmod +x /usr/bin/osd_64
+    chmod +x /usr/bin/main_32
+    chmod +x /usr/bin/mouse_32
+    chmod +x /usr/bin/osd_32
+    chmod +x /usr/local/bin/start_main.sh
+    chmod +x /usr/local/bin/start_osd.sh
+    chmod +x /usr/local/bin/start_mouse.sh
 }
 
 enable_i2c() {
@@ -124,11 +85,10 @@ add_services() {
 
     # Enable services
     for service in $1; do
-        systemctl enable ${service}${ARCH_SUFFIX}.service
+        systemctl enable ${service}.service
     done
 
     echo "Services added."
 }
 
-detect_architecture
 detect_os_and_setup_services
