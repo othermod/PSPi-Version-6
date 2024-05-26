@@ -55,8 +55,14 @@ build {
   # Upload overlays
   provisioner "file" {
     source = "${path.root}/../rpi/overlays/"
-    destination = "/boot/firmware/overlays"
+    destination = "/boot/firmware/overlays/"
   }
+
+  # Upload libraries
+  provisioner "file" {
+    source = "${path.root}/../rpi/libraries/raspios/"
+    destination = "/usr/lib/"
+  }  
 
   # Upload drivers
   provisioner "file" {
