@@ -80,48 +80,9 @@ runs:
       working-directory: packer/plugins/packer-builder-arm
       shell: bash
 
-    # Count images larger than 2GB and set SKIP_RELEASE variable
-    - name: detect large images
-      id: detect-large-images
-      run: |
-        count="$(find -type f -name "*.gz" -size +2G | wc -l)"
-        if [ "$count" -ge 1 ]
-        then
-          echo "Found images larger than 2G, will not add to release"
-          echo "::notice title=large-image::Image larger than 2GB found. Please update release notes with storage account link."
-          echo "SKIP_RELEASE=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "Found images smaller than 2G, will add to release"
-          echo "SKIP_RELEASE=false" >> "$GITHUB_OUTPUT"
-        fi
-      working-directory: packer/plugins/packer-builder-arm
-      shell: bash
-
-    # Upload files to azure storage account
-    - name: Upload files to storage account
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'true' && (inputs.createRelease == 'true' || github.ref == 'refs/heads/main')
-      run: |
-        export AZCOPY_AUTO_LOGIN_TYPE=SPN
-        export AZCOPY_SPA_APPLICATION_ID=${{ inputs.AZCOPY_SPA_APPLICATION_ID }}
-        export AZCOPY_SPA_CLIENT_SECRET=${{ inputs.AZCOPY_SPA_CLIENT_SECRET }}
-        export AZCOPY_TENANT_ID=${{ inputs.AZCOPY_TENANT_ID }}
-        az login --service-principal -u ${{ inputs.AZCOPY_SPA_APPLICATION_ID }} -p ${{ inputs.AZCOPY_SPA_CLIENT_SECRET }} --tenant ${{ inputs.AZCOPY_TENANT_ID }}
-
-        for i in $(ls *.img.gz)
-        do
-          azcopy copy "$i" "https://${{ inputs.AZCOPY_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/pspi6/$i"
-        done
-
-        for i in $(ls *.img.gz.sha256)
-        do
-          azcopy copy "$i" "https://${{ inputs.AZCOPY_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/pspi6/$i"
-        done
-      working-directory: packer/plugins/packer-builder-arm
-      shell: bash
-
     # Update github release
     - name: Update Release
-      if: (steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && ( inputs.createRelease == 'true' || github.ref == 'refs/heads/main'))
+      if: github.ref == 'refs/heads/main' || inputs.createRelease == 'true'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
@@ -133,8 +94,8 @@ runs:
           packer/plugins/packer-builder-arm/*.img.gz
           packer/plugins/packer-builder-arm/*.img.gz.sha256
 
+    # Upload artifacts
     - name: Upload artifacts
-      if: steps.detect-large-images.outputs.SKIP_RELEASE == 'false' && github.ref != 'refs/heads/main'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.build }}
