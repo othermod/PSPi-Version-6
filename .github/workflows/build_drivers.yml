@@ -9,11 +9,35 @@ on:
       - 'rpi/drivers/**'
 
 jobs:
+  run-gitversion:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.gitversion.outputs.SemVer }}
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install GitVersion
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0
+        with:
+          versionSpec: '5.x'
+
+      # Determine version
+      - name: Determine Version
+        id:   gitversion
+        uses: gittools/actions/gitversion/execute@v0
+
   build-drivers:
     runs-on: ubuntu-latest
+    needs: run-gitversion
     steps:
       - uses: actions/checkout@v4
       - name: Build Drivers
         uses: ./.github/actions/build-drivers
         with:
           build: 'drivers.*'
+          version: ${{ needs.run-gitversion.outputs.version }}

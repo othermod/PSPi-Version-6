@@ -1,0 +1,131 @@
+name: Build Buildroot Image
+description: 'Build PSPi image'
+inputs:
+  os:
+    description: 'Operating system to build'
+    required: true
+  download_url:
+    description: 'Download URL for image'
+    required: true
+  compressed_image_name:
+    description: 'Name of downloaded compressed image file'
+    required: true
+  image_name:
+    description: 'Name of uncompressed image file'
+    required: true
+  pspi_image_name:
+    description: 'Name of the pspi artifact image'
+    required: true
+  version:
+    description: 'gitversion version output'
+    required: true
+  createRelease:
+    description: 'Create a release'
+    default: 'false'
+  checksum_type:
+    description: 'Checksum type'
+    required: true
+  AZCOPY_TENANT_ID:
+    description: 'Azure Tenant ID'
+    required: true
+  AZCOPY_SPA_CLIENT_SECRET:
+    description: 'Azure Service Principal Client Secret'
+    required: true
+  AZCOPY_SPA_APPLICATION_ID:
+    description: 'Azure Service Principal Application ID'
+    required: true
+  AZCOPY_STORAGE_ACCOUNT_NAME:
+    description: 'Azure Storage Account Name'
+    required: true
+  
+runs:
+  using: "composite"
+  steps:
+    # Download driver artifacts
+    - name: Download Drivers
+      uses: actions/download-artifact@v4
+      with:
+        path: rpi/drivers/bin
+        merge-multiple: true
+
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install squashfs-tools -y
+      shell: bash
+
+    # Download image
+    - name: Download image file
+      run: |
+        mkdir -p downloads
+        mkdir -p images
+        cd downloads
+        wget -nv -O ${{ inputs.compressed_image_name }} ${{ inputs.download_url }}
+
+        # Check file extension of downloaded checksum
+        if [[ ${{ inputs.checksum_type }} == sha256 ]]; then
+          sha256sum -c $GITHUB_ACTION_PATH/checksums.sha256 --ignore-missing
+        elif [[ ${{ inputs.checksum_type }} == sha1 ]]; then
+          sha1sum -c $GITHUB_ACTION_PATH/checksums.sha1 --ignore-missing
+        elif [[ ${{ inputs.checksum_type }} == md5 ]]; then
+          md5sum -c $GITHUB_ACTION_PATH/checksums.md5 --ignore-missing
+        else
+          echo "Unknown checksum file extension"
+          exit 1
+        fi
+
+        if [[ ${{ inputs.compressed_image_name }} == *.gz ]]; then
+          gunzip ${{ inputs.compressed_image_name }}
+        elif [[ ${{ inputs.compressed_image_name }} == *.xz ]]; then
+          unxz ${{ inputs.compressed_image_name }}
+        else
+          echo "Unknown image type"
+          exit 1
+        fi
+        mv *.img ../images/
+      working-directory: ${{ runner.temp }}
+      shell: bash
+
+    - name: Build Image
+      shell: bash
+      run: $GITHUB_ACTION_PATH/build-${{ inputs.os }}.sh
+      working-directory: ${{ runner.temp }}
+      env:
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+        IMAGE_NAME: ${{ inputs.image_name }}
+        PSPI_IMAGE_NAME: ${{ inputs.pspi_image_name }}
+
+    # Generate sha256 filehash of image files
+    - name: Generate sha256 filehash
+      run: |
+        for i in $(ls *.img.gz)
+        do
+          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+        done
+      working-directory: ${{ runner.temp }}/completed_images
+      shell: bash
+
+    # Update github release
+    - name: Update Release
+      if: github.ref == 'refs/heads/main' || inputs.createRelease == 'true'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ inputs.version }}
+        name: v${{ inputs.version }}
+        body_path: .github/workflows/RELEASE_FORMAT.txt
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          ${{ runner.temp }}/completed_images/*.img.gz
+          ${{ runner.temp }}/completed_images/*.img.gz.sha256
+
+    # Upload artifacts
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.pspi_image_name }}
+        retention-days: 7
+        path: |
+          ${{ runner.temp }}/completed_images/*.img.gz
+          ${{ runner.temp }}/completed_images/*.img.gz.sha256

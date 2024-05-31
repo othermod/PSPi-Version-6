@@ -5,7 +5,7 @@ source "arm" "kali_zero2_armhf" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.Kali2023-4.Zero2.${var.pspi_version}.img"
+  image_path            = "Kali2023.4-Zero2-PSPi6-${var.pspi_version}.img"
   image_size            = "13G"
   image_type            = "dos"
 
@@ -43,7 +43,7 @@ source "arm" "kali_cm4_arm64" {
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "PSPi6.Kali2023-4.CM4.${var.pspi_version}.img"
+  image_path            = "Kali2023.4-CM4-PSPi6-${var.pspi_version}.img"
   image_size            = "15G"
   image_type            = "dos"
 

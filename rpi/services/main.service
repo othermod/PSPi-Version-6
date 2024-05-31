@@ -3,7 +3,7 @@ Description=PSPi Main Service
 After=network.target
 
 [Service]
-ExecStart=main_32 --dim
+ExecStart=/usr/local/bin/start_main.sh
 Restart=on-failure
 
 [Install]

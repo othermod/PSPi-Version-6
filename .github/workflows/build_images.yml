@@ -2,21 +2,62 @@ name: Build Images
 
 on:
   workflow_dispatch:
-  push: 
+    inputs:
+      version:
+        description: 'Release Version'
+        required: true
+        default: '0.0.0'
+      createRelease:
+        description: 'Create a release'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      createRelease:
+        description: 'Create a release'
+        type: boolean
+        default: false
+
+  push:
     branches:
       - main
   pull_request:
     branches:
       - main
     paths:
+      - '.github/**'
       - 'packer/**'
       - 'rpi/drivers/**'
       - 'rpi/configs/**'
       - 'rpi/services/**'
+      - 'rpi/scripts/**'
 
 jobs:
+  run-gitversion:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.gitversion.outputs.SemVer }}
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install GitVersion
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0
+        with:
+          versionSpec: '5.x'
+
+      # Determine version
+      - name: Determine Version
+        id:   gitversion
+        uses: gittools/actions/gitversion/execute@v0
+
   build-drivers:
     runs-on: ubuntu-latest
+    needs: run-gitversion
     steps:
       - uses: actions/checkout@v4
 
@@ -24,31 +65,100 @@ jobs:
         uses: ./.github/actions/build-drivers
         with:
           build: 'drivers.*'
-          createRelease: true
-  build-images:
+          createRelease: ${{ inputs.createRelease }}
+          version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+
+  build-packer-images:
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
     strategy:
       matrix:
         # Resolves to the packer image name
-        os: [batocera, raspios, retropie, kali_cm4, kali_zero2]
+        os: [raspios, retropie]
     runs-on: ubuntu-latest
-    needs: build-drivers
+    needs:
+      - build-drivers
+      - run-gitversion
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Build & Publish Images
         id: build-image
-        uses: ./.github/actions/build-image
+        uses: ./.github/actions/build-packer-image
         with:
-          build: '${{ matrix.os }}.*'
+          createRelease: ${{ inputs.createRelease }}
+          build: ${{ matrix.os }}
           AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
           AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
           AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
           AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}
-  build-recalbox:
+          version: ${{ env.VERSION }}
+
+  build-buildroot-images:
+    strategy:
+      matrix:
+        image:
+          - OS: lakka
+            DOWNLOAD_URL: "https://nightly.builds.lakka.tv/5.x/2024-05-02/RPi4.aarch64/Lakka-RPi4.aarch64-5.x-20240502-2f60c70.img.gz"
+            COMPRESSED_IMAGE_NAME: "Lakka-RPi4.aarch64-5.x-20240502-2f60c70.img.gz"
+            IMAGE_NAME: "Lakka-RPi4.aarch64-5.x-20240502-2f60c70.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Lakka5.0-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - OS: lakka
+            DOWNLOAD_URL: "https://nightly.builds.lakka.tv/5.x/2024-05-02/RPi3.aarch64/Lakka-RPi3.aarch64-5.x-20240502-2f60c70.img.gz"
+            COMPRESSED_IMAGE_NAME: "Lakka-RPi3.aarch64-5.x-20240502-2f60c70.img.gz"
+            IMAGE_NAME: "Lakka-RPi3.aarch64-5.x-20240502-2f60c70.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Lakka5.0-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: recalbox
+            DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpi4_64/recalbox-rpi4_64.img.xz"
+            COMPRESSED_IMAGE_NAME: "recalbox-rpi4_64.img.xz"
+            IMAGE_NAME: "recalbox-rpi4_64.img"
+            CHECKSUM_TYPE: "sha1"
+            PSPI_IMAGE_NAME: "Recalbox9.1-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: recalbox
+            DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpizero2/recalbox-rpizero2.img.xz"
+            COMPRESSED_IMAGE_NAME: "recalbox-rpizero2.img.xz"
+            IMAGE_NAME: "recalbox-rpizero2.img"
+            CHECKSUM_TYPE: "sha1"
+            PSPI_IMAGE_NAME: "Recalbox9.1-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-39-20240228.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img.gz"
+            IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera39-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://updates.batocera.org/bcm2837/stable/last/batocera-bcm2837-bcm2837-39-20240301.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img.gz"
+            IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera39-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
     runs-on: ubuntu-latest
-    needs: build-drivers
+    needs:
+      - build-drivers
+      - run-gitversion
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Recalbox
-        uses: ./.github/actions/build-recalbox
+      - name: Build & Publish Images
+        uses: ./.github/actions/build-buildroot-image
+        with:
+          createRelease: ${{ inputs.createRelease }}
+          os: ${{ matrix.image.OS }}
+          download_url: ${{ matrix.image.DOWNLOAD_URL }}
+          compressed_image_name: ${{ matrix.image.COMPRESSED_IMAGE_NAME }}
+          image_name: ${{ matrix.image.IMAGE_NAME }}
+          pspi_image_name: ${{ matrix.image.PSPI_IMAGE_NAME }}
+          version: ${{ matrix.image.VERSION }}
+          checksum_type: ${{ matrix.image.CHECKSUM_TYPE }}
+          AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
+          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
+          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
+          AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}

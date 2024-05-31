@@ -1,0 +1,105 @@
+name: Build Packer Image
+description: 'Build PSPi image'
+inputs:
+  build:
+    description: 'Comma separated list of images to build'
+    required: true
+  AZCOPY_TENANT_ID:
+    description: 'Azure Tenant ID'
+    required: true
+  AZCOPY_SPA_CLIENT_SECRET:
+    description: 'Azure Service Principal Client Secret'
+    required: true
+  AZCOPY_SPA_APPLICATION_ID:
+    description: 'Azure Service Principal Application ID'
+    required: true
+  AZCOPY_STORAGE_ACCOUNT_NAME:
+    description: 'Azure Storage Account Name'
+    required: true
+  version:
+    description: 'gitversion version output'
+    required: true
+  createRelease:
+    description: 'Create a release'
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    # Download driver artifacts
+    - name: Download Drivers
+      uses: actions/download-artifact@v4
+      with:
+        path: rpi/drivers/bin
+        merge-multiple: true
+
+    # Install dependencies for packer
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils squashfs-tools -y
+      shell: bash
+
+    # Install packer arm plugin
+    - name: Install packer-builder-arm
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/packer/plugins
+        cd $GITHUB_WORKSPACE/packer/plugins
+        git clone https://github.com/mkaczanowski/packer-builder-arm
+        cd packer-builder-arm
+        go mod download
+        go build -v .
+      shell: bash
+
+    # Build images
+    - name: Build images
+      run: |
+        sudo packer build -only ${{ inputs.build }}.* -var pspi_version=v${{ inputs.version }} "$GITHUB_WORKSPACE/packer/"
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
+    # Shrink images
+    - name: Shrink images
+      run: |
+        wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+        chmod +x pishrink.sh
+        for i in $(ls *.img)
+        do
+          sudo ./pishrink.sh -v -z -a "$i"
+        done
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
+    # Generate sha256 filehash of image files
+    - name: Generate sha256 filehash
+      run: |
+        for i in $(ls *.img.gz)
+        do
+          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
+        done
+      working-directory: packer/plugins/packer-builder-arm
+      shell: bash
+
+    # Update github release
+    - name: Update Release
+      if: github.ref == 'refs/heads/main' || inputs.createRelease == 'true'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ inputs.version }}
+        name: v${{ inputs.version }}
+        body_path: .github/workflows/RELEASE_FORMAT.txt
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          packer/plugins/packer-builder-arm/*.img.gz
+          packer/plugins/packer-builder-arm/*.img.gz.sha256
+
+    # Upload artifacts
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.build }}
+        retention-days: 7
+        path: |
+          packer/plugins/packer-builder-arm/*.img.gz
+          packer/plugins/packer-builder-arm/*.img.gz.sha256

@@ -1,15 +1,13 @@
-# Load the 64-bit kernel
-arm_64bit=0
-
+# Set GPU memory allocation for different RAM sizes
 gpu_mem_256=128
 gpu_mem_512=256
 gpu_mem_1024=256
 
-#Set GPIO pins to 21-Bit DPI
+# Set GPIO pins to 21-Bit DPI
 #GPIO 0 and 1 needed for DPI Clock and Data Enable
 gpio=0=a2,np
 gpio=1=a2,np
-#Set GPIO pins 2 and 3 to I2C Mode. These can be used for other things, if needed.
+# Set GPIO pins 2 and 3 to I2C Mode. These can be used for other things, if needed.
 gpio=2=a0,np
 gpio=3=a0,np
 # Set up color pins
@@ -17,18 +15,20 @@ gpio=5-11=a2,np
 gpio=13-19=a2,np
 gpio=21-27=a2,np
 
+# Set DPI timings for 800x480 resolution at 60Hz
 dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 32000000 6
 
-#Zero Stuff
-#activity LED
+# Set activity LED GPIO pin to 20
 dtparam=act_led_gpio=20
 
-#audio
+# Enable audio
 dtoverlay=audiozero
 
-#poweroff
-dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
+# Controls the behavior of the activity LED on the Raspberry Pi Zero.
 dtparam=act_led_activelow=no
 
+# Set minimum ARM frequency to 500 MHz
 arm_freq_min=500
+
+# Set minimum core frequency to 200 MHz
 core_freq_min=200

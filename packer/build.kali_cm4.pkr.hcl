@@ -11,6 +11,24 @@ build {
     destination = "/boot/config.txt"
   }
 
+  # Upload cm4.txt
+  provisioner "file" {
+    source = "${path.root}/../rpi/configs/cm4.txt"
+    destination = "/boot/cm4.txt"
+  }
+
+  # Upload pi0.txt
+  provisioner "file" {
+    source = "${path.root}/../rpi/configs/pi0.txt"
+    destination = "/boot/pi0.txt"
+  }
+
+  # Upload pspi.conf
+  provisioner "file" {
+    source = "${path.root}/../rpi/configs/pspi.conf"
+    destination = "/boot/pspi.conf"
+  }
+
   # Upload overlays
   provisioner "file" {
     source = "${path.root}/../rpi/overlays/"
@@ -23,12 +41,30 @@ build {
     destination = "/usr/bin/"
   }
 
+  # Upload start_main.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/kali/start_main.sh"
+    destination = "/usr/local/bin/start_main.sh"
+  }
+
+  # Upload start_osd.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/kali/start_osd.sh"
+    destination = "/usr/local/bin/start_osd.sh"
+  }
+
+  # Upload start_mouse.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/kali/start_mouse.sh"
+    destination = "/usr/local/bin/start_mouse.sh"
+  }
+
   # Upload services
   provisioner "file" {
     source = "${path.root}/../rpi/services/"
     destination = "/etc/systemd/system/"
   }
-  
+
   # Install pspi6 drivers & services
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"

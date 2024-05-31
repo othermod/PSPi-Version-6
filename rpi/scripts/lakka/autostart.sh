@@ -1,7 +1,6 @@
 #!/bin/bash
 
-. /boot/pspi.conf
-modprobe i2c-dev
+. /flash/pspi.conf
 
 echo "enable_dim: $enable_dim"
 echo "dim_seconds: $dim_seconds"
@@ -49,9 +48,9 @@ fi
 
 echo "Starting PSPi with parameters: $params"
 
-/boot/drivers/main$ARCH_SUFFIX $params &
+/flash/drivers/main$ARCH_SUFFIX $params &
 
 if [ "$disable_osd" = "false" ]; then
     sleep 1
-    /boot/drivers/osd$ARCH_SUFFIX &
+    /flash/drivers/osd$ARCH_SUFFIX &
 fi

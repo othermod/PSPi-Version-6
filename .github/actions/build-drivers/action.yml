@@ -7,30 +7,17 @@ inputs:
   createRelease:
     description: 'Create a release'
     default: 'false'
+  version:
+    description: 'gitversion version'
+    required: true
 
 runs:
   using: "composite"
   steps:
-    # Checkout repository
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-
-    # Install GitVersion
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v0
-      with:
-        versionSpec: '5.x'
-
-    # Determine version
-    - name: Determine Version
-      id:   gitversion
-      uses: gittools/actions/gitversion/execute@v0 
-
     # Install packer dependencies
     - name: Install dependencies
       run: |
+        echo "Create release value is ${{ inputs.createRelease }}"
         sudo apt-get update
         sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils
       shell: bash
@@ -89,12 +76,12 @@ runs:
 
     # Create github release
     - name: Create Release
-      if: ${{ inputs.createRelease }} == 'true'
-      uses: softprops/action-gh-release@v0.1.15
+      if: github.ref == 'refs/heads/main' || inputs.createRelease == 'true'
+      uses: softprops/action-gh-release@v2
       with:
-        generate_release_notes: true
-        tag_name: v${{ steps.gitversion.outputs.majorMinorPatch }}
-        name: Release v${{ steps.gitversion.outputs.majorMinorPatch }}
+        tag_name: v${{ inputs.version }}
+        name: v${{ inputs.version }}
+        body_path: .github/workflows/RELEASE_FORMAT.txt
         draft: true
         fail_on_unmatched_files: true
         files: |

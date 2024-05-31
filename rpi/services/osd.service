@@ -1,9 +1,9 @@
 [Unit]
-Description=PSPi Main Service
+Description=PSPi On Screen Display Service
 After=network.target
 
 [Service]
-ExecStart=main_64 --dim
+ExecStart=/usr/local/bin/start_osd.sh
 Restart=on-failure
 
 [Install]
