@@ -1,0 +1,12 @@
+#!/bin/sh
+# TRIMUI EDITION
+
+if [ -f "/mnt/SDCARD/System/bin/gm" ]; then
+    source /mnt/SDCARD/System/etc/ex_config
+
+    find "/mnt/SDCARD/Imgs/PORTS/" -type f \( -iname "*.jpg" -o -iname "*.png" \) -exec sh -c 'input="{}"; output="$(echo "$input" | sed "s/\(.*\)\..*/\1/").png"; gm -verbose convert "$input" "244x244>" "$output"; echo "$input"' \; >> /mnt/SDCARD/Apps/PortMaster/PortMaster/image_smash.log
+fi
+
+if [ -f /mnt/SDCARD/Roms/PORTS/PORTS_cache7.db ]; then
+    rm -f /mnt/SDCARD/Roms/PORTS/PORTS_cache7.db
+fi

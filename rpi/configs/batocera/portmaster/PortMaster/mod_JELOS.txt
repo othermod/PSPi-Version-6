@@ -1,0 +1,16 @@
+#!/bin/bash
+
+## Modular - JELOS
+# 
+# A modular file that is sourced for specific script lines required by ports running on JELOS.
+#
+# usage `source <path_to>/mod_JELOS.txt`
+
+PORT_32BIT="${PORT_32BIT:-"N"}"
+
+if [[ "$PORT_32BIT" == "Y" ]]; then
+    export SPA_PLUGIN_DIR="/usr/lib32/spa-0.2"
+    export PIPEWIRE_MODULE_DIR="/usr/lib32/pipewire-0.3/"
+fi
+
+export LIBGL_DRIVERS_PATH=/usr/lib32/dri:/usr/lib/dri

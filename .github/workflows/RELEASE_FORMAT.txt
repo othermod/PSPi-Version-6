@@ -33,6 +33,18 @@ This image does not support customisations via Raspberry Pi Imager
 
 Username: `root`  
 Password: `linux`
+
+PortMaster:
+
+This image comes with [PortMaster](https://portmaster.games/) preinstalled.  
+
+PortMaster does not (yet) officially support Batocera, though we can get some (not all) games working.
+
+To get started: 
+
+- Connect your device to the internet and launch PortMaster from the "ports" console. This will update PortMaster to the latest version.
+- Install whatever games you would like to try and follow any included instructions.
+- Before launching a game, you need to open the game script in a text editor and change the "controlfolder" variable from `/roms/ports/PortMaster` to `/userdata/roms/ports/PortMaster` (See the included copy of Descent for an example)
 </details>
 
 <details>

@@ -1,0 +1,126 @@
+#!/bin/bash
+
+if [ ! -d "/dev/shm/portmaster" ]; then
+  $ESUDO mkdir /dev/shm/portmaster
+else
+  $ESUDO rm -f /dev/shm/portmaster/pm_*
+fi
+
+# HarbourMaster pipe commands
+PM_PIPE="/dev/shm/portmaster/pm_input"
+PM_DONE="/dev/shm/portmaster/pm_done"
+PM_PID=""
+
+export PYSDL2_DLL_PATH="/usr/lib"
+
+PortMasterIPCheck() {
+  # Taken from original PortMaster.sh
+  # https://github.com/christianhaitian/PortMaster/blob/f07bf22b46b1492879392c081e533100d6527dae/PortMaster/PortMaster.sh#L160
+  echo $(ip route | awk '/default/ { print $3 }')
+}
+
+PortMasterDialogInit() {
+  local wait=0
+
+  if [ ! -e "$PM_PIPE" ]; then
+    printf "WAIT" | $ESUDO tee "$PM_DONE" > /dev/null
+
+    if [[ "$1" == "no-harbour" ]] || [[ "$1" == "no-harbor" ]]; then
+      $ESUDO $controlfolder/pugwash --no-harbour --quiet fifo_control "$PM_PIPE" "$PM_DONE" > /dev/null &
+      PM_PID="$!"
+    elif [[ "$1" == "no-check" ]]; then
+      $ESUDO $controlfolder/pugwash --no-check --quiet fifo_control "$PM_PIPE" "$PM_DONE" > /dev/null &
+      PM_PID="$!"
+    else
+      $ESUDO $controlfolder/pugwash --quiet fifo_control "$PM_PIPE" "$PM_DONE" > /dev/null &
+      PM_PID="$!"
+    fi
+
+    while true
+    do
+      if [ -e "$PM_PIPE" ]; then
+        break
+      fi
+
+      if [ $wait -gt 100 ]; then
+        break
+      fi
+
+      wait=$(expr $wait + 1)
+      sleep 0.1
+    done
+
+    _PortMasterWaitForCmd
+  fi
+}
+
+_PortMasterWaitForCmd() {
+  local RESULT=""
+  local wait=0
+
+  while true
+  do
+    RESULT=$(cat "$PM_DONE")
+
+    if [[ "$RESULT" != "WAIT" ]]; then
+      break
+    fi
+
+    if [ $wait -gt 100 ]; then
+      break
+    fi
+
+    wait=$(expr $wait + 1)
+    sleep 0.3
+  done
+}
+
+PortMasterDialogExit() {
+  if [ -e "$PM_PIPE" ]; then
+    echo "exit" | $ESUDO tee "$PM_PIPE" > /dev/null
+    _PortMasterWaitForCmd
+  fi
+
+  $ESUDO rm -f "$PM_PIPE" > /dev/null
+  $ESUDO rm -f "$PM_DONE" > /dev/null
+
+  if [[ "$PM_PID" != "" ]]; then
+    $ESUDO kill -9 "$PM_PID" > /dev/null 2>&1
+    PM_PID=""
+  fi
+}
+
+PortMasterDialog() {
+  # Send a command to pugwash
+  local wait=0
+
+  if [[ ! -z "$1" ]]; then
+    if [ -e "$PM_PIPE" ]; then
+      if [ -f "$PM_DONE" ]; then
+        printf "WAIT" | $ESUDO tee "$PM_DONE" > /dev/null
+      fi
+
+      echo $(printf "%s\1" "$@") | $ESUDO tee $PM_PIPE > /dev/null
+
+      _PortMasterWaitForCmd
+    fi
+  fi
+}
+
+PortMasterDialogResult() {
+  PortMasterDialog "$@"
+
+  echo $(cat "$PM_DONE")
+}
+
+PortMasterDialogMessageBox() {
+  PortMasterDialog "message_box" "$@"
+
+  echo $(cat "$PM_DONE")
+}
+
+PortMasterDialogCheckRuntime() {
+  PortMasterDialog "check_runtime" "$@"
+
+  echo $(cat "$PM_DONE")
+}
