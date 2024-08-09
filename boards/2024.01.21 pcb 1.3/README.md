@@ -10,7 +10,11 @@
 
 Some components are not available for automatic placement and must be placed manually. Below is the list of these components with links to purchase them:
 
-1. **Gold Plated Pads for Joystick Contact**: [AliExpress Link for 1.3mm Pads](https://s.click.aliexpress.com/e/_DEbcF3V)
+1. **Gold Plated Pads for Joystick Contact (4ea needed for each board)**:
+   - Option 1: [AliExpress Link for 1.3mm Pads](https://s.click.aliexpress.com/e/_DEbcF3V)
+     - These pads need to be soldered into place by the user.
+   - Option 2: [othermod's Custom Manufactured Pin](https://othermod.com/product/pspi-6-joystick-contact-pads/)
+     - These are custom manufactured pins that don't require soldering, making assembly easier. Soldering is optional for added durability.
 2. **PSP Barrel Jack SMD Connector**: [AliExpress Link](https://s.click.aliexpress.com/e/_DErpHYb)
 3. **PSP Headphone Jack Connector**: [AliExpress Link](https://s.click.aliexpress.com/e/_DDpWHFz)
 
