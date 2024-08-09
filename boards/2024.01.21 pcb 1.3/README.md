@@ -21,7 +21,7 @@ The following components are not available for automatic placement and must be a
 - M2.5 Washer (0.5mm Thick): [AliExpress Link](https://s.click.aliexpress.com/e/_DFXVGBT)
 - M2.5 Screw (3mm Long): [AliExpress Link](https://s.click.aliexpress.com/e/_Dlp9Lxn)
 - M2.5 Screw (5mm Long): [AliExpress Link](https://s.click.aliexpress.com/e/_Dlp9Lxn)
-- Pin Protection 3D Print: ([GitHub Link](https://github.com/othermod/PSPi-Version-6/blob/main/boards/pin_protection.obj))
+- Pin Protection 3D Print: [GitHub Link](https://github.com/othermod/PSPi-Version-6/blob/main/boards/pin_protection.obj)
 
 ## Project Files (EasyEDA)
 - [PSPi 6 Main Board](https://oshwlab.com/adamseamster/pspi-zero-version-5_copy_copy)
