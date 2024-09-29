@@ -75,9 +75,9 @@ While PSPi 6 is primarily my personal project, I welcome contributions from the 
 
 ## 📢 Stay Connected
 
-- [**Discord**](https://discord.gg/V96c3JC): Join our community for discussions, support, and sharing your builds.
+- [**Discord**](https://discord.gg/V96c3JC): Join the community for discussions, support, and sharing your builds.
 - [**YouTube**](https://youtube.com/othermod): Subscribe for video tutorials and project updates.
-- [**Contact**](https://linktr.ee/othermod): Reach out with your thoughts, suggestions, or collaboration ideas.
+- [**Contact**](https://linktr.ee/othermod): Reach me on various platforms.
 
 ## 📜 License
 
