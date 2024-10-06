@@ -197,7 +197,6 @@ If you want to create your own custom firmware for the ATmega8A, you'll need to 
 - For the pogo pin setup, ensure all pins are making good contact with the board.
 - If using direct soldering, verify that there are no solder bridges or cold joints.
 - Ensure you're using the correct GPIO numbers (for Raspberry Pi) or pin numbers (for Arduino).
-- Verify that the ATmega8A firmware file is in the correct location.
 
 ## Future Updates
 
