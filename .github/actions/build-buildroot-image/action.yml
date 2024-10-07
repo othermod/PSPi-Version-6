@@ -47,6 +47,7 @@ runs:
       with:
         path: rpi/drivers/bin
         merge-multiple: true
+        name: drivers
 
     # Install dependencies
     - name: Install dependencies

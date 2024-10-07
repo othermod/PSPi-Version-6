@@ -1,0 +1,117 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-09-09 16:35+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+
+#: default_theme/theme.json:254
+msgid ""
+"{if:!ports_list.total_ports::ports_list.filter_ports}Available Ports: {ports_list.filter_ports} / {ports_list.total_ports} \n"
+"Filters: {ports_list.filters}{endif}"
+msgstr ""
+
+#: default_theme/theme.json:281
+msgid ""
+"Genres: {port_info.genres}\n"
+"{if:port_info.install_size}Installed Size: {port_info.install_size}{else}Download Size: {port_info.download_size}{endif}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}"
+msgstr ""
+
+#: default_theme/theme.json:351, Zelda.theme.zip/theme.json:457
+msgid ""
+"Free Space: {system.free_space}\n"
+"\n"
+"Porter: {port_info.porter}\n"
+"Genres: {port_info.genres}\n"
+"Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}\n"
+"\n"
+"Instruction: {port_info.instructions}"
+msgstr ""
+
+#: default_theme/theme.json:380, ff_VII.theme.zip/theme.json:446
+msgid ""
+"Time: {system.time_24hr}\n"
+"CFW: {system.cfw_name} ({system.cfw_version})\n"
+"Device: {system.device_name}\n"
+"Battery: {system.battery_level}"
+msgstr ""
+
+#: default_theme/theme.json:388, ff_VII.theme.zip/theme.json:454
+msgid ""
+"PM: {system.portmaster_version}\n"
+"HM: {system.harbourmaster_version}\n"
+"Space: {system.free_space} free / {system.total_space} total"
+msgstr ""
+
+#: default_theme/theme.json:411, ff_VII.theme.zip/theme.json:489, Zelda.theme.zip/theme.json:523
+msgid "IP: {system.ip_address}"
+msgstr ""
+
+#: default_theme/theme.json:465, ff_VII.theme.zip/theme.json:569, Zelda.theme.zip/theme.json:602
+msgid ""
+"Creator: {theme_info.creator}\n"
+"Status: {theme_info.status}"
+msgstr ""
+
+#: basic_theme.theme.zip/theme.json:77
+msgid ""
+"Title: {port_info.title}\n"
+"Porter: {port_info.porter}\n"
+"Genres: {port_info.genres}\n"
+"Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}\n"
+"Description: {port_info.description}"
+msgstr ""
+
+#: ff_VII.theme.zip/theme.json:243
+msgid "Genres: {port_info.genres}    Download Size: {port_info.download_size}{if:port_info.runtime}    Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}"
+msgstr ""
+
+#: ff_VII.theme.zip/theme.json:343
+msgid ""
+"{if:!ports_list.total_ports::ports_list.filter_ports}Available Ports: {ports_list.filter_ports} / {ports_list.total_ports}  \n"
+"Filters: {ports_list.filters}{endif}"
+msgstr ""
+
+#: ff_VII.theme.zip/theme.json:410
+msgid ""
+"Free Space: {system.free_space}\n"
+"\n"
+"Porter: {port_info.porter}\n"
+"Genres: {port_info.genres}\n"
+"Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}\n"
+"\n"
+"Instruction: \n"
+"Place file x in folder y then dance until tomorrow"
+msgstr ""
+
+#: Zelda.theme.zip/theme.json:308
+msgid "Filters: {if:!ports_list.total_ports::ports_list.filter_ports} {ports_list.filters}{endif}"
+msgstr ""
+
+#: Zelda.theme.zip/theme.json:357
+msgid ""
+"Genres: {port_info.genres}\n"
+"Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}"
+msgstr ""
+
+#: Zelda.theme.zip/theme.json:494
+msgid "Time: {system.time_24hr}      Battery: {system.battery_level}"
+msgstr ""
+
