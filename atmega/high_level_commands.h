@@ -112,14 +112,18 @@ void processI2CCommand() {
             
         case CMD_BRIGHT:
             if (rxData[1] >= 1 && rxData[1] <= 8) {
-                i2cdata.status.brightness = rxData[1] - 1;  // Store 1-8 directly, subtract 1 so its correct
-                setBrightness();
+                i2cdata.status.brightness = rxData[1] - 1;  // Store 1-8 to the status, subtract 1 so its correct
+                if (!state.sleeping) { // don't actually set it while in sleep mode. itll set when returning from sleep.
+                  setBrightness();
+                }
             }
             break;
             
         case CMD_MUTE:
             state.mute = rxData[1];
-            toggleAudioCircuit();
+            if (!state.sleeping) { // don't actually set it while in sleep mode. itll set when returning from sleep.
+              toggleAudioCircuit();
+            }
             break;
     }
 }
