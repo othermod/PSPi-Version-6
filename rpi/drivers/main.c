@@ -12,49 +12,272 @@
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 #include <linux/uinput.h>
-
 #include <time.h>
+
+#define DEFAULT_POLLING_DELAY_MS 16000
+#define FAST_POLLING_DELAY_MS 8000
+#define DEFAULT_DIMMING_TIMEOUT_SEC 120
+
+// Global counter for power management
+int poweroff_counter = 0;
+int crc_error_count = 0;
+
+unsigned int polling_delay = DEFAULT_POLLING_DELAY_MS;  // Default to 16ms
 
 #define INTERFACE_NAME "wlan0"
 
-int enableCRC = 1;
-bool enableGamepad = 1;
-bool isDim = 0;
-bool isIdle = 0;
-uint32_t previousStatus;
-bool WiFiEnabled = false;
-bool WiFiConnected = false;
-uint8_t loop_counter = 0;
-uint16_t Count = 0;
-uint32_t timeAtLastChange;
-bool fast = 0;
-bool hasWiFi = 1; // Assume WiFi is available initially
+// Configuration flags
+bool enable_crc = true;
+bool gamepad_enabled = true;
+bool is_dim = false;
+bool is_idle = false;
+uint32_t previous_status;
+bool wifi_enabled = false;
+bool wifi_connected = false;
+uint8_t wifi_check_trigger = 0;
+uint16_t input_count = 0;
+uint32_t time_at_last_change;
+bool has_wifi = true;  // Assume WiFi is available initially
 
 uint8_t brightness;
 #define DATASIZE 11
 
-// fix these names
-uint8_t JOYSTICKS = 1;
-uint32_t DIMMING = 0;
+// Default Controller configuration
+uint8_t joystick_count = 1;
+uint32_t dimming_timeout = 0;
 
 typedef struct {
-    uint16_t BUTTONS;
-    uint8_t SENSE_SYS;
-    uint8_t SENSE_BAT;
-    uint8_t STATUS;
-    uint8_t JOY_LX;
-    uint8_t JOY_LY;
-    uint8_t JOY_RX;
-    uint8_t JOY_RY;
-    uint8_t CRCA;  // 16-bit CRC
-    uint8_t CRCB;  // 16-bit CRC
+    union {
+        struct Buttons {
+            uint16_t mute:1;         // bit 0  - Unused (Mute)
+            uint16_t select:1;         // bit 1  - Back (Select)
+            uint16_t start:1;        // bit 2  - Start
+            uint16_t a:1;            // bit 3  - A
+            uint16_t x:1;            // bit 4  - X
+            uint16_t y:1;            // bit 5  - Y
+            uint16_t b:1;            // bit 6  - B
+            uint16_t rshoulder:1;    // bit 7  - Right Shoulder
+            uint16_t lshoulder:1;    // bit 8  - Left Shoulder
+            uint16_t dpad_left:1;    // bit 9  - D-Pad Left
+            uint16_t dpad_up:1;      // bit 10 - D-Pad Up
+            uint16_t dpad_down:1;    // bit 11 - D-Pad Down
+            uint16_t dpad_right:1;   // bit 12 - D-Pad Right
+            uint16_t vol_minus:1;    // bit 13 - Unused (Vol-)
+            uint16_t vol_plus:1;     // bit 14 - Unused (Vol+)
+            uint16_t home:1;        // bit 15 - Guide (Home)
+        } bits;
+        uint16_t raw;
+    } buttons;
+    uint8_t system_voltage;      // System voltage reading
+    uint8_t battery_voltage;     // Battery voltage reading
+    union {
+        struct Status {
+            uint8_t brightness:3;     // Bits 0-2: Display brightness level (1-8)
+            uint8_t reserved:1;       // Bit 3: Reserved for future use
+            uint8_t sd_pressed:1;     // Bit 4: SD button status
+            uint8_t sleeping:1;       // Bit 5: Sleep status
+            uint8_t left_switch:1;    // Bit 6: Left switch status
+            uint8_t muted:1;          // Bit 7: Mute status
+        } bits;
+        uint8_t raw;
+    } status_flags;              // Various status flags
+    uint8_t left_stick_x;        // Left joystick X position
+    uint8_t left_stick_y;        // Left joystick Y position
+    union {
+        struct RightX {
+            uint8_t button:1;    // Button data in bit 0
+            uint8_t position:7;  // Position data in bits 1-7
+        } bits;
+        uint8_t raw;
+    } right_stick_x;            // Right joystick X position
+    union {
+        struct RightY {
+            uint8_t button:1;    // Button data in bit 0
+            uint8_t position:7;  // Position data in bits 1-7
+        } bits;
+        uint8_t raw;
+    } right_stick_y;            // Right joystick Y position
+    uint8_t crc_high;           // High byte of CRC-16
+    uint8_t crc_low;            // Low byte of CRC-16
 } SharedData;
 
-SharedData *mappedMemory;
-SharedData previousData;
+SharedData *shared_memory_data;
+SharedData previous_controller_state;
 
-// CRC16 calculation function
-uint16_t computeCRC16_CCITT(const uint8_t *data, uint8_t length) {
+// Global file descriptors
+int controller_board_fd;     // File descriptor for PSPi control board I2C communication
+int virtual_gamepad_fd;      // File descriptor for virtual controller/gamepad
+int wifi_monitor_fd;         // File descriptor for monitoring WiFi interface
+int shared_memory_fd;        // File descriptor for inter-process shared memory
+
+// Global netlink request structure
+struct {
+    struct nlmsghdr nlh;
+    struct ifinfomsg ifi;
+} wifi_status_request;
+
+void parse_command_line_args(int argc, char *argv[]) {
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+            printf("Usage: [options]\n");
+            printf("Options:\n");
+            printf("  --nocrc            Disable CRC checks\n");
+            printf("  --joysticks <num>  Set number of joysticks, where <num> is between 0 and 2\n");
+            printf("  --dim <seconds>    Enable dimming after <seconds>, between 1 and 3600\n");
+            printf("  --fast             Enable fast mode (double input polling rate)\n");
+            printf("  --nogamepad        Display the gamepad\n");
+            printf("  --help, -h         Display this help and exit\n");
+            exit(0);
+        } else if (strcmp(argv[i], "--nocrc") == 0) {
+            enable_crc = 0;
+            printf("CRC Disabled\n");
+        } else if (strcmp(argv[i], "--joysticks") == 0) {
+            if (i + 1 < argc) {
+                joystick_count = atoi(argv[++i]);
+                if (joystick_count < 0 || joystick_count > 2) {
+                    printf("Invalid number of joysticks. Must be between 0 and 2.\n");
+                    exit(1);
+                }
+                printf("Number of joysticks: %d\n", joystick_count);
+            } else {
+                printf("No number specified for --joysticks\n");
+                exit(1);
+            }
+        } else if (strcmp(argv[i], "--dim") == 0) {
+            if (i + 1 < argc && atoi(argv[i + 1]) >= 1 && atoi(argv[i + 1]) <= 3600) {
+                dimming_timeout = atoi(argv[++i]);
+                printf("Dimming enabled: %d seconds\n", dimming_timeout);
+            } else {
+                dimming_timeout = DEFAULT_DIMMING_TIMEOUT_SEC;
+                printf("Dimming enabled: default 120 seconds\n");
+            }
+        } else if (strcmp(argv[i], "--fast") == 0) {
+            printf("Gotta go fast\n");
+            polling_delay = FAST_POLLING_DELAY_MS;  // Set to 8ms for fast mode
+        } else if (strcmp(argv[i], "--nogamepad") == 0) {
+            printf("Gamepad disabled\n");
+            gamepad_enabled = 0;
+        }
+    }
+}
+
+void cleanup_resources() {
+    close(wifi_monitor_fd);
+    close(controller_board_fd);
+    if (gamepad_enabled) {
+        ioctl(virtual_gamepad_fd, UI_DEV_DESTROY);
+        close(virtual_gamepad_fd);
+    }
+}
+
+void init_i2c(void) {
+    controller_board_fd = open("/dev/i2c-1", O_RDWR);
+    if (controller_board_fd < 0) {
+        perror("Failed to open i2c bus");
+        cleanup_resources();
+        exit(1);
+    }
+
+    if (ioctl(controller_board_fd, I2C_SLAVE, 0x10) < 0) {
+        perror("Failed to set i2c slave");
+        close(controller_board_fd);
+        cleanup_resources();
+        exit(1);
+    }
+}
+
+void init_shared_memory(void) {
+    shared_memory_fd = shm_open("my_shm", O_CREAT | O_RDWR, 0666);
+    ftruncate(shared_memory_fd, sizeof(SharedData));
+    shared_memory_data = mmap(0, sizeof(SharedData), PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
+}
+
+int setup_uinput_device(int uinput_fd) {
+    struct uinput_user_dev uidev;
+    memset(&uidev, 0, sizeof(uidev));
+    // making compatible with 030000004c0500006802000010010000,PS3 Controller in the SDL Database
+    // make the driver create all buttons and analog sticks, but only update the extra ones when enabled in the driver
+    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PS3 Controller");
+    uidev.id.bustype = BUS_USB;
+    uidev.id.vendor = 0x054c;
+    uidev.id.product = 0x0268;
+    uidev.id.version = 0x0110;
+
+    // Left Joystick
+    uidev.absmin[ABS_X] = 40;
+    uidev.absmax[ABS_X] = 215;
+    uidev.absflat[ABS_X] = 20;
+    uidev.absfuzz[ABS_X] = 20;
+    uidev.absmin[ABS_Y] = 40;
+    uidev.absmax[ABS_Y] = 215;
+    uidev.absflat[ABS_Y] = 20;
+    uidev.absfuzz[ABS_Y] = 20;
+
+    // Right Joystick
+    uidev.absmin[ABS_RX] = 40;
+    uidev.absmax[ABS_RX] = 215;
+    uidev.absflat[ABS_RX] = 20;
+    uidev.absfuzz[ABS_RX] = 20;
+    uidev.absmin[ABS_RY] = 40;
+    uidev.absmax[ABS_RY] = 215;
+    uidev.absflat[ABS_RY] = 20;
+    uidev.absfuzz[ABS_RY] = 20;
+
+    ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
+    if (ret < 0) {
+        perror("Failed to write to uinput device in setup_uinput_device");
+        return -1;
+    }
+
+    ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
+    for(int i = 0; i < 17; i++) {
+        ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
+    }
+
+    ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
+    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
+    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Y);
+    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RX);
+    ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RY);
+
+    if (ioctl(uinput_fd, UI_DEV_CREATE) < 0) {
+        perror("Failed to create uinput device");
+        return -1;
+    }
+
+    // Initialize joysticks to center position after device creation
+    struct input_event events[5] = {
+        {.type = EV_ABS, .code = ABS_X,  .value = 127},
+        {.type = EV_ABS, .code = ABS_Y,  .value = 127},
+        {.type = EV_ABS, .code = ABS_RX, .value = 127},
+        {.type = EV_ABS, .code = ABS_RY, .value = 127},
+        {.type = EV_SYN, .code = SYN_REPORT, .value = 0}
+    };
+
+    write(uinput_fd, events, sizeof(events));
+
+    return 0;
+}
+
+void init_virtual_gamepad(void) {
+    if (!gamepad_enabled) return;
+
+    virtual_gamepad_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+    if(virtual_gamepad_fd < 0) {
+        perror("Could not open uinput device");
+        cleanup_resources();
+        exit(1);
+    }
+
+    if (setup_uinput_device(virtual_gamepad_fd) != 0) {
+        perror("Error setting up uinput device");
+        close(virtual_gamepad_fd);
+        cleanup_resources();
+        exit(1);
+    }
+}
+
+uint16_t compute_crc16_ccitt(const uint8_t *data, uint8_t length) { // change this and the data to be 16bit to match atmega.
     uint16_t crc = 0xFFFF; // Initial value for CRC-16-CCITT
     uint16_t poly = 0x1021; // Polynomial for CRC-16-CCITT
 
@@ -71,372 +294,239 @@ uint16_t computeCRC16_CCITT(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
-int setup_uinput_device(int uinput_fd) {
-    struct uinput_user_dev uidev;
-    memset(&uidev, 0, sizeof(uidev));
-
-    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi-Controller");
-    uidev.id.bustype = BUS_USB;
-    uidev.id.vendor = 0x1234;
-    uidev.id.product = 0x5678;
-    uidev.id.version = 1;
-
-    if (JOYSTICKS) {
-      uidev.absmin[ABS_X] = 40;
-      uidev.absmax[ABS_X] = 215;
-      uidev.absflat[ABS_X] = 20;
-      uidev.absfuzz[ABS_X] = 20;
-      uidev.absmin[ABS_Y] = 40;
-      uidev.absmax[ABS_Y] = 215;
-      uidev.absflat[ABS_Y] = 20;
-      uidev.absfuzz[ABS_Y] = 20;
-    }
-    if (JOYSTICKS==2) {
-      uidev.absmin[ABS_RX] = 40;  // Adjust these values as per your needs
-      uidev.absmax[ABS_RX] = 215;
-      uidev.absflat[ABS_RX] = 20;
-      uidev.absfuzz[ABS_RX] = 20;
-      uidev.absmin[ABS_RY] = 40;
-      uidev.absmax[ABS_RY] = 215;
-      uidev.absflat[ABS_RY] = 20;
-      uidev.absfuzz[ABS_RY] = 20;
-    }
-
-    ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
-    if (ret < 0) {
-        perror("Failed to write to uinput device in setup_uinput_device");
-        return -1;
-    }
-
-    ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
-    for(int i = 0; i < 16; i++) {
-        ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
-    }
-    if (JOYSTICKS==2) {
-      ioctl(uinput_fd, UI_SET_KEYBIT, BTN_0);  // New button 1
-      ioctl(uinput_fd, UI_SET_KEYBIT, BTN_1);  // New button 2
-    }
-    if (JOYSTICKS) {
-      ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
-      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
-      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Y);
-    }
-
-    if (JOYSTICKS==2) {
-      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RX);
-      ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RY);
-    }
-
-    return ioctl(uinput_fd, UI_DEV_CREATE);
-}
-
 void update_controller_data(int uinput_fd) {
     struct input_event event;
+    memset(&event, 0, sizeof(event));
 
-    // Update all button states
-    for(int i = 0; i < 16; i++) {
+    // Array defining button order for BTN_TRIGGER_HAPPY mappings
+    const bool button_order[] = {
+        shared_memory_data->buttons.bits.select,
+        0,
+        0,
+        shared_memory_data->buttons.bits.start,
+        shared_memory_data->buttons.bits.dpad_up,
+        shared_memory_data->buttons.bits.dpad_right,
+        shared_memory_data->buttons.bits.dpad_down,
+        shared_memory_data->buttons.bits.dpad_left,
+        shared_memory_data->right_stick_x.bits.button,
+        shared_memory_data->right_stick_y.bits.button,
+        shared_memory_data->buttons.bits.lshoulder,
+        shared_memory_data->buttons.bits.rshoulder,
+        shared_memory_data->buttons.bits.y,
+        shared_memory_data->buttons.bits.b,
+        shared_memory_data->buttons.bits.a,
+        shared_memory_data->buttons.bits.x,
+        shared_memory_data->buttons.bits.home
+    };
+
+    // Update buttons in specified order
+    for(size_t i = 0; i < sizeof(button_order) / sizeof(button_order[0]); i++) {
         event.type = EV_KEY;
         event.code = BTN_TRIGGER_HAPPY1 + i;
-        event.value = (mappedMemory->BUTTONS >> i) & 1;
+        event.value = button_order[i];
 
-        // Send the button event to uinput
         ssize_t ret = write(uinput_fd, &event, sizeof(event));
         if (ret < 0) {
             perror("Failed to write button event in update_controller_data");
-            // Handle error as appropriate
         }
     }
 
-    if (JOYSTICKS == 2) {
-      // Handle the additional buttons encoded in JOY_RX and JOY_RY
-      uint8_t button_rx = mappedMemory->JOY_RX & 1; // Extract bit 0
-      uint8_t button_ry = mappedMemory->JOY_RY & 1; // Extract bit 0
+    // Handle left stick if enabled
+    if (joystick_count) {
+        event.type = EV_ABS;
+        event.code = ABS_X;
+        event.value = shared_memory_data->left_stick_x;
+        write(uinput_fd, &event, sizeof(event));
 
-      event.type = EV_KEY;
-      event.code = BTN_0;  // Button from JOY_RX
-      event.value = button_rx;
-      write(uinput_fd, &event, sizeof(event));
+        event.code = ABS_Y;
+        event.value = shared_memory_data->left_stick_y;
+        write(uinput_fd, &event, sizeof(event));
 
-      event.code = BTN_1;  // Button from JOY_RY
-      event.value = button_ry;
-      write(uinput_fd, &event, sizeof(event));
+        event.type = EV_SYN;
+        event.code = SYN_REPORT;
+        event.value = 0;
+        write(uinput_fd, &event, sizeof(event));
     }
 
-    if (JOYSTICKS) {
-      // Update joystick positions
-      event.type = EV_ABS;
-      event.code = ABS_X;
-      event.value = mappedMemory->JOY_LX;
-      write(uinput_fd, &event, sizeof(event));
+    // Handle right stick if enabled
+    if (joystick_count == 2) {
+        event.type = EV_ABS;
+        event.code = ABS_RX;
+        event.value = shared_memory_data->right_stick_x.bits.position;
+        write(uinput_fd, &event, sizeof(event));
 
-      event.code = ABS_Y;
-      event.value = mappedMemory->JOY_LY;
-      write(uinput_fd, &event, sizeof(event));
+        event.code = ABS_RY;
+        event.value = shared_memory_data->right_stick_y.bits.position;
+        write(uinput_fd, &event, sizeof(event));
 
-      // Send the SYN event
-      event.type = EV_SYN;
-      event.code = SYN_REPORT;
-      event.value = 0;
-      write(uinput_fd, &event, sizeof(event));
-    }
-
-    if (JOYSTICKS == 2) {
-      event.type = EV_ABS;
-      event.code = ABS_RX;
-      event.value = mappedMemory->JOY_RX;
-      write(uinput_fd, &event, sizeof(event));
-
-      event.code = ABS_RY;
-      event.value = mappedMemory->JOY_RY;
-      write(uinput_fd, &event, sizeof(event));
-
-      // Send the SYN event
-      event.type = EV_SYN;
-      event.code = SYN_REPORT;
-      event.value = 0;
-      write(uinput_fd, &event, sizeof(event));
+        event.type = EV_SYN;
+        event.code = SYN_REPORT;
+        event.value = 0;
+        write(uinput_fd, &event, sizeof(event));
     }
 }
 
-void dimmingFunction(int i2c_fd) {
-  uint32_t Status = 0;
-  // Combine the values into Status
-  Status |= (uint32_t)mappedMemory->BUTTONS << 18; // Shifted to the highest 8 bits
-
-  //Status |= (uint32_t)mappedMemory->STATUS << 8;     // Next 8 bits
-  Status |= (uint32_t)(mappedMemory->JOY_LX >> 4) << 4; // Next 4 bits
-  Status |= (uint32_t)(mappedMemory->JOY_LY >> 4);      // Last 4 bits
-
-  if (previousStatus == Status) {
-    if (isIdle==0) {
-      timeAtLastChange = time(NULL);
-    }
-    isIdle = 1;
-    if (timeAtLastChange + DIMMING <= time(NULL) ) {
-      if (!isDim) {
-        uint8_t i2cData[4];
-        i2cData[0] = 0x22; // Command byte
-        i2cData[1] = 1;
-        write(i2c_fd, i2cData, 4);
-        isDim = 1;
-        //printf("Current time (raw): %ld\n", time(NULL));
-        brightness = mappedMemory->STATUS&0b00000111;
-        brightness++;
-        //printf("Brightness %d\n", brightness);
-      }
-    }
-  } else {
-    isIdle = 0;
-    if (isDim) {
-      timeAtLastChange = time(NULL); // this is done already. should be deleted.
-      uint8_t temp = mappedMemory->STATUS&0b00000111;
-
-      if (temp == 0b00000000) {
-        uint8_t i2cData[4];
-        i2cData[0] = 0x22; // Command byte
-        i2cData[1] = brightness;
-        write(i2c_fd, i2cData, 4);
-      }
-
-      isDim = 0;
-      //printf("Current time (raw): %ld\n", timeAtLastChange);
-    }
-  }
-
-  previousStatus = Status;
-}
-
-int main(int argc, char *argv[]) {
-  // Check command-line arguments
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-      printf("Usage: [options]\n");
-      printf("Options:\n");
-      printf("  --nocrc            Disable CRC checks\n");
-      printf("  --joysticks <num>  Set number of joysticks, where <num> is between 0 and 2\n");
-      printf("  --dim <seconds>    Enable dimming after <seconds>, between 1 and 3600\n");
-      printf("  --fast             Enable fast mode (double input polling rate)\n");
-      printf("  --nogamepad        Display the gamepad\n");
-      printf("  --help, -h         Display this help and exit\n");
-      return 0;
-    } else if (strcmp(argv[i], "--nocrc") == 0) {
-      enableCRC = 0;
-      printf("CRC Disabled\n");
-  } else if (strcmp(argv[i], "--joysticks") == 0) {
-      if (i + 1 < argc) {
-          JOYSTICKS = atoi(argv[++i]);
-          if (JOYSTICKS < 0 || JOYSTICKS > 2) {
-              printf("Invalid number of joysticks. Must be between 0 and 2.\n");
-              return 1;
-          }
-          printf("Number of joysticks: %d\n", JOYSTICKS);
-      } else {
-          printf("No number specified for --joysticks\n");
-          return 1;
-      }
-  } else if (strcmp(argv[i], "--dim") == 0) {
-      if (i + 1 < argc && atoi(argv[i + 1]) >= 1 && atoi(argv[i + 1]) <= 3600) {
-          DIMMING = atoi(argv[++i]);
-          printf("Dimming enabled: %d seconds\n", DIMMING);
-      } else {
-          DIMMING = 120; // default value
-          printf("Dimming enabled: default 120 seconds\n");
-      }
-  } else if (strcmp(argv[i], "--fast") == 0) {
-    printf("Gotta go fast\n");
-    fast = 1;
-  } else if (strcmp(argv[i], "--nogamepad") == 0) {
-    printf("Gamepad disabled\n");
-    enableGamepad = 0;
-  }
-}
-
-  int i2c_fd;
-  int shm_fd;
-
-  int uinput_fd;
-  uinput_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-  if(uinput_fd < 0) {
-      perror("Could not open uinput device");
-      return 1;
-  }
-  if (enableGamepad) {
-    if (setup_uinput_device(uinput_fd) != 0) {
-        perror("Error setting up uinput device");
-        return 1;
-    }
-  }
-
-    // Open i2c device
-    i2c_fd = open("/dev/i2c-1", O_RDWR);
-    if (i2c_fd < 0) {
-        perror("Failed to open i2c bus");
-        return 1;
+void init_wifi_monitoring(void) {
+    wifi_monitor_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+    if (wifi_monitor_fd == -1) {
+        perror("Error creating netlink socket");
+        has_wifi = 0;
+        cleanup_resources();
+        exit(1);
     }
 
-    // Set i2c slave
-    if (ioctl(i2c_fd, I2C_SLAVE, 0x10) < 0) {
-        perror("Failed to set i2c slave");
-        close(i2c_fd);
-        return 1;
-    }
-
-    shm_fd = shm_open("my_shm", O_CREAT | O_RDWR, 0666);
-    ftruncate(shm_fd, sizeof(SharedData));
-    mappedMemory = mmap(0, sizeof(SharedData), PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
-    int crcCount = 0;
-    int poweroffCounter = 0;
-
-    char buf[4096];
-    int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-
-    struct {
-        struct nlmsghdr nlh;
-        struct ifinfomsg ifi;
-    } req;
-
-    // Setup for WiFi status checking
     int ifindex = if_nametoindex(INTERFACE_NAME);
     if (ifindex == 0) {
         perror("Error getting interface index");
-        hasWiFi = 0; // WiFi interface not found, set hasWiFi to false
-    } else {
-
-      if (fd == -1) {
-          perror("Error creating socket");
-          return 1;
-      }
-
-      memset(&req, 0, sizeof(req));
-      req.nlh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-      req.nlh.nlmsg_flags = NLM_F_REQUEST;
-      req.nlh.nlmsg_type = RTM_GETLINK;
-      req.ifi.ifi_family = AF_UNSPEC;
-      req.ifi.ifi_index = ifindex;
+        has_wifi = 0;
+        cleanup_resources();
+        exit(1);
     }
 
+    memset(&wifi_status_request, 0, sizeof(wifi_status_request));
+    wifi_status_request.nlh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+    wifi_status_request.nlh.nlmsg_flags = NLM_F_REQUEST;
+    wifi_status_request.nlh.nlmsg_type = RTM_GETLINK;
+    wifi_status_request.ifi.ifi_family = AF_UNSPEC;
+    wifi_status_request.ifi.ifi_index = ifindex;
+}
+
+bool read_i2c_data(void) {
+    if (read(controller_board_fd, shared_memory_data, DATASIZE) != DATASIZE) {
+        perror("Failed to read from i2c device");
+        sleep(1);
+        return false;
+    }
+    if (enable_crc) {
+        uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)shared_memory_data, 9);
+        uint16_t received_crc = (shared_memory_data->crc_high << 8) | shared_memory_data->crc_low;
+        if (computed_crc != received_crc) {
+            printf("CRC Error - Expected: 0x%04X, Received: 0x%04X\n",
+                   computed_crc, received_crc);
+            crc_error_count++;
+            return false;
+        }
+    }
+    return true;
+}
+
+void check_for_shutdown_condition(void) {
+    if (shared_memory_data->status_flags.bits.sd_pressed || (shared_memory_data->system_voltage <= 128)) {
+        poweroff_counter++;
+        if (poweroff_counter > 10) {
+            system("poweroff");
+            exit(0);
+        }
+    } else {
+        poweroff_counter = 0;
+    }
+}
+
+void check_wifi_status(void) {
+    char wifi_status_buffer[4096];
+    send(wifi_monitor_fd, &wifi_status_request, wifi_status_request.nlh.nlmsg_len, 0);
+    int len = recv(wifi_monitor_fd, wifi_status_buffer, sizeof(wifi_status_buffer), 0);
+    struct nlmsghdr *nh = (struct nlmsghdr *)wifi_status_buffer;
+    bool check_connection = 0;
+
+    if (nh->nlmsg_type == RTM_NEWLINK) {
+        struct ifinfomsg *ifi = NLMSG_DATA(nh);
+        wifi_enabled = ifi->ifi_flags & IFF_UP;
+        check_connection = ifi->ifi_flags & IFF_RUNNING;
+
+        if (check_connection != wifi_connected) {
+            wifi_connected = check_connection;
+            uint8_t i2c_data[4];
+            i2c_data[0] = 0x20;
+            i2c_data[1] = wifi_connected ? 1 : 0;
+            write(controller_board_fd, i2c_data, 4);
+        }
+    }
+}
+
+void manage_display_brightness(int i2c_fd) {
+    uint32_t status = 0;
+    status |= (uint32_t)shared_memory_data->buttons.raw << 18;
+    status |= (uint32_t)(shared_memory_data->left_stick_x >> 4) << 4;
+    status |= (uint32_t)(shared_memory_data->left_stick_y >> 4);
+
+    if (previous_status == status) {
+        if (is_idle == 0) {
+            time_at_last_change = time(NULL);
+        }
+        is_idle = 1;
+        if (time_at_last_change + dimming_timeout <= time(NULL)) {
+            if (!is_dim) {
+                uint8_t i2c_data[4];
+                i2c_data[0] = 0x22;
+                i2c_data[1] = 1;
+                write(i2c_fd, i2c_data, 4);
+                is_dim = 1;
+                brightness = shared_memory_data->status_flags.bits.brightness;
+                brightness++;
+            }
+        }
+    } else {
+        is_idle = 0;
+        if (is_dim) {
+            time_at_last_change = time(NULL);
+            uint8_t temp = shared_memory_data->status_flags.bits.brightness;
+
+            if (temp == 0) {
+                uint8_t i2c_data[4];
+                i2c_data[0] = 0x22;
+                i2c_data[1] = brightness;
+                write(i2c_fd, i2c_data, 4);
+            }
+
+            is_dim = 0;
+        }
+    }
+
+    previous_status = status;
+}
+
+int main(int argc, char *argv[]) {
+    parse_command_line_args(argc, argv);
+    init_i2c();
+    init_virtual_gamepad();
+    init_shared_memory();
+    if (has_wifi) {
+        init_wifi_monitoring();
+    }
 
     while (1) {
-        // Read data from i2c device
-        if (read(i2c_fd, mappedMemory, DATASIZE) != DATASIZE) {
-            perror("Failed to read from i2c device");
-            sleep(1);
+        if (!read_i2c_data()) {
             continue;
         }
-        // Conditionally perform CRC check
-        if (enableCRC) {
-            uint16_t computedCRC = computeCRC16_CCITT((const uint8_t*) & *mappedMemory, 9);
-            uint16_t receivedCRC = (mappedMemory->CRCA << 8) | mappedMemory->CRCB;
 
-            if (computedCRC != receivedCRC) {
-                crcCount++;
-                //printf("CRC error detected. Retrying...\n");
-                //printf("%d errors detected since startup.\n", crcCount);
-                continue;
+        check_for_shutdown_condition();
+
+        if (has_wifi && wifi_check_trigger == 0) {
+            check_wifi_status();
+        }
+
+        if (dimming_timeout) {
+            manage_display_brightness(controller_board_fd);
+        }
+
+        if (gamepad_enabled) {
+            // Compare raw data instead of individual fields for efficiency
+            if (memcmp(&previous_controller_state, shared_memory_data, sizeof(SharedData)) != 0) {
+                update_controller_data(virtual_gamepad_fd);
+                previous_controller_state = *shared_memory_data;
             }
         }
 
-        // issue shutdown when button pressed or when battery is very low
-        if (((mappedMemory->STATUS >> 4) & 1) | (mappedMemory->SENSE_SYS <= 128)) {
-          poweroffCounter++;
-          if (poweroffCounter > 10) { // need to hold button for a small amount of time to initiate poweroff
-            system("poweroff");
-            break;
-          }
+        wifi_check_trigger++;
+
+        if (shared_memory_data->status_flags.bits.sleeping) {
+            usleep(100000);
         } else {
-          poweroffCounter = 0;
-        }
-
-        if (mappedMemory->STATUS & 0b00100000) {
-          usleep(100000); // sleep a lot longer when the hold switch is down
-        }
-
-        if (hasWiFi && !loop_counter) { // checks whenever it rolls over
-            send(fd, &req, req.nlh.nlmsg_len, 0);
-            int len = recv(fd, buf, sizeof(buf), 0);
-            struct nlmsghdr *nh = (struct nlmsghdr *)buf;
-            bool checkConnection = 0;
-
-            if (nh->nlmsg_type == RTM_NEWLINK) {
-                struct ifinfomsg *ifi = NLMSG_DATA(nh);
-                WiFiEnabled = ifi->ifi_flags & IFF_UP;
-                checkConnection = ifi->ifi_flags & IFF_RUNNING;
-                if (checkConnection != WiFiConnected) {
-                  WiFiConnected = checkConnection;
-                  uint8_t i2cData[4];
-                  i2cData[0] = 0x20; // Command byte
-                  i2cData[1] = WiFiConnected ? 1 : 0;// Data byte: 1 for connected, 0 for disconnected
-                  write(i2c_fd, i2cData, 4);
-                }
-            }
-        }
-
-        loop_counter++; // Increment counter
-
-        if (DIMMING) {
-          dimmingFunction(i2c_fd);
-        }
-        if (enableGamepad) {
-          if (memcmp(&previousData, mappedMemory, sizeof(SharedData)) != 0) {
-            update_controller_data(uinput_fd);
-            previousData = *mappedMemory;
-            }
-        }
-
-        // Wait for 16ms before reading again
-        if (fast) {
-          usleep(8000);
-        } else {
-          usleep(16000);
+            usleep(polling_delay);
         }
     }
 
-    // Cleanup
-    close(fd);
-    close(i2c_fd);
-    ioctl(uinput_fd, UI_DEV_DESTROY);
-    close(uinput_fd);
-
+    cleanup_resources();
     return 0;
 }
