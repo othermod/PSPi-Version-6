@@ -168,15 +168,15 @@ void init_i2c(void) {
 }
 
 bool read_i2c_data(void) {
-    if (read(controller_board_fd, shared_memory_data, DATASIZE) != DATASIZE) {
+    if (read(controller_board_fd, &current_controller_data, DATASIZE) != DATASIZE) {
         perror("Failed to read from i2c device");
         sleep(1);
         return false;
     }
 
     if (enable_crc) {
-        uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)shared_memory_data, 9);
-        uint16_t received_crc = (shared_memory_data->crc_high << 8) | shared_memory_data->crc_low;
+        uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)&current_controller_data, 9);
+        uint16_t received_crc = (current_controller_data.crc_high << 8) | current_controller_data.crc_low;
         if (computed_crc != received_crc) {
             printf("CRC Error - Expected: 0x%04X, Received: 0x%04X\n",
                    computed_crc, received_crc);
@@ -185,8 +185,8 @@ bool read_i2c_data(void) {
         }
     }
 
-    // Copy shared memory to local struct after successful read and CRC check
-    current_controller_data = *shared_memory_data;
+    // Only update shared memory if read and CRC were successful
+    *shared_memory_data = current_controller_data;
     return true;
 }
 
@@ -486,7 +486,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (gamepad_enabled) {
-            if (memcmp(&previous_controller_state, &current_controller_data, sizeof(SharedData)) != 0) {
+            if (previous_controller_state.buttons.raw != current_controller_data.buttons.raw || memcmp(&previous_controller_state.left_stick_x, &current_controller_data.left_stick_x, 4) != 0) {
                 update_controller_data(virtual_gamepad_fd);
                 previous_controller_state = current_controller_data;
             }
