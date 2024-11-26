@@ -22,7 +22,7 @@
 int poweroff_counter = 0;
 int crc_error_count = 0;
 
-unsigned int polling_delay = DEFAULT_POLLING_DELAY_MS;  // Default to 16ms
+unsigned int polling_delay = DEFAULT_POLLING_DELAY_MS;
 
 #define INTERFACE_NAME "wlan0"
 
@@ -289,84 +289,96 @@ void init_virtual_gamepad(void) {
 }
 
 void update_controller_data(int uinput_fd) {
-    // Pre-allocate event array to hold all possible events:
-    // - 17 button events
-    // - 4 analog stick events (2 axes each for left/right stick)
-    // - 2 sync events (one after buttons, one after sticks)
-    struct input_event events[23];
-    int event_count = 0;
-
-    // Array defining button order for BTN_TRIGGER_HAPPY mappings
-    const bool button_order[] = {
-        current_controller_data.buttons.bits.select,
-        0,
-        0,
-        current_controller_data.buttons.bits.start,
-        current_controller_data.buttons.bits.dpad_up,
-        current_controller_data.buttons.bits.dpad_right,
-        current_controller_data.buttons.bits.dpad_down,
-        current_controller_data.buttons.bits.dpad_left,
-        current_controller_data.right_stick_x.bits.button,
-        current_controller_data.right_stick_y.bits.button,
-        current_controller_data.buttons.bits.lshoulder,
-        current_controller_data.buttons.bits.rshoulder,
-        current_controller_data.buttons.bits.y,
-        current_controller_data.buttons.bits.b,
-        current_controller_data.buttons.bits.a,
-        current_controller_data.buttons.bits.x,
-        current_controller_data.buttons.bits.home
+    static const uint16_t button_map[] = {
+        0x0002,  // select
+        0x0000,  // unused
+        0x0000,  // unused
+        0x0004,  // start
+        0x0400,  // dpad_up
+        0x1000,  // dpad_right
+        0x0800,  // dpad_down
+        0x0200,  // dpad_left
+        0x0000,  // right_stick_button (handled with stick)
+        0x0000,  // left_stick_button (handled with stick)
+        0x0100,  // lshoulder
+        0x0080,  // rshoulder
+        0x0020,  // y
+        0x0040,  // b
+        0x0008,  // a
+        0x0010,  // x
+        0x8000   // home
     };
 
-    // Batch all button events
-    for(size_t i = 0; i < sizeof(button_order) / sizeof(button_order[0]); i++) {
-        events[event_count].type = EV_KEY;
-        events[event_count].code = BTN_TRIGGER_HAPPY1 + i;
-        events[event_count].value = button_order[i];
-        event_count++;
+    struct input_event events[20];
+    int event_count = 0;
+
+    uint16_t changed_buttons = previous_controller_state.buttons.raw ^ current_controller_data.buttons.raw;
+    if (changed_buttons) {
+        for (size_t i = 0; i < sizeof(button_map)/sizeof(button_map[0]); i++) {
+            if (button_map[i] && (changed_buttons & button_map[i])) {
+                events[event_count].type = EV_KEY;
+                events[event_count].code = BTN_TRIGGER_HAPPY1 + i;
+                events[event_count].value = (current_controller_data.buttons.raw & button_map[i]) != 0;
+                event_count++;
+            }
+        }
     }
 
-    // Add sync event after buttons
-    events[event_count].type = EV_SYN;
-    events[event_count].code = SYN_REPORT;
-    events[event_count].value = 0;
-    event_count++;
-
     // Handle left stick if enabled
-    if (joystick_count) {
-        events[event_count].type = EV_ABS;
-        events[event_count].code = ABS_X;
-        events[event_count].value = current_controller_data.left_stick_x;
-        event_count++;
-
-        events[event_count].type = EV_ABS;
-        events[event_count].code = ABS_Y;
-        events[event_count].value = current_controller_data.left_stick_y;
-        event_count++;
+    if (joystick_count >= 1) {
+        if (previous_controller_state.left_stick_x != current_controller_data.left_stick_x) {
+            events[event_count].type = EV_ABS;
+            events[event_count].code = ABS_X;
+            events[event_count].value = current_controller_data.left_stick_x;
+            event_count++;
+        }
+        if (previous_controller_state.left_stick_y != current_controller_data.left_stick_y) {
+            events[event_count].type = EV_ABS;
+            events[event_count].code = ABS_Y;
+            events[event_count].value = current_controller_data.left_stick_y;
+            event_count++;
+        }
     }
 
     // Handle right stick if enabled
     if (joystick_count == 2) {
-        events[event_count].type = EV_ABS;
-        events[event_count].code = ABS_RX;
-        events[event_count].value = current_controller_data.right_stick_x.bits.position;
-        event_count++;
+        if (previous_controller_state.right_stick_x.raw != current_controller_data.right_stick_x.raw) {
+            events[event_count].type = EV_ABS;
+            events[event_count].code = ABS_RX;
+            events[event_count].value = current_controller_data.right_stick_x.bits.position;
+            event_count++;
+        }
+        if (previous_controller_state.right_stick_y.raw != current_controller_data.right_stick_y.raw) {
+            events[event_count].type = EV_ABS;
+            events[event_count].code = ABS_RY;
+            events[event_count].value = current_controller_data.right_stick_y.bits.position;
+            event_count++;
+        }
 
-        events[event_count].type = EV_ABS;
-        events[event_count].code = ABS_RY;
-        events[event_count].value = current_controller_data.right_stick_y.bits.position;
-        event_count++;
+        // Handle stick buttons only if second stick is enabled
+        if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button) {
+            events[event_count].type = EV_KEY;
+            events[event_count].code = BTN_TRIGGER_HAPPY1 + 8;
+            events[event_count].value = current_controller_data.right_stick_x.bits.button;
+            event_count++;
+        }
+
+        if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button) {
+            events[event_count].type = EV_KEY;
+            events[event_count].code = BTN_TRIGGER_HAPPY1 + 9;
+            events[event_count].value = current_controller_data.right_stick_y.bits.button;
+            event_count++;
+        }
     }
 
-    // Add final sync event
-    events[event_count].type = EV_SYN;
-    events[event_count].code = SYN_REPORT;
-    events[event_count].value = 0;
-    event_count++;
+    // Only write if we have events plus sync
+    if (event_count > 0) {
+        events[event_count].type = EV_SYN;
+        events[event_count].code = SYN_REPORT;
+        events[event_count].value = 0;
+        event_count++;
 
-    // Single write for all events
-    ssize_t ret = write(uinput_fd, events, sizeof(struct input_event) * event_count);
-    if (ret < 0) {
-        perror("Failed to write events in update_controller_data");
+        write(uinput_fd, events, sizeof(struct input_event) * event_count);
     }
 }
 
