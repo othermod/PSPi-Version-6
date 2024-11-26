@@ -38,6 +38,7 @@ uint8_t wifi_check_trigger = 0;
 uint16_t input_count = 0;
 uint32_t time_at_last_change;
 bool has_wifi = true;  // Assume WiFi is available initially
+uint8_t extra_button_base_idx;
 
 uint8_t brightness;
 #define DATASIZE 11
@@ -65,17 +66,25 @@ struct {
     struct ifinfomsg ifi;
 } wifi_status_request;
 
+#define BUTTON_CONFIG_STICK 0
+#define BUTTON_CONFIG_TRIGGER 1
+
+// Add to global variables section
+bool extra_buttons = false;
+bool button_config = BUTTON_CONFIG_TRIGGER;  // Default to trigger configuration
+
 void parse_command_line_args(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("Usage: [options]\n");
             printf("Options:\n");
-            printf("  --nocrc            Disable CRC checks\n");
-            printf("  --joysticks <num>  Set number of joysticks, where <num> is between 0 and 2\n");
-            printf("  --dim <seconds>    Enable dimming after <seconds>, between 1 and 3600\n");
-            printf("  --fast             Enable fast mode (double input polling rate)\n");
-            printf("  --nogamepad        Display the gamepad\n");
-            printf("  --help, -h         Display this help and exit\n");
+            printf("  --nocrc                         Disable CRC checks\n");
+            printf("  --joysticks <num>               Set number of joysticks, where <num> is between 0 and 2\n");
+            printf("  --dim <seconds>                 Enable dimming after <seconds>, between 1 and 3600\n");
+            printf("  --fast                          Enable fast mode (double input polling rate)\n");
+            printf("  --nogamepad                     Disable all gamepad buttons and joysticks\n");
+            printf("  --extrabuttons [trigger|stick]  Enable extra buttons (default: trigger)\n");
+            printf("  --help, -h                      Display this help and exit\n");
             exit(0);
         } else if (strcmp(argv[i], "--nocrc") == 0) {
             enable_crc = 0;
@@ -105,7 +114,22 @@ void parse_command_line_args(int argc, char *argv[]) {
             polling_delay = FAST_POLLING_DELAY_MS;  // Set to 8ms for fast mode
         } else if (strcmp(argv[i], "--nogamepad") == 0) {
             printf("Gamepad disabled\n");
-            gamepad_enabled = 0;
+            gamepad_enabled = false;
+        } else if (strcmp(argv[i], "--extrabuttons") == 0) {
+            extra_buttons = true;
+            // Check if next argument exists and is a valid configuration
+            if (i + 1 < argc) {
+                if (strcmp(argv[i + 1], "trigger") == 0) {
+                    button_config = BUTTON_CONFIG_TRIGGER;
+                    i++; // Skip the next argument
+                } else if (strcmp(argv[i + 1], "stick") == 0) {
+                    button_config = BUTTON_CONFIG_STICK;
+                    i++; // Skip the next argument
+                }
+            }
+            extra_button_base_idx = 1 + (button_config * 7);
+            printf("Extra buttons enabled: %s mode\n",
+                   button_config == BUTTON_CONFIG_TRIGGER ? "trigger" : "stick");
         }
     }
 }
@@ -288,18 +312,21 @@ void init_virtual_gamepad(void) {
     }
 }
 
+#define BUTTON_CONFIG_STICK 0
+#define BUTTON_CONFIG_TRIGGER 1
+
 void update_controller_data(int uinput_fd) {
     static const uint16_t button_map[] = {
         0x0002,  // select
-        0x0000,  // unused
-        0x0000,  // unused
+        0x0000,  // left_stick (when in stick mode)
+        0x0000,  // right_stick (when in stick mode)
         0x0004,  // start
         0x0400,  // dpad_up
         0x1000,  // dpad_right
         0x0800,  // dpad_down
         0x0200,  // dpad_left
-        0x0000,  // right_stick_button (handled with stick)
-        0x0000,  // left_stick_button (handled with stick)
+        0x0000,  // left_stick (when in trigger mode)
+        0x0000,  // right_stick (when in trigger mode)
         0x0100,  // lshoulder
         0x0080,  // rshoulder
         0x0020,  // y
@@ -355,19 +382,23 @@ void update_controller_data(int uinput_fd) {
             event_count++;
         }
 
-        // Handle stick buttons only if second stick is enabled
-        if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button) {
-            events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_TRIGGER_HAPPY1 + 8;
-            events[event_count].value = current_controller_data.right_stick_x.bits.button;
-            event_count++;
-        }
+        // Handle stick buttons if extra buttons are enabled
+        if (extra_buttons) {
+            // Use the global base index, right button is +1
 
-        if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button) {
-            events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_TRIGGER_HAPPY1 + 9;
-            events[event_count].value = current_controller_data.right_stick_y.bits.button;
-            event_count++;
+            if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button) {
+                events[event_count].type = EV_KEY;
+                events[event_count].code = BTN_TRIGGER_HAPPY1 + extra_button_base_idx + 1;
+                events[event_count].value = current_controller_data.right_stick_x.bits.button;
+                event_count++;
+            }
+
+            if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button) {
+                events[event_count].type = EV_KEY;
+                events[event_count].code = BTN_TRIGGER_HAPPY1 + extra_button_base_idx;
+                events[event_count].value = current_controller_data.right_stick_y.bits.button;
+                event_count++;
+            }
         }
     }
 
