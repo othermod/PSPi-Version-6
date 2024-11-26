@@ -190,6 +190,13 @@ bool read_i2c_data(void) {
     return true;
 }
 
+#define CMD_BRIGHTNESS 0x22
+
+static inline void write_i2c_command(int fd, uint8_t cmd, uint8_t value) {
+    uint8_t i2c_data[4] = {cmd, value, 0, 0};
+    write(fd, i2c_data, 4);
+}
+
 void init_shared_memory(void) {
     shared_memory_fd = shm_open("my_shm", O_CREAT | O_RDWR, 0666);
     ftruncate(shared_memory_fd, sizeof(SharedData));
@@ -422,45 +429,35 @@ void check_wifi_status(void) {
     }
 }
 
-void manage_display_brightness(int i2c_fd) {
-    uint32_t status = ((uint32_t)current_controller_data.buttons.raw << 18) |
-                      ((uint32_t)(current_controller_data.left_stick_x & 0xF0) >> 4) |
-                      ((uint32_t)(current_controller_data.left_stick_y & 0xF0) >> 4);
+void check_idle_state(int i2c_fd) {
+    uint32_t status = (current_controller_data.buttons.raw << 18) |
+                      ((current_controller_data.left_stick_x & 0xF0) << 4) |
+                      (current_controller_data.left_stick_y >> 4);
+
+    const time_t current_time = time(NULL);
 
     if (previous_status == status) {
-        if (is_idle == 0) {
-            time_at_last_change = time(NULL);
+        if (!is_idle) {
+            time_at_last_change = current_time;
+            is_idle = true;
         }
-        is_idle = 1;
-        if (time_at_last_change + dimming_timeout <= time(NULL)) {
-            if (!is_dim) {
-                uint8_t i2c_data[4];
-                i2c_data[0] = 0x22;
-                i2c_data[1] = 1;
-                write(i2c_fd, i2c_data, 4);
-                is_dim = 1;
-                brightness = current_controller_data.status_flags.bits.brightness;
-                brightness++;
-            }
-        }
-    } else {
-        is_idle = 0;
-        if (is_dim) {
-            time_at_last_change = time(NULL);
-            uint8_t temp = current_controller_data.status_flags.bits.brightness;
 
-            if (temp == 0) {
-                uint8_t i2c_data[4];
-                i2c_data[0] = 0x22;
-                i2c_data[1] = brightness;
-                write(i2c_fd, i2c_data, 4);
-            }
-
-            is_dim = 0;
+        if (!is_dim && (current_time - time_at_last_change >= dimming_timeout)) {
+            brightness = current_controller_data.status_flags.bits.brightness + 1;
+            write_i2c_command(i2c_fd, CMD_BRIGHTNESS, 1);
+            is_dim = true;
         }
     }
+    else {
+        is_idle = false;
 
-    previous_status = status;
+        if (is_dim && current_controller_data.status_flags.bits.brightness == 0) {
+            write_i2c_command(i2c_fd, CMD_BRIGHTNESS, brightness);
+            is_dim = false;
+        }
+
+        previous_status = status;
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -485,7 +482,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (dimming_timeout) {
-            manage_display_brightness(controller_board_fd);
+            check_idle_state(controller_board_fd);
         }
 
         if (gamepad_enabled) {
