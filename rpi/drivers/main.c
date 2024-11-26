@@ -108,6 +108,38 @@ void parse_command_line_args(int argc, char *argv[]) {
     }
 }
 
+// CRC-16-CCITT lookup table
+static uint16_t crc16_ccitt_table[256];
+
+// Initialize the CRC-16-CCITT lookup table
+static void init_crc16_ccitt_table(void) {
+    const uint16_t poly = 0x1021; // CRC-16-CCITT polynomial
+
+    for (uint16_t i = 0; i < 256; i++) {
+        uint16_t crc = i << 8;
+        for (uint8_t j = 0; j < 8; j++) {
+            if (crc & 0x8000) {
+                crc = (crc << 1) ^ poly;
+            } else {
+                crc <<= 1;
+            }
+        }
+        crc16_ccitt_table[i] = crc;
+    }
+}
+
+// Compute CRC-16-CCITT using lookup table
+uint16_t compute_crc16_ccitt(const uint8_t *data, uint8_t length) {
+    uint16_t crc = 0xFFFF; // Initial value for CRC-16-CCITT
+
+    for (uint8_t i = 0; i < length; i++) {
+        // Use the lookup table to compute the CRC
+        crc = (crc << 8) ^ crc16_ccitt_table[((crc >> 8) ^ data[i]) & 0xFF];
+    }
+
+    return crc;
+}
+
 void cleanup_resources() {
     close(wifi_monitor_fd);
     close(controller_board_fd);
@@ -222,23 +254,6 @@ void init_virtual_gamepad(void) {
         cleanup_resources();
         exit(1);
     }
-}
-
-uint16_t compute_crc16_ccitt(const uint8_t *data, uint8_t length) { // change this and the data to be 16bit to match atmega.
-    uint16_t crc = 0xFFFF; // Initial value for CRC-16-CCITT
-    uint16_t poly = 0x1021; // Polynomial for CRC-16-CCITT
-
-    for (uint8_t i = 0; i < length; i++) {
-        crc ^= ((uint16_t)data[i] << 8);
-        for (uint8_t j = 0; j < 8; j++) {
-            if (crc & 0x8000) {
-                crc = (crc << 1) ^ poly;
-            } else {
-                crc <<= 1;
-            }
-        }
-    }
-    return crc;
 }
 
 void update_controller_data(int uinput_fd) {
@@ -435,6 +450,7 @@ void manage_display_brightness(int i2c_fd) {
 
 int main(int argc, char *argv[]) {
     parse_command_line_args(argc, argv);
+    init_crc16_ccitt_table();
     init_i2c();
     init_virtual_gamepad();
     init_shared_memory();
