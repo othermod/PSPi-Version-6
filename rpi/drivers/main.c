@@ -48,7 +48,9 @@ uint32_t dimming_timeout = 0;
 
 #include "shared.h"
 
+// Global structs for controller state
 SharedData *shared_memory_data;
+SharedData current_controller_data;
 SharedData previous_controller_state;
 
 // Global file descriptors
@@ -165,6 +167,29 @@ void init_i2c(void) {
     }
 }
 
+bool read_i2c_data(void) {
+    if (read(controller_board_fd, shared_memory_data, DATASIZE) != DATASIZE) {
+        perror("Failed to read from i2c device");
+        sleep(1);
+        return false;
+    }
+
+    if (enable_crc) {
+        uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)shared_memory_data, 9);
+        uint16_t received_crc = (shared_memory_data->crc_high << 8) | shared_memory_data->crc_low;
+        if (computed_crc != received_crc) {
+            printf("CRC Error - Expected: 0x%04X, Received: 0x%04X\n",
+                   computed_crc, received_crc);
+            crc_error_count++;
+            return false;
+        }
+    }
+
+    // Copy shared memory to local struct after successful read and CRC check
+    current_controller_data = *shared_memory_data;
+    return true;
+}
+
 void init_shared_memory(void) {
     shared_memory_fd = shm_open("my_shm", O_CREAT | O_RDWR, 0666);
     ftruncate(shared_memory_fd, sizeof(SharedData));
@@ -261,28 +286,28 @@ void update_controller_data(int uinput_fd) {
     // - 17 button events
     // - 4 analog stick events (2 axes each for left/right stick)
     // - 2 sync events (one after buttons, one after sticks)
-    struct input_event events[23];  // 17 + 4 + 2 = 23 max possible events
+    struct input_event events[23];
     int event_count = 0;
 
     // Array defining button order for BTN_TRIGGER_HAPPY mappings
     const bool button_order[] = {
-        shared_memory_data->buttons.bits.select,
+        current_controller_data.buttons.bits.select,
         0,
         0,
-        shared_memory_data->buttons.bits.start,
-        shared_memory_data->buttons.bits.dpad_up,
-        shared_memory_data->buttons.bits.dpad_right,
-        shared_memory_data->buttons.bits.dpad_down,
-        shared_memory_data->buttons.bits.dpad_left,
-        shared_memory_data->right_stick_x.bits.button,
-        shared_memory_data->right_stick_y.bits.button,
-        shared_memory_data->buttons.bits.lshoulder,
-        shared_memory_data->buttons.bits.rshoulder,
-        shared_memory_data->buttons.bits.y,
-        shared_memory_data->buttons.bits.b,
-        shared_memory_data->buttons.bits.a,
-        shared_memory_data->buttons.bits.x,
-        shared_memory_data->buttons.bits.home
+        current_controller_data.buttons.bits.start,
+        current_controller_data.buttons.bits.dpad_up,
+        current_controller_data.buttons.bits.dpad_right,
+        current_controller_data.buttons.bits.dpad_down,
+        current_controller_data.buttons.bits.dpad_left,
+        current_controller_data.right_stick_x.bits.button,
+        current_controller_data.right_stick_y.bits.button,
+        current_controller_data.buttons.bits.lshoulder,
+        current_controller_data.buttons.bits.rshoulder,
+        current_controller_data.buttons.bits.y,
+        current_controller_data.buttons.bits.b,
+        current_controller_data.buttons.bits.a,
+        current_controller_data.buttons.bits.x,
+        current_controller_data.buttons.bits.home
     };
 
     // Batch all button events
@@ -303,12 +328,12 @@ void update_controller_data(int uinput_fd) {
     if (joystick_count) {
         events[event_count].type = EV_ABS;
         events[event_count].code = ABS_X;
-        events[event_count].value = shared_memory_data->left_stick_x;
+        events[event_count].value = current_controller_data.left_stick_x;
         event_count++;
 
         events[event_count].type = EV_ABS;
         events[event_count].code = ABS_Y;
-        events[event_count].value = shared_memory_data->left_stick_y;
+        events[event_count].value = current_controller_data.left_stick_y;
         event_count++;
     }
 
@@ -316,16 +341,16 @@ void update_controller_data(int uinput_fd) {
     if (joystick_count == 2) {
         events[event_count].type = EV_ABS;
         events[event_count].code = ABS_RX;
-        events[event_count].value = shared_memory_data->right_stick_x.bits.position;
+        events[event_count].value = current_controller_data.right_stick_x.bits.position;
         event_count++;
 
         events[event_count].type = EV_ABS;
         events[event_count].code = ABS_RY;
-        events[event_count].value = shared_memory_data->right_stick_y.bits.position;
+        events[event_count].value = current_controller_data.right_stick_y.bits.position;
         event_count++;
     }
 
-    // Add final sync event after analog sticks
+    // Add final sync event
     events[event_count].type = EV_SYN;
     events[event_count].code = SYN_REPORT;
     events[event_count].value = 0;
@@ -337,6 +362,7 @@ void update_controller_data(int uinput_fd) {
         perror("Failed to write events in update_controller_data");
     }
 }
+
 void init_wifi_monitoring(void) {
     wifi_monitor_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (wifi_monitor_fd == -1) {
@@ -360,25 +386,6 @@ void init_wifi_monitoring(void) {
     wifi_status_request.nlh.nlmsg_type = RTM_GETLINK;
     wifi_status_request.ifi.ifi_family = AF_UNSPEC;
     wifi_status_request.ifi.ifi_index = ifindex;
-}
-
-bool read_i2c_data(void) {
-    if (read(controller_board_fd, shared_memory_data, DATASIZE) != DATASIZE) {
-        perror("Failed to read from i2c device");
-        sleep(1);
-        return false;
-    }
-    if (enable_crc) {
-        uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)shared_memory_data, 9);
-        uint16_t received_crc = (shared_memory_data->crc_high << 8) | shared_memory_data->crc_low;
-        if (computed_crc != received_crc) {
-            printf("CRC Error - Expected: 0x%04X, Received: 0x%04X\n",
-                   computed_crc, received_crc);
-            crc_error_count++;
-            return false;
-        }
-    }
-    return true;
 }
 
 void check_for_shutdown_condition(void) {
@@ -416,10 +423,9 @@ void check_wifi_status(void) {
 }
 
 void manage_display_brightness(int i2c_fd) {
-    uint32_t status = 0;
-    status |= (uint32_t)shared_memory_data->buttons.raw << 18;
-    status |= (uint32_t)(shared_memory_data->left_stick_x >> 4) << 4;
-    status |= (uint32_t)(shared_memory_data->left_stick_y >> 4);
+    uint32_t status = ((uint32_t)current_controller_data.buttons.raw << 18) |
+                      ((uint32_t)(current_controller_data.left_stick_x & 0xF0) >> 4) |
+                      ((uint32_t)(current_controller_data.left_stick_y & 0xF0) >> 4);
 
     if (previous_status == status) {
         if (is_idle == 0) {
@@ -433,7 +439,7 @@ void manage_display_brightness(int i2c_fd) {
                 i2c_data[1] = 1;
                 write(i2c_fd, i2c_data, 4);
                 is_dim = 1;
-                brightness = shared_memory_data->status_flags.bits.brightness;
+                brightness = current_controller_data.status_flags.bits.brightness;
                 brightness++;
             }
         }
@@ -441,7 +447,7 @@ void manage_display_brightness(int i2c_fd) {
         is_idle = 0;
         if (is_dim) {
             time_at_last_change = time(NULL);
-            uint8_t temp = shared_memory_data->status_flags.bits.brightness;
+            uint8_t temp = current_controller_data.status_flags.bits.brightness;
 
             if (temp == 0) {
                 uint8_t i2c_data[4];
@@ -483,16 +489,15 @@ int main(int argc, char *argv[]) {
         }
 
         if (gamepad_enabled) {
-            // Compare raw data instead of individual fields for efficiency
-            if (memcmp(&previous_controller_state, shared_memory_data, sizeof(SharedData)) != 0) {
+            if (memcmp(&previous_controller_state, &current_controller_data, sizeof(SharedData)) != 0) {
                 update_controller_data(virtual_gamepad_fd);
-                previous_controller_state = *shared_memory_data;
+                previous_controller_state = current_controller_data;
             }
         }
 
         wifi_check_trigger++;
 
-        if (shared_memory_data->status_flags.bits.sleeping) {
+        if (current_controller_data.status_flags.bits.sleeping) {
             usleep(100000);
         } else {
             usleep(polling_delay);
