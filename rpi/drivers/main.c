@@ -257,8 +257,12 @@ void init_virtual_gamepad(void) {
 }
 
 void update_controller_data(int uinput_fd) {
-    struct input_event event;
-    memset(&event, 0, sizeof(event));
+    // Pre-allocate event array to hold all possible events:
+    // - 17 button events
+    // - 4 analog stick events (2 axes each for left/right stick)
+    // - 2 sync events (one after buttons, one after sticks)
+    struct input_event events[23];  // 17 + 4 + 2 = 23 max possible events
+    int event_count = 0;
 
     // Array defining button order for BTN_TRIGGER_HAPPY mappings
     const bool button_order[] = {
@@ -281,53 +285,58 @@ void update_controller_data(int uinput_fd) {
         shared_memory_data->buttons.bits.home
     };
 
-    // Update buttons in specified order
+    // Batch all button events
     for(size_t i = 0; i < sizeof(button_order) / sizeof(button_order[0]); i++) {
-        event.type = EV_KEY;
-        event.code = BTN_TRIGGER_HAPPY1 + i;
-        event.value = button_order[i];
-
-        ssize_t ret = write(uinput_fd, &event, sizeof(event));
-        if (ret < 0) {
-            perror("Failed to write button event in update_controller_data");
-        }
+        events[event_count].type = EV_KEY;
+        events[event_count].code = BTN_TRIGGER_HAPPY1 + i;
+        events[event_count].value = button_order[i];
+        event_count++;
     }
+
+    // Add sync event after buttons
+    events[event_count].type = EV_SYN;
+    events[event_count].code = SYN_REPORT;
+    events[event_count].value = 0;
+    event_count++;
 
     // Handle left stick if enabled
     if (joystick_count) {
-        event.type = EV_ABS;
-        event.code = ABS_X;
-        event.value = shared_memory_data->left_stick_x;
-        write(uinput_fd, &event, sizeof(event));
+        events[event_count].type = EV_ABS;
+        events[event_count].code = ABS_X;
+        events[event_count].value = shared_memory_data->left_stick_x;
+        event_count++;
 
-        event.code = ABS_Y;
-        event.value = shared_memory_data->left_stick_y;
-        write(uinput_fd, &event, sizeof(event));
-
-        event.type = EV_SYN;
-        event.code = SYN_REPORT;
-        event.value = 0;
-        write(uinput_fd, &event, sizeof(event));
+        events[event_count].type = EV_ABS;
+        events[event_count].code = ABS_Y;
+        events[event_count].value = shared_memory_data->left_stick_y;
+        event_count++;
     }
 
     // Handle right stick if enabled
     if (joystick_count == 2) {
-        event.type = EV_ABS;
-        event.code = ABS_RX;
-        event.value = shared_memory_data->right_stick_x.bits.position;
-        write(uinput_fd, &event, sizeof(event));
+        events[event_count].type = EV_ABS;
+        events[event_count].code = ABS_RX;
+        events[event_count].value = shared_memory_data->right_stick_x.bits.position;
+        event_count++;
 
-        event.code = ABS_RY;
-        event.value = shared_memory_data->right_stick_y.bits.position;
-        write(uinput_fd, &event, sizeof(event));
+        events[event_count].type = EV_ABS;
+        events[event_count].code = ABS_RY;
+        events[event_count].value = shared_memory_data->right_stick_y.bits.position;
+        event_count++;
+    }
 
-        event.type = EV_SYN;
-        event.code = SYN_REPORT;
-        event.value = 0;
-        write(uinput_fd, &event, sizeof(event));
+    // Add final sync event after analog sticks
+    events[event_count].type = EV_SYN;
+    events[event_count].code = SYN_REPORT;
+    events[event_count].value = 0;
+    event_count++;
+
+    // Single write for all events
+    ssize_t ret = write(uinput_fd, events, sizeof(struct input_event) * event_count);
+    if (ret < 0) {
+        perror("Failed to write events in update_controller_data");
     }
 }
-
 void init_wifi_monitoring(void) {
     wifi_monitor_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if (wifi_monitor_fd == -1) {
