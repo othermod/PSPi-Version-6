@@ -3,7 +3,7 @@
 #define SLEEP_MODE_LOOP_MS 10       // Sleep mode loop interval in ms
 
 // Button configuration macros
-#define BTN_DEBOUNCE_LOOPS 35  // Buttons will remain "pressed" for this many loops
+#define BTN_DEBOUNCE_LOOPS 10  // Buttons will remain "pressed" for this many loops
 
 // Poweroff Configuration
 #define RPI_TIMEOUT 500       // RPi detection timeout number of loops
