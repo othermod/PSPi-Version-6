@@ -1,6 +1,6 @@
 // System Configuration
 #define NORMAL_MODE_LOOP_MS 1       // Main loop interval in ms
-#define SLEEP_MODE_LOOP_MS 10       // Sleep mode loop interval in ms
+#define SLEEP_MODE_LOOP_MS 5       // Sleep mode loop interval in ms
 
 // Button configuration macros
 #define BTN_DEBOUNCE_LOOPS 10  // Buttons will remain "pressed" for this many loops

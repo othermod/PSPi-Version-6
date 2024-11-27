@@ -27,9 +27,11 @@ void enableDisplay() {
 
 void heartbeatLED() {
     state.powerLED += state.sleepDir ? 1 : -1;
-    if (state.powerLED == LED_FULL_ORANGE || state.powerLED == LED_FULL_GREEN) {
+    if (state.powerLED == LED_FULL_GREEN) {
         state.sleepDir = !state.sleepDir;
-        delay(500); // pause at the extremes so the heartbeat is more pleasant
+        delay(1000); // pause only when LED is full green
+    } else if (state.powerLED == LED_FULL_ORANGE) {
+        state.sleepDir = !state.sleepDir;
     }
     if (state.batLow) state.powerLED = LED_FULL_ORANGE; // always set power led to orange if battery is low
     togglePowerLED();
