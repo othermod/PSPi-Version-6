@@ -9,6 +9,9 @@
 #define RPI_TIMEOUT 500       // RPi detection timeout number of loops
 #define PWR_DOWN_DELAY 10000  // Power down delay in ms
 
+// Sleep Configuration
+#define SLEEP_EXIT_LOOPS 100    // Number of consecutive loops needed to exit sleep mode (100 * SLEEP_MODE_LOOP_MS = 500ms)
+
 #define I2C_ADDR 0x10
 #define I2C_IDLE_TRIGGER 200    // I2C timeout in number of NORMAL_MODE_LOOP_MS loops
 

@@ -50,6 +50,7 @@ void checkMuteButton() { // this does into hl
 void enterSleep() {
     i2cdata.status.sleeping = true;
     state.sleeping = true;
+    state.sleepExitCounter = 0;
     disableDisplay();
     toggleAudioCircuit();
     if (state.batLow || state.forceLedOrange) {
@@ -64,20 +65,24 @@ void enterSleep() {
 void exitSleep() {
     i2cdata.status.sleeping = false;
     state.sleeping = false;
-    delay(500); // prevents display flicker and accidental poweroff
     enableDisplay();
     toggleAudioCircuit();
     togglePowerLED();
 }
 
 void checkHoldSwitch() {
-  // Hold switch
+    bool holdSwitchUp = readPin(BTN_HLD);
     if (state.sleeping) {
-        if (readPin(BTN_HLD)) {
-          exitSleep();
+        // Handle sleep exit logic
+        if (holdSwitchUp) {
+            state.sleepExitCounter++;
+            if (state.sleepExitCounter == SLEEP_EXIT_LOOPS) {
+                exitSleep();
+            }
+        } else {
+            state.sleepExitCounter = 0;  // Reset counter if switch goes low. Prevents momentary LCD flicker caused by worn out power switches.
         }
-    }
-    else if (!readPin(BTN_HLD)) {
+    } else if (!holdSwitchUp) {
         enterSleep();
     }
 }

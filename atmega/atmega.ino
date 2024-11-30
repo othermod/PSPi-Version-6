@@ -24,6 +24,7 @@ struct SystemState {
   bool forceLedOrange;
   bool sleepDir;
   bool wifiEnabled;
+  uint8_t sleepExitCounter;
 };
 
 struct i2cStructure {
