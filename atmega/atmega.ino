@@ -70,8 +70,7 @@ void setup() {
   state.idle = true; // start with audio muted. make sure it is muted in hardware
   state.idleCounter = 0; // prob not needed
   
-  restoreBrightnessFromEEPROM();
-  restoreMuteStatusFromEEPROM();
+  readEEPROM();
   
   Wire.begin(I2C_ADDR);
   Wire.onRequest(onRequest);

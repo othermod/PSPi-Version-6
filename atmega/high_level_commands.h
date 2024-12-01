@@ -7,18 +7,11 @@
 #define FADE_TO_ORANGE 0
 #define FADE_TO_GREEN 1
 
-void restoreBrightnessFromEEPROM() {
-  i2cdata.status.brightness = EEPROM.read(EEPROM_BRIGHT_ADDR); // Load brightness from EEPROM
-}
 
-void restoreMuteStatusFromEEPROM() {
-  state.mute = EEPROM.read(EEPROM_MUTE_ADDR) == 1;
-}
 
-void storeSettings() {
-    EEPROM.update(EEPROM_BRIGHT_ADDR, i2cdata.status.brightness);
-    EEPROM.update(EEPROM_MUTE_ADDR, state.mute);
-}
+
+
+
 
 void enableDisplay() {
     initBacklight();
@@ -44,6 +37,7 @@ void checkMuteButton() { // this does into hl
     state.mute = !state.mute;
     toggleAudioCircuit();
     state.mutePressed = false;
+    writeMuteStatusToEEPROM;
   }
 }
 
@@ -96,7 +90,6 @@ void checkRPi() {
     } else {
         if (!state.rpiTimeout) disableDisplay();
         if (state.rpiTimeout > RPI_TIMEOUT) {
-            storeSettings();
             setPinLow(EN_5V);
             delay(PWR_DOWN_DELAY);
         } else {

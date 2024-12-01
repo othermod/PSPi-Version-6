@@ -124,6 +124,19 @@ void calculateCRC() {
     i2cdata.crc16L = crc & 0xFF;
 }
 
+void readEEPROM() {
+  i2cdata.status.brightness = EEPROM.read(EEPROM_BRIGHT_ADDR);
+  state.mute = EEPROM.read(EEPROM_MUTE_ADDR);
+}
+
+void writeMuteStatusToEEPROM() {
+  EEPROM.update(EEPROM_MUTE_ADDR, state.mute);
+}
+
+void writeBrightnessToEEPROM() {
+  EEPROM.update(EEPROM_BRIGHT_ADDR, i2cdata.status.brightness);
+}
+
 void togglePowerLED() {
     uint8_t targetPWM = LED_FULL_GREEN; // set default state
     if (state.batLow || state.forceLedOrange) {
@@ -264,6 +277,7 @@ void checkDisplayButton() {
         i2cdata.status.brightness++; // increment to next brightness. valid brightness levels are 0-7. this will roll over to 0 because it is only 3 bits
         state.dispPressed = false;
         setBrightness();
+        writeBrightnessToEEPROM();
     }
 }
 
