@@ -1,0 +1,28 @@
+#!/bin/bash
+# NOTE: This script uses $PWD to setup the GL4ES directory!
+# Before calling this, ensure you are on the port root directory, e.g.:
+# > gamedir="/$directory/ports/stardewvalley"
+# > cd "$gamedir/"
+
+export LIBGL_ES=2
+export LIBGL_GL=21
+export LIBGL_FB=4
+
+# If the dri device does not exist, then let's not use
+# the gbm backend.
+if [ ! -e "/dev/dri/card0" ]; then
+  export LIBGL_FB=2
+fi
+
+if [ -d "$PWD/gl4es.$DEVICE_ARCH" ]; then
+  export LD_LIBRARY_PATH="$PWD/gl4es.$DEVICE_ARCH:$LD_LIBRARY_PATH"
+elif [ -d "$PWD/gl4es" ]; then
+  export LD_LIBRARY_PATH="$PWD/gl4es:$LD_LIBRARY_PATH"
+fi
+
+# This sets up the standard libs directory.
+if [ -d "$PWD/libs.$DEVICE_ARCH" ]; then
+  export LD_LIBRARY_PATH="$PWD/libs.$DEVICE_ARCH:$LD_LIBRARY_PATH"
+elif [ -d "$PWD/libs" ]; then
+  export LD_LIBRARY_PATH="$PWD/libs:$LD_LIBRARY_PATH"
+fi

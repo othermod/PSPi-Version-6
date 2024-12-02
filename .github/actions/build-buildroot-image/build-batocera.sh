@@ -50,6 +50,10 @@ sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/
 echo "Update S12populateshare to copy multimedia_keys.conf into system at boot"
 sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' /tmp/target/etc/init.d/S12populateshare
 
+# Add PortMaster
+echo "Add PortMaster"
+sudo cp -r $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/* /tmp/target/usr/share/batocera/datainit/roms/ports/
+
 # repack squashfs
 echo "Repack squashfs"
 sudo mksquashfs /tmp/target ./filesystem.squashfs -noappend -comp zstd

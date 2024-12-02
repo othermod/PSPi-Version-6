@@ -1,0 +1,23 @@
+#!/bin/bash
+
+directory="userdata/roms"
+
+ESUDO=""
+ESUDOKILL="-1" # for 351Elec and EmuELEC use "-1" (numeric one) or "-k" 
+if [ -f "$HOME/.config/gamecontrollerdb.txt" ]; then
+  export SDL_GAMECONTROLLERCONFIG_FILE="$HOME/.config/gamecontrollerdb.txt"
+else
+  export SDL_GAMECONTROLLERCONFIG_FILE="/$controlfolder/batocera/gamecontrollerdb.txt"
+fi
+# export SDL_GAMECONTROLLERCONFIG=$(grep "Deeplay" "/usr/lib/gamecontrollerdb.txt")
+
+get_controls() {
+  # DO NOTHING
+  printf ""
+}
+
+if [ -f "$controlfolder/cwtbe_flag" ]; then
+  GPTOKEYB="$ESUDO $controlfolder/gptokeyb2 $ESUDOKILL"
+else
+  GPTOKEYB="$ESUDO $controlfolder/gptokeyb $ESUDOKILL"
+fi
