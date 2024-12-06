@@ -80,7 +80,7 @@ void parse_command_line_args(int argc, char *argv[]) {
             printf("Options:\n");
             printf("  --nocrc                         Disable CRC checks\n");
             printf("  --joysticks <num>               Set number of joysticks, where <num> is between 0 and 2\n");
-            printf("  --dim <seconds>                 Enable dimming after <seconds>, between 1 and 3600\n");
+            printf("  --dim <seconds>                 Enable dimming after <seconds>, between 1 and 3600 (default: 120)\n");
             printf("  --fast                          Enable fast mode (double input polling rate)\n");
             printf("  --nogamepad                     Disable all gamepad buttons and joysticks\n");
             printf("  --extrabuttons [trigger|stick]  Enable extra buttons (default: trigger)\n");
@@ -111,13 +111,12 @@ void parse_command_line_args(int argc, char *argv[]) {
             }
         } else if (strcmp(argv[i], "--fast") == 0) {
             printf("Gotta go fast\n");
-            polling_delay = FAST_POLLING_DELAY_MS;  // Set to 8ms for fast mode
+            polling_delay = FAST_POLLING_DELAY_MS;
         } else if (strcmp(argv[i], "--nogamepad") == 0) {
             printf("Gamepad disabled\n");
             gamepad_enabled = false;
         } else if (strcmp(argv[i], "--extrabuttons") == 0) {
             extra_buttons = true;
-            // Check if next argument exists and is a valid configuration
             if (i + 1 < argc) {
                 if (strcmp(argv[i + 1], "trigger") == 0) {
                     button_config = BUTTON_CONFIG_TRIGGER;
@@ -381,6 +380,7 @@ void update_controller_data(int uinput_fd) {
             events[event_count].value = current_controller_data.right_stick_y.bits.position;
             event_count++;
         }
+      }
 
         // Handle stick buttons if extra buttons are enabled
         if (extra_buttons) {
@@ -400,7 +400,7 @@ void update_controller_data(int uinput_fd) {
                 event_count++;
             }
         }
-    }
+
 
     // Only write if we have events plus sync
     if (event_count > 0) {
