@@ -32,12 +32,20 @@ runs:
       with:
         path: rpi/drivers/bin
         merge-multiple: true
+        name: drivers
 
     # Install dependencies for packer
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils squashfs-tools -y
+      shell: bash
+
+    # Install packer 1.10.3
+    - name: Install packer 1.10.3
+      run: |
+        wget https://releases.hashicorp.com/packer/1.10.3/packer_1.10.3_linux_amd64.zip
+        unzip -o -qq packer_1.10.3_linux_amd64.zip -d /usr/local/bin
       shell: bash
 
     # Install packer arm plugin
