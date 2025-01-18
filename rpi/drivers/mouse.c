@@ -1,31 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-
 #include <linux/input.h>
 #include <linux/uinput.h>
 #include <sys/mman.h>
 #include <errno.h>
 
+#include "shared.h"
+
 #define AXIS_CENTER 127
 #define AXIS_THRESHOLD_LOW 112
 #define AXIS_THRESHOLD_HIGH 142
-
-typedef struct {
-    uint16_t BUTTONS;
-    uint8_t SENSE_SYS;
-    uint8_t SENSE_BAT;
-    uint8_t STATUS;
-    uint8_t JOY_LX;
-    uint8_t JOY_LY;
-    uint8_t JOY_RX;
-    uint8_t JOY_RY;
-} ControllerData;
 
 void emit(int virtualMouse, int type, int code, int val) {
     struct input_event ie = {0};
@@ -37,8 +26,8 @@ void emit(int virtualMouse, int type, int code, int val) {
 
 int main(int argc, char * argv[]) {
     int shm_fd;
-    ControllerData *shared_data;
-    ControllerData previous_data = {0};
+    SharedData *shared_data;
+    SharedData previous_data = {0};
 
     while ((shm_fd = shm_open("my_shm", O_RDONLY, 0666)) == -1) {
         if (errno == ENOENT) {
@@ -49,7 +38,7 @@ int main(int argc, char * argv[]) {
         }
     }
 
-    shared_data = mmap(0, sizeof(ControllerData), PROT_READ, MAP_SHARED, shm_fd, 0);
+    shared_data = mmap(0, sizeof(SharedData), PROT_READ, MAP_SHARED, shm_fd, 0);
     if (shared_data == MAP_FAILED) {
         perror("mmap");
         close(shm_fd);
@@ -81,56 +70,59 @@ int main(int argc, char * argv[]) {
     ioctl(virtualMouse, UI_DEV_SETUP, &usetup);
     ioctl(virtualMouse, UI_DEV_CREATE);
     sleep(1);
-    bool shouldEmit = 0;
-    ControllerData current_data;
+
+    bool shouldEmit = false;
+    SharedData current_data;
+
     while (1) {
-    current_data = *shared_data;
-    if (previous_data.JOY_LX != current_data.JOY_LX ||
-        current_data.JOY_LX > AXIS_THRESHOLD_HIGH ||
-        current_data.JOY_LX < AXIS_THRESHOLD_LOW) {
-        emit(virtualMouse, EV_REL, REL_X, (current_data.JOY_LX - AXIS_CENTER) / 16);
-        previous_data.JOY_LX = current_data.JOY_LX;
-        shouldEmit = true;
+        current_data = *shared_data;
+
+        if (previous_data.left_stick_x != current_data.left_stick_x ||
+            current_data.left_stick_x > AXIS_THRESHOLD_HIGH ||
+            current_data.left_stick_x < AXIS_THRESHOLD_LOW) {
+            emit(virtualMouse, EV_REL, REL_X, (current_data.left_stick_x - AXIS_CENTER) / 16);
+            previous_data.left_stick_x = current_data.left_stick_x;
+            shouldEmit = true;
+        }
+
+        if (previous_data.left_stick_y != current_data.left_stick_y ||
+            current_data.left_stick_y > AXIS_THRESHOLD_HIGH ||
+            current_data.left_stick_y < AXIS_THRESHOLD_LOW) {
+            emit(virtualMouse, EV_REL, REL_Y, (current_data.left_stick_y - AXIS_CENTER) / 16);
+            previous_data.left_stick_y = current_data.left_stick_y;
+            shouldEmit = true;
+        }
+
+        // Check if any button states have changed
+        if (previous_data.buttons.raw != current_data.buttons.raw) {
+            // Map buttons to keyboard/mouse events using the new union structure
+            emit(virtualMouse, EV_KEY, KEY_ENTER, current_data.buttons.bits.start);
+            emit(virtualMouse, EV_KEY, BTN_LEFT, current_data.buttons.bits.a);
+            emit(virtualMouse, EV_KEY, BTN_RIGHT, current_data.buttons.bits.b);
+            emit(virtualMouse, EV_KEY, KEY_FORWARD, current_data.buttons.bits.rshoulder);
+            emit(virtualMouse, EV_KEY, KEY_BACK, current_data.buttons.bits.lshoulder);
+            emit(virtualMouse, EV_KEY, KEY_LEFT, current_data.buttons.bits.dpad_left);
+            emit(virtualMouse, EV_KEY, KEY_UP, current_data.buttons.bits.dpad_up);
+            emit(virtualMouse, EV_KEY, KEY_DOWN, current_data.buttons.bits.dpad_down);
+            emit(virtualMouse, EV_KEY, KEY_RIGHT, current_data.buttons.bits.dpad_right);
+            emit(virtualMouse, EV_KEY, KEY_LEFTMETA, current_data.buttons.bits.home);
+
+            previous_data.buttons.raw = current_data.buttons.raw;
+            shouldEmit = true;
+        }
+
+        if (shouldEmit) {
+            emit(virtualMouse, EV_SYN, SYN_REPORT, 0);
+            shouldEmit = false;
+            usleep(10000);
+        } else {
+            usleep(20000);
+        }
     }
-
-    if (previous_data.JOY_LY != current_data.JOY_LY ||
-        current_data.JOY_LY > AXIS_THRESHOLD_HIGH ||
-        current_data.JOY_LY < AXIS_THRESHOLD_LOW) {
-        emit(virtualMouse, EV_REL, REL_Y, (current_data.JOY_LY - AXIS_CENTER) / 16);
-        previous_data.JOY_LY = current_data.JOY_LY;
-        shouldEmit = true;
-    }
-
-    if (previous_data.BUTTONS != current_data.BUTTONS) {
-
-      emit(virtualMouse, EV_KEY, KEY_ENTER, ((current_data.BUTTONS >> 0x02) & 1));
-      emit(virtualMouse, EV_KEY, BTN_LEFT, ((current_data.BUTTONS >> 0x03) & 1));
-      emit(virtualMouse, EV_KEY, BTN_RIGHT, ((current_data.BUTTONS >> 0x06) & 1));
-      emit(virtualMouse, EV_KEY, KEY_FORWARD, ((current_data.BUTTONS >> 0x07) & 1));
-      emit(virtualMouse, EV_KEY, KEY_BACK, ((current_data.BUTTONS >> 0x08) & 1));
-      emit(virtualMouse, EV_KEY, KEY_LEFT, ((current_data.BUTTONS >> 0x09) & 1));
-      emit(virtualMouse, EV_KEY, KEY_UP, ((current_data.BUTTONS >> 0x0A) & 1));
-      emit(virtualMouse, EV_KEY, KEY_DOWN, ((current_data.BUTTONS >> 0x0B) & 1));
-      emit(virtualMouse, EV_KEY, KEY_RIGHT, ((current_data.BUTTONS >> 0x0C) & 1));
-      emit(virtualMouse, EV_KEY, KEY_LEFTMETA, ((current_data.BUTTONS >> 0x0F) & 1));
-
-
-        previous_data.BUTTONS = current_data.BUTTONS;
-        shouldEmit = true;
-    }
-
-    if (shouldEmit) {
-        emit(virtualMouse, EV_SYN, SYN_REPORT, 0);
-        shouldEmit = false;
-        usleep(10000);
-    } else {
-        usleep(20000);
-    }
-}
 
     ioctl(virtualMouse, UI_DEV_DESTROY);
     close(virtualMouse);
-    munmap(shared_data, sizeof(ControllerData));
+    munmap(shared_data, sizeof(SharedData));
     close(shm_fd);
     return 0;
 }

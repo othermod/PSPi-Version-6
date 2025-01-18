@@ -1,0 +1,2 @@
+The chip is the FT5206
+You can also use the FT5406 overlay, but it is missing some features like right click

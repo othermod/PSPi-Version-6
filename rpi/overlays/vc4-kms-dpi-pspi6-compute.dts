@@ -1,0 +1,103 @@
+/*
+ * custom-vc4-kms-dpi-24bit-overlay.dts
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/bcm2835.h>
+
+/ {
+    compatible = "brcm,bcm2835";
+
+    fragment@0 {
+        target = <&dpi>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&dpi_24bit_gpio0>;
+            rgb_order = "grb";
+        };
+    };
+
+    fragment@1 {
+        target = <&gpio>;
+        __overlay__ {
+            dpi_24bit_gpio0: dpi_24bit_gpio0 {
+                brcm,pins = <0 1 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27>;
+                brcm,function = <BCM2835_FSEL_ALT2>;
+                brcm,pull = <BCM2835_PUD_OFF>;
+            };
+        };
+    };
+
+    fragment@2 {
+        target = <&i2c1>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&i2c1_pins>;
+        };
+    };
+
+    fragment@3 {
+        target = <&gpio>;
+        __overlay__ {
+            i2c1_pins: i2c1_pins {
+                brcm,pins = <2 3>;
+                brcm,function = <BCM2835_FSEL_ALT0>;
+                brcm,pull = <BCM2835_PUD_UP>;
+            };
+        };
+    };
+
+    fragment@4 {
+        target-path = "/";
+        __overlay__ {
+            panel: panel {
+                compatible = "panel-dpi";
+                width-mm = <154>;
+                height-mm = <86>;
+                bus-format = <0x1013>; // MEDIA_BUS_FMT_BGR888_1X24
+
+                panel-timing {
+                    clock-frequency = <29500000>;
+                    hactive = <800>;
+                    hfront-porch = <24>;
+                    hsync-len = <72>;
+                    hback-porch = <96>;
+                    hsync-active = <0>;
+                    vactive = <480>;
+                    vfront-porch = <3>;
+                    vsync-len = <10>;
+                    vback-porch = <7>;
+                    vsync-active = <0>;
+                    de-active = <1>;
+                    pixelclk-active = <1>;
+                };
+
+                port {
+                    panel_in: endpoint {
+                        remote-endpoint = <&dpi_out>;
+                    };
+                };
+            };
+        };
+    };
+
+    fragment@5 {
+        target = <&dpi>;
+        __overlay__ {
+            port {
+                dpi_out: endpoint {
+                    remote-endpoint = <&panel_in>;
+                };
+            };
+        };
+    };
+
+    __overrides__ {
+        rgb_order = <&dpi>, "rgb_order";
+    };
+};
