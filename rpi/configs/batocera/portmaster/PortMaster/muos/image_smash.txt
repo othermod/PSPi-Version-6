@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ -f "/opt/graphicsmagick/activate.sh" ]; then
+    source /opt/graphicsmagick/activate.sh
+
+    find "/mnt/mmc/MUOS/info/catalogue/External - Ports" -type f \( -iname "*.jpg" -o -iname "*.png" \) -exec sh -c 'input="{}"; output="$(echo "$input" | sed "s/\(.*\)\..*/\1/").png"; gm convert "$input" -resize "320x240>" "$output"' \;
+fi

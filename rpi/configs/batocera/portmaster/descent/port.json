@@ -1,0 +1,41 @@
+{
+    "version": 2,
+    "name": "descent.zip",
+    "items": [
+        "Descent.sh",
+        "descent/"
+    ],
+    "items_opt": null,
+    "attr": {
+        "title": "Descent",
+        "porter": [
+            "Jeod",
+            "Cebion",
+            "Tekkenfede",
+            "krishenriksen"
+        ],
+        "desc": "Play as a mercenary sent into planetary mines to destroy them before a computer virus spreads! You'll fly through 3D mazes in search of keycards to gain access to each level's reactor--which, once destroyed, will begin a self-destruct! Make sure you know where the exit hatch is! It will only open when the reactor is destroyed. Oh, and watch out for those virus-infected robots. They'll shoot at you.\n\nIncludes shareware/demo files. See instructions to use full version.",
+        "inst": "Ready to play with shareware and demo files. To upgrade to full game, purchase on Steam/GOG and then add .hog and .pig files to ports/descent/data.",
+        "genres": [
+            "fps"
+        ],
+        "image": "descent.screenshot.png",
+        "rtr": true,
+        "exp": false,
+        "runtime": null,
+        "reqs": [],
+        "arch": [
+            "aarch64"
+        ]
+    },
+    "status": {
+        "source": "PortMaster",
+        "md5": "846d0e8ad09b9d33b14bad6c8691ca15",
+        "status": "Installed"
+    },
+    "files": {
+        "port.json": "descent/port.json",
+        "Descent.sh": "Descent.sh",
+        "descent/": "descent/"
+    }
+}
