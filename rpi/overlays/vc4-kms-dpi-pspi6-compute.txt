@@ -1,0 +1,6 @@
+custom overlay for dpi on Bookworm
+24 bit dpi
+grb color order
+pins 2 and 3 used for i2c. i2c overlay/param not needed
+
+need this overlay and standard kms
