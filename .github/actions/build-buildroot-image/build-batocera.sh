@@ -43,8 +43,9 @@ echo "Add driver libraries"
 sudo cp $GITHUB_WORKSPACE/rpi/libraries/batocera/* /tmp/target/usr/lib/
 
 # Add Multimedia keys for volume control
-echo "Add Multimedia keys for volume control"
-sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
+# echo "Add Multimedia keys for volume control"
+# sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
+sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/es_last_input.cfg /tmp/target/usr/share/batocera/datainit/system/configs/emulationstation/es_last_input.cfg
 
 # update S12populateshare to copy multimedia_keys.conf into system at boot
 echo "Update S12populateshare to copy multimedia_keys.conf into system at boot"
