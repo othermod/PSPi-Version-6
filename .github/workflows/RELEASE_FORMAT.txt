@@ -9,23 +9,34 @@
 **Bugfixes**
 - Fixed an issue
 
-## Additional Downloads
+## Image Details
 
-These downloads are larger than 2GB and are unable to be hosted by github.  
+### RetroPie
 
-<details>
-<summary>Kali 2023.4</summary>
+This RetroPie image will build/install RetroPie from https://github.com/RetroPie/RetroPie-Setup
 
-[Kali2023.4-Zero2-PSPi6-v%RELEASE_VERSION%.img.gz](https://download_url)  
-[Kali2023.4-CM4-PSPi6-v%RELEASE_VERSION%.img.gz](https://download_url)
-</details>
+The image should be flashed with Raspberry Pi Imager with WiFi customisations completed. Upon connecting to your network, RetroPie will install. This will take a LONG time (Upwards of an hour) make sure your PSPi is charging.
 
-## Image Details:
+[How to SSH with RetroPie](https://retropie.org.uk/docs/SSH/)
 
-Image default usernames and passwords.  
+These images support customisations via Raspberry Pi Imager
 
-<details>
-<summary>Batocera</summary>
+Username: `pi`  
+Password: `raspberry`
+
+### Batocera
+
+This image is now over 2GB and has been split into multiple parts. Download each part into the same directory then extract with 7zip before flashing.
+
+This image comes with [PortMaster](https://portmaster.games/) preinstalled.
+
+PortMaster does not (yet) officially support Batocera, though we can get some (not all) games working.
+
+To get started:
+
+- Connect your device to the internet and launch PortMaster from the "ports" console. This will update PortMaster to the latest version.
+- Install whatever games you would like to try and follow any included instructions.
+- Before launching a game, you need to open the game script in a text editor and change the "controlfolder" variable from `/roms/ports/PortMaster` to `/userdata/roms/ports/PortMaster` (See the included copy of Descent for an example)
 
 [Accessing Batocera via SSH](https://wiki.batocera.org/access_the_batocera_via_ssh)
 
@@ -34,21 +45,7 @@ This image does not support customisations via Raspberry Pi Imager
 Username: `root`  
 Password: `linux`
 
-PortMaster:
-
-This image comes with [PortMaster](https://portmaster.games/) preinstalled.  
-
-PortMaster does not (yet) officially support Batocera, though we can get some (not all) games working.
-
-To get started: 
-
-- Connect your device to the internet and launch PortMaster from the "ports" console. This will update PortMaster to the latest version.
-- Install whatever games you would like to try and follow any included instructions.
-- Before launching a game, you need to open the game script in a text editor and change the "controlfolder" variable from `/roms/ports/PortMaster` to `/userdata/roms/ports/PortMaster` (See the included copy of Descent for an example)
-</details>
-
-<details>
-<summary>Lakka</summary>
+### Lakka
 
 [Accessing Lakka command line interface](https://www.lakka.tv/doc/Accessing-Lakka-command-line-interface/)
 
@@ -56,10 +53,8 @@ This image does not support customisations via Raspberry Pi Imager
 
 Username: `root`  
 Password: `root`
-</details>
 
-<details>
-<summary>Recalbox</summary>
+### Recalbox
 
 [Root access via Terminal CLI](https://wiki.recalbox.com/en/tutorials/system/access/root-access-terminal-cli)
 
@@ -67,21 +62,18 @@ This image does not support customisations via Raspberry Pi Imager
 
 Username: `root`  
 Password: `recalboxroot`
-</details>
 
-<details>
-<summary>Raspberry Pi OS & Retropie</summary>
 
-[How to SSH with RetroPie](https://retropie.org.uk/docs/SSH/)
+### Raspberry Pi OS
+
+[Introduction to remote access](https://www.raspberrypi.com/documentation/computers/remote-access.html)
 
 These images support customisations via Raspberry Pi Imager
 
 Username: `pi`  
 Password: `raspberry`
-</details>
 
-<details>
-<summary>Kali</summary>
+### Kali
 
 [Kali SSH Configuration](https://www.kali.org/docs/general-use/ssh-configuration/)
 
@@ -89,4 +81,3 @@ This image does not support customisations via Raspberry Pi Imager
 
 Username: `kali`  
 Password: `kali`
-</details>
