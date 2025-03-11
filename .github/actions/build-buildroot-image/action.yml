@@ -91,7 +91,7 @@ runs:
     # Generate sha256 filehash of image files
     - name: Generate sha256 filehash
       run: |
-        for i in $(ls *.img.gz *.img.gz.part 2>/dev/null)
+        for i in $(ls *.img.gz *.7z *.7z.* 2>/dev/null)
         do
           sha256sum "$i" | awk '{print $1}' > "$i.sha256"
         done
@@ -107,9 +107,11 @@ runs:
         fail_on_unmatched_files: false
         files: |
           ${{ runner.temp }}/completed_images/*.img.gz
-          ${{ runner.temp }}/completed_images/*.img.gz.part*
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
-          ${{ runner.temp }}/completed_images/*.img.gz.part*.sha256
+          ${{ runner.temp }}/completed_images/*.7z
+          ${{ runner.temp }}/completed_images/*.7z.*
+          ${{ runner.temp }}/completed_images/*.7z.sha256
+          ${{ runner.temp }}/completed_images/*.7z.*.sha256
 
     # Upload artifacts
     - name: Upload artifacts
@@ -119,6 +121,8 @@ runs:
         retention-days: 7
         path: |
           ${{ runner.temp }}/completed_images/*.img.gz
-          ${{ runner.temp }}/completed_images/*.img.gz.part*
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
-          ${{ runner.temp }}/completed_images/*.img.gz.part*.sha256
+          ${{ runner.temp }}/completed_images/*.7z
+          ${{ runner.temp }}/completed_images/*.7z.*
+          ${{ runner.temp }}/completed_images/*.7z.sha256
+          ${{ runner.temp }}/completed_images/*.7z.*.sha256
