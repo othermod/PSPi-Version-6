@@ -75,13 +75,13 @@ gzip -9 $IMAGE_NAME
 echo "Move image to completed_images & rename"
 mv $IMAGE_NAME.gz ../completed_images/$PSPI_IMAGE_NAME
 
-# Split image to multiple parts if over 2GB
+# Split image using 7zip if over 2GB
 FILE_SIZE=$(stat -c%s "../completed_images/$PSPI_IMAGE_NAME")
 if [ $FILE_SIZE -gt $((2000*1024*1024)) ]; then
-  echo "Image is larger than 2GB. Splitting..."
-  cd ../completed_images
-  split -d -b 1500M "$PSPI_IMAGE_NAME" "$PSPI_IMAGE_NAME.part"
-  rm "$PSPI_IMAGE_NAME"
+    echo "Image is larger than 2GB. Compressing with 7zip..."
+    cd ../completed_images
+    7z a "$PSPI_IMAGE_NAME.7z" "$PSPI_IMAGE_NAME" -v1500M
+    rm "$PSPI_IMAGE_NAME"
 fi
 
 # output images in folder
