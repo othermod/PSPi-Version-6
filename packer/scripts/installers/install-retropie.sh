@@ -12,9 +12,9 @@ sudo apt upgrade -y
 sudo apt install git lsb-release -y
 
 # Install RetroPie
-sudo cd /opt
+cd /opt
 sudo git clone --depth=1 https://github.com/RetroPie/RetroPie-Setup.git
-sudo cd RetroPie-Setup
+cd RetroPie-Setup
 sudo chmod +x /opt/RetroPie-Setup/retropie_packages.sh
 
 sudo /opt/RetroPie-Setup/retropie_packages.sh setup basic_install
