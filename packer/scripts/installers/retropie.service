@@ -6,8 +6,8 @@ After=network-online.target
 [Service]
 Type=oneshot
 User=pi
-ExecStart=/usr/local/bin/install-retropie.sh
-ExecStartPost=/bin/systemctl disable install-retropie.service
+ExecStart=/usr/bin/sudo /usr/local/bin/install-retropie.sh
+ExecStartPost=/usr/bin/sudo /bin/systemctl disable install-retropie.service
 StandardOutput=journal+console
 StandardError=journal+console
 RemainAfterExit=yes

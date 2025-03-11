@@ -7,20 +7,20 @@
 ################################################################################
 set -x
 
-apt update
-apt upgrade -y
-apt install git lsb-release -y
+sudo apt update
+sudo apt upgrade -y
+sudo apt install git lsb-release -y
 
 # Install RetroPie
-cd /opt
-git clone --depth=1 https://github.com/RetroPie/RetroPie-Setup.git
-cd RetroPie-Setup
-chmod +x /opt/RetroPie-Setup/retropie_packages.sh
+sudo cd /opt
+sudo git clone --depth=1 https://github.com/RetroPie/RetroPie-Setup.git
+sudo cd RetroPie-Setup
+sudo chmod +x /opt/RetroPie-Setup/retropie_packages.sh
 
-/opt/RetroPie-Setup/retropie_packages.sh setup basic_install
-/opt/RetroPie-Setup/retropie_packages.sh samba depends
-/opt/RetroPie-Setup/retropie_packages.sh samba install_shares
-/opt/RetroPie-Setup/retropie_packages.sh splashscreen default
-/opt/RetroPie-Setup/retropie_packages.sh splashscreen enable
-/opt/RetroPie-Setup/retropie_packages.sh bashwelcometweak
-/opt/RetroPie-Setup/retropie_packages.sh autostart enable
+sudo /opt/RetroPie-Setup/retropie_packages.sh setup basic_install
+sudo /opt/RetroPie-Setup/retropie_packages.sh samba depends
+sudo /opt/RetroPie-Setup/retropie_packages.sh samba install_shares
+sudo /opt/RetroPie-Setup/retropie_packages.sh splashscreen default
+sudo /opt/RetroPie-Setup/retropie_packages.sh splashscreen enable
+sudo /opt/RetroPie-Setup/retropie_packages.sh bashwelcometweak
+sudo /opt/RetroPie-Setup/retropie_packages.sh autostart enable
