@@ -128,14 +128,6 @@ build {
     ]
   }
 
-  # Install retropie
-  # provisioner "shell" {
-  #   execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-  #   scripts = [
-  #     "${path.root}scripts/installers/install-retropie.sh"
-  #   ]
-  # }
-
   # Reboot
   provisioner "shell" {
     execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"

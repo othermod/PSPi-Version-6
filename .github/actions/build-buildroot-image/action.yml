@@ -109,8 +109,7 @@ runs:
         files: |
           ${{ runner.temp }}/completed_images/*.img.gz
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
-          ${{ runner.temp }}/completed_images/*.7z
-          ${{ runner.temp }}/completed_images/*.7z.*.sha256
+          ${{ runner.temp }}/completed_images/*.7z.*
 
     # Upload artifacts
     - name: Upload artifacts
@@ -121,5 +120,4 @@ runs:
         path: |
           ${{ runner.temp }}/completed_images/*.img.gz
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
-          ${{ runner.temp }}/completed_images/*.7z
-          ${{ runner.temp }}/completed_images/*.7z.*.sha256
+          ${{ runner.temp }}/completed_images/*.7z.*

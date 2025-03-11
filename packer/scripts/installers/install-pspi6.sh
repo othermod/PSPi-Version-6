@@ -38,6 +38,11 @@ retropie_setup() {
     enable_i2c
     set_binary_permissions
     add_services "main osd"
+    echo "Adding user 'pi' to passwordless sudo..."
+    cat <<EOF | sudo tee /etc/sudoers.d/pi
+pi ALL=(ALL) NOPASSWD:ALL
+EOF
+    sudo chmod 440 /etc/sudoers.d/pi
 }
 
 set_binary_permissions() {
