@@ -4,18 +4,6 @@ inputs:
   build:
     description: 'Comma separated list of images to build'
     required: true
-  AZCOPY_TENANT_ID:
-    description: 'Azure Tenant ID'
-    required: true
-  AZCOPY_SPA_CLIENT_SECRET:
-    description: 'Azure Service Principal Client Secret'
-    required: true
-  AZCOPY_SPA_APPLICATION_ID:
-    description: 'Azure Service Principal Application ID'
-    required: true
-  AZCOPY_STORAGE_ACCOUNT_NAME:
-    description: 'Azure Storage Account Name'
-    required: true
   version:
     description: 'gitversion version output'
     required: true
@@ -77,9 +65,6 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
-        name: v${{ inputs.version }}
-        body_path: .github/workflows/RELEASE_FORMAT.txt
-        draft: true
         fail_on_unmatched_files: true
         files: |
           packer/*.img.gz

@@ -88,10 +88,6 @@ jobs:
         with:
           createRelease: ${{ inputs.createRelease }}
           build: ${{ matrix.os }}
-          AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
-          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
-          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
-          AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}
           version: ${{ env.VERSION }}
 
   build-buildroot-images:
@@ -159,7 +155,3 @@ jobs:
           pspi_image_name: ${{ matrix.image.PSPI_IMAGE_NAME }}
           version: ${{ matrix.image.VERSION }}
           checksum_type: ${{ matrix.image.CHECKSUM_TYPE }}
-          AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
-          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
-          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
-          AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}
