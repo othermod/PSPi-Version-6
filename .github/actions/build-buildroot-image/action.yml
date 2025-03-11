@@ -104,13 +104,12 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
+        draft: true
         fail_on_unmatched_files: false
         files: |
           ${{ runner.temp }}/completed_images/*.img.gz
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
           ${{ runner.temp }}/completed_images/*.7z
-          ${{ runner.temp }}/completed_images/*.7z.*
-          ${{ runner.temp }}/completed_images/*.7z.sha256
           ${{ runner.temp }}/completed_images/*.7z.*.sha256
 
     # Upload artifacts
@@ -123,6 +122,4 @@ runs:
           ${{ runner.temp }}/completed_images/*.img.gz
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
           ${{ runner.temp }}/completed_images/*.7z
-          ${{ runner.temp }}/completed_images/*.7z.*
-          ${{ runner.temp }}/completed_images/*.7z.sha256
           ${{ runner.temp }}/completed_images/*.7z.*.sha256

@@ -65,6 +65,7 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
+        draft: true
         fail_on_unmatched_files: true
         files: |
           packer/*.img.gz
