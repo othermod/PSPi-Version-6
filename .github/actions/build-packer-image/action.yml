@@ -49,10 +49,24 @@ runs:
       working-directory: packer
       shell: bash
 
+    # Split image using 7zip if over 2GB
+    - name: Split large images
+      run: |
+        for i in $(ls *.img.gz)
+        do
+          if [ $(stat -c %s "$i") -gt $((2000*1024*1024)) ]; then
+            7z a "$i.7z" "$i" -v1500m
+            rm "$i"
+          fi
+        done
+        ls -lh *.img.gz *.7z.*
+      working-directory: packer
+      shell: bash
+
     # Generate sha256 filehash of image files
     - name: Generate sha256 filehash
       run: |
-        for i in $(ls *.img.gz)
+        for i in $(ls *.img.gz *.7z.* 2>/dev/null)
         do
           sha256sum "$i" | awk '{print $1}' > "$i.sha256"
         done
@@ -70,6 +84,7 @@ runs:
         files: |
           packer/*.img.gz
           packer/*.img.gz.sha256
+          packer/*.7z.*
 
     # Upload artifacts
     - name: Upload artifacts
@@ -80,3 +95,4 @@ runs:
         path: |
           packer/*.img.gz
           packer/*.img.gz.sha256
+          packer/*.7z.*
