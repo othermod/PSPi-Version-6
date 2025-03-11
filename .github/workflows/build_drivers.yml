@@ -10,7 +10,8 @@ on:
 
 jobs:
   run-gitversion:
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       version: ${{ steps.gitversion.outputs.SemVer }}
     steps:

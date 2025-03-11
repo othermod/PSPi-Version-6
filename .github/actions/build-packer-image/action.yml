@@ -38,32 +38,15 @@ runs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils squashfs-tools -y
-      shell: bash
-
-    # Install packer 1.10.3
-    - name: Install packer 1.10.3
-      run: |
-        wget https://releases.hashicorp.com/packer/1.10.3/packer_1.10.3_linux_amd64.zip
-        unzip -o -qq packer_1.10.3_linux_amd64.zip -d /usr/local/bin
-      shell: bash
-
-    # Install packer arm plugin
-    - name: Install packer-builder-arm
-      run: |
-        mkdir -p $GITHUB_WORKSPACE/packer/plugins
-        cd $GITHUB_WORKSPACE/packer/plugins
-        git clone https://github.com/mkaczanowski/packer-builder-arm
-        cd packer-builder-arm
-        go mod download
-        go build -v .
+        sudo apt-get install fdisk gdisk qemu-system qemu-user-static libarchive-tools tar parted qemu-utils binfmt-support pigz -y
       shell: bash
 
     # Build images
     - name: Build images
       run: |
+        sudo packer init ./
         sudo packer build -only ${{ inputs.build }}.* -var pspi_version=v${{ inputs.version }} "$GITHUB_WORKSPACE/packer/"
-      working-directory: packer/plugins/packer-builder-arm
+      working-directory: packer
       shell: bash
 
     # Shrink images
@@ -75,7 +58,7 @@ runs:
         do
           sudo ./pishrink.sh -v -z -a "$i"
         done
-      working-directory: packer/plugins/packer-builder-arm
+      working-directory: packer
       shell: bash
 
     # Generate sha256 filehash of image files
@@ -85,7 +68,7 @@ runs:
         do
           sha256sum "$i" | awk '{print $1}' > "$i.sha256"
         done
-      working-directory: packer/plugins/packer-builder-arm
+      working-directory: packer
       shell: bash
 
     # Update github release
@@ -99,8 +82,8 @@ runs:
         draft: true
         fail_on_unmatched_files: true
         files: |
-          packer/plugins/packer-builder-arm/*.img.gz
-          packer/plugins/packer-builder-arm/*.img.gz.sha256
+          packer/*.img.gz
+          packer/*.img.gz.sha256
 
     # Upload artifacts
     - name: Upload artifacts
@@ -109,5 +92,5 @@ runs:
         name: ${{ inputs.build }}
         retention-days: 7
         path: |
-          packer/plugins/packer-builder-arm/*.img.gz
-          packer/plugins/packer-builder-arm/*.img.gz.sha256
+          packer/*.img.gz
+          packer/*.img.gz.sha256

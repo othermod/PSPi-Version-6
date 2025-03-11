@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /boot/pspi.conf
+. /boot/firmware/pspi.conf
 
 echo "disable_osd: $disable_osd"
 

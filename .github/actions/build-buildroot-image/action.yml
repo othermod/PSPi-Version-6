@@ -66,10 +66,13 @@ runs:
 
         # Check file extension of downloaded checksum
         if [[ ${{ inputs.checksum_type }} == sha256 ]]; then
+          sha256sum ${{ inputs.compressed_image_name }}
           sha256sum -c $GITHUB_ACTION_PATH/checksums.sha256 --ignore-missing
         elif [[ ${{ inputs.checksum_type }} == sha1 ]]; then
+          sha1sum ${{ inputs.compressed_image_name }}
           sha1sum -c $GITHUB_ACTION_PATH/checksums.sha1 --ignore-missing
         elif [[ ${{ inputs.checksum_type }} == md5 ]]; then
+          md5sum ${{ inputs.compressed_image_name }}
           md5sum -c $GITHUB_ACTION_PATH/checksums.md5 --ignore-missing
         else
           echo "Unknown checksum file extension"

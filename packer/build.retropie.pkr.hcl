@@ -2,8 +2,7 @@ build {
   name = "retropie"
 
   sources = [
-    "arm.retropie_zero2_arm64",
-    "arm.retropie_cm4_arm64"
+    "source.cross.retropie_cm4_zero2_arm64"
   ]
 
   # Configure raspberry pi
@@ -31,37 +30,43 @@ build {
 
   # Upload config.txt
   provisioner "file" {
-    source = "${path.root}/../rpi/configs/retropie/config.txt"
-    destination = "/boot/config.txt"
+    source = "${path.root}/../rpi/configs/raspios/config.txt"
+    destination = "/boot/firmware/config.txt"
   }
 
   # Upload cm4.txt
   provisioner "file" {
     source = "${path.root}/../rpi/configs/cm4.txt"
-    destination = "/boot/cm4.txt"
+    destination = "/boot/firmware/cm4.txt"
   }
 
   # Upload pi0.txt
   provisioner "file" {
     source = "${path.root}/../rpi/configs/pi0.txt"
-    destination = "/boot/pi0.txt"
+    destination = "/boot/firmware/pi0.txt"
   }
 
   # Upload pspi.conf
   provisioner "file" {
     source = "${path.root}/../rpi/configs/pspi.conf"
-    destination = "/boot/pspi.conf"
+    destination = "/boot/firmware/pspi.conf"
   }
 
   # Upload overlays
   provisioner "file" {
     source = "${path.root}/../rpi/overlays/"
-    destination = "/boot/overlays"
+    destination = "/boot/firmware/overlays"
   }
+
+  # Upload libraries
+  provisioner "file" {
+    source = "${path.root}/../rpi/libraries/raspios/"
+    destination = "/usr/lib/"
+  }   
 
   # Upload drivers
   provisioner "file" {
-    source = "${path.root}/../rpi/configs/retropie/drivers/"
+    source = "${path.root}/../rpi/drivers/bin/"
     destination = "/usr/bin/"
   }
 
@@ -75,6 +80,12 @@ build {
   provisioner "file" {
     source = "${path.root}/../rpi/scripts/retropie/start_osd.sh"
     destination = "/usr/local/bin/start_osd.sh"
+  }
+
+  # Upload start_mouse.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/raspios/start_mouse.sh"
+    destination = "/usr/local/bin/start_mouse.sh"
   }
 
   # Upload services
@@ -93,6 +104,37 @@ build {
       "OS" = "RetroPie"
     }
   }
+
+  # Upload retropie installer
+  provisioner "file" {
+    source = "${path.root}/scripts/installers/install-retropie.sh"
+    destination = "/usr/local/bin/install-retropie.sh"
+  }
+
+  # Upload retropie service
+  provisioner "file" {
+    source = "${path.root}/scripts/installers/retropie.service"
+    destination = "/etc/systemd/system/install-retropie.service"
+  }
+
+  # Enable retropie service
+  provisioner "shell" {
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    inline            = [
+      "echo 'Enable RetroPie Service'", 
+      "systemctl enable install-retropie.service",
+      "chmod +x /usr/local/bin/install-retropie.sh"
+    ]
+  }
+
+  # Install retropie
+  # provisioner "shell" {
+  #   execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+  #   scripts = [
+  #     "${path.root}scripts/installers/install-retropie.sh"
+  #   ]
+  # }
 
   # Reboot
   provisioner "shell" {

@@ -36,13 +36,7 @@ retropie_setup() {
     echo "Configuring RetroPie..."
 
     enable_i2c
-    # set_binary_permissions
-    echo "Setting permissions on binaries..."
-    chmod +x /usr/bin/main_32
-    chmod +x /usr/bin/mouse_32
-    chmod +x /usr/bin/osd_32
-    chmod +x /usr/local/bin/start_main.sh
-    chmod +x /usr/local/bin/start_osd.sh
+    set_binary_permissions
     add_services "main osd"
 }
 
@@ -51,9 +45,6 @@ set_binary_permissions() {
     chmod +x /usr/bin/main_64
     chmod +x /usr/bin/mouse_64
     chmod +x /usr/bin/osd_64
-    chmod +x /usr/bin/main_32
-    chmod +x /usr/bin/mouse_32
-    chmod +x /usr/bin/osd_32
     chmod +x /usr/local/bin/start_main.sh
     chmod +x /usr/local/bin/start_osd.sh
     chmod +x /usr/local/bin/start_mouse.sh

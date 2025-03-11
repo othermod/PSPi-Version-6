@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /boot/pspi.conf
+. /boot/firmware/pspi.conf
 modprobe i2c-dev
 
 echo "enable_dim: $enable_dim"
