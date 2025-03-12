@@ -136,6 +136,34 @@ jobs:
             CHECKSUM_TYPE: "md5"
             PSPI_IMAGE_NAME: "Batocera41-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2711/stable/40/batocera-bcm2711-40-20240802.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2711-40-20240802.img.gz"
+            IMAGE_NAME: "batocera-bcm2711-40-20240802.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera40-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2837/stable/40/batocera-bcm2837-40-20240803.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2837-40-20240803.img.gz"
+            IMAGE_NAME: "batocera-bcm2837-40-20240803.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera40-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2711/stable/39/batocera-bcm2711-bcm2711-39-20240228.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img.gz"
+            IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera39-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2837/stable/39/batocera-bcm2837-bcm2837-39-20240301.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img.gz"
+            IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera39-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
     runs-on: ubuntu-latest
     continue-on-error: true
     needs:
