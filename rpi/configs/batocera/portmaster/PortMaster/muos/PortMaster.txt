@@ -1,12 +1,14 @@
 #!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
 
 controlfolder="/mnt/mmc/MUOS/PortMaster"
-toolsfolderloc="/mnt/mmc/MUOS/"
 
 if [ ! -z "$(df | grep '/mnt/sdcard')" ]; then
-  directory="/mnt/sdcard"
+  directory="mnt/sdcard"
 else
-  directory="/mnt/mmc"
+  directory="mnt/mmc"
 fi
 
 OLD_PATH="$PATH"
@@ -17,14 +19,21 @@ ESUDOKILL="-1" # for 351Elec and EmuELEC use "-1" (numeric one) or "-k"
 export SDL_GAMECONTROLLERCONFIG_FILE="/usr/lib/gamecontrollerdb.txt"
 # export SDL_GAMECONTROLLERCONFIG=$(grep "Deeplay" "/usr/lib/gamecontrollerdb.txt")
 
+source "$controlfolder/device_info.txt"
+[ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
+
 ## TODO: Change to PortMaster/tty when Johnnyonflame merges the changes in,
 CUR_TTY=/dev/tty0
 
 cd "$controlfolder"
 
+exec > >(tee "$controlfolder/log.txt") 2>&1
+
+source "$controlfolder/utils/pmsplash.txt"
+
 ## Autoinstallation Code
 # This will automatically install zips found within the PortMaster/autoinstall directory using harbourmaster
-AUTOINSTALL=$(find "${toolsfolderloc}/PortMaster/autoinstall" -type f \( -name "*.zip" -o -name "*.squashfs" \))
+AUTOINSTALL=$(find "$controlfolder/autoinstall" -type f \( -name "*.zip" -o -name "*.squashfs" \))
 if [ -n "$AUTOINSTALL" ]; then
   source "$controlfolder/PortMasterDialog.txt"
 
@@ -36,30 +45,30 @@ if [ -n "$AUTOINSTALL" ]; then
   PortMasterDialog "message" "Auto-installation"
 
   # Install the latest runtimes.zip
-  if [ -f "${toolsfolderloc}/PortMaster/autoinstall/runtimes.zip" ]; then
+  if [ -f "$controlfolder/autoinstall/runtimes.zip" ]; then
     PortMasterDialog "message" "- Installing runtimes.zip, this could take a minute or two."
-    $ESUDO unzip -o "${toolsfolderloc}/PortMaster/autoinstall/runtimes.zip" -d "${toolsfolderloc}/PortMaster/libs"
-    $ESUDO rm -f "${toolsfolderloc}/PortMaster/autoinstall/runtimes.zip"
+    $ESUDO unzip -o "$controlfolder/autoinstall/runtimes.zip" -d "$controlfolder/libs"
+    $ESUDO rm -f "$controlfolder/autoinstall/runtimes.zip"
     PortMasterDialog "message" "- SUCCESS: runtimes.zip"
   fi
 
-  for file_name in "${toolsfolderloc}/PortMaster/autoinstall"/*.squashfs
+  for file_name in "$controlfolder/autoinstall"/*.squashfs
   do
     if [ ! -f "$file_name" ]; then
       continue
     fi
 
-    $ESUDO mv -f "$file_name" "${toolsfolderloc}/PortMaster/libs"
+    $ESUDO mv -f "$file_name" "$controlfolder/libs"
     PortMasterDialog "message" "- SUCCESS: $(basename $file_name)"
   done
 
-  for file_name in "${toolsfolderloc}/PortMaster/autoinstall"/*.zip
+  for file_name in "$controlfolder/autoinstall"/*.zip
   do
-    if [[ "$(basename $file_name)" == "PortMaster.zip" ]]; then
+    if [ ! -f "$file_name" ]; then
       continue
     fi
 
-    if [ ! -f "$file_name" ]; then
+    if [[ "$(basename $file_name)" == "PortMaster.zip" ]]; then
       continue
     fi
 
@@ -69,10 +78,16 @@ if [ -n "$AUTOINSTALL" ]; then
     else
       PortMasterDialog "message" "- FAILURE: $(basename $file_name)"
     fi
+
+    touch "$controlfolder/.muos-refresh"
   done
 
-  if [ -f "${toolsfolderloc}/PortMaster/autoinstall/PortMaster.zip" ]; then
-    file_name="${toolsfolderloc}/PortMaster/autoinstall/PortMaster.zip"
+  if [ -f "$controlfolder/autoinstall/PortMaster.zip" ]; then
+    if [ ! -f "$file_name" ]; then
+      continue
+    fi
+
+    file_name="$controlfolder/autoinstall/PortMaster.zip"
 
     if [[ $(PortMasterDialogResult "install" "$file_name") == "OKAY" ]]; then
       $ESUDO rm -f "$file_name"
@@ -86,6 +101,11 @@ if [ -n "$AUTOINSTALL" ]; then
   if [ -z "$GW" ]; then
     PortMasterDialogMessageBox "Finished running autoinstall.\n\nNo internet connection present so exiting."
     PortMasterDialogExit
+
+    rm -f "${controlfolder}/.muos-refresh"
+    # HULK SMASH
+    ${controlfolder}/muos/image_smash.txt
+
     exit 0
   else
     PortMasterDialogMessageBox "Finished running autoinstall."
@@ -95,12 +115,12 @@ fi
 
 
 export TERM=linux
-$ESUDO chmod 666 $CUR_TTY
-printf "\033c" > $CUR_TTY
+# $ESUDO chmod 666 $CUR_TTY
+# printf "\033c" > $CUR_TTY
 
-# Do it twice, it's just as nice!
-cat /dev/zero > /dev/fb0 2>/dev/null
-cat /dev/zero > /dev/fb0 2>/dev/null
+# # Do it twice, it's just as nice!
+# cat /dev/zero > /dev/fb0 2>/dev/null
+# cat /dev/zero > /dev/fb0 2>/dev/null
 
 echo "Starting PortMaster." > $CUR_TTY
 
@@ -109,7 +129,7 @@ $ESUDO chmod -R +x .
 export PYSDL2_DLL_PATH="/usr/lib"
 $ESUDO rm -f "${controlfolder}/.pugwash-reboot"
 while true; do
-  $ESUDO ./pugwash 2>&1 | $ESUDO tee -a ./log.txt
+  $ESUDO ./pugwash
 
   # Do it twice, it's just as nice!
   cat /dev/zero > /dev/fb0 2>/dev/null

@@ -1,0 +1,11 @@
+xkbcommon: ERROR: couldn't find a Compose file for locale "en_US.UTF-8" (mapped to "en_US.UTF-8")
+2025-03-13 10:17:16.188 | DEBUG    | harbourmaster.config:<module>:151 - HM_DEFAULT_TOOLS_DIR:   /userdata/system/.local/share
+2025-03-13 10:17:16.189 | DEBUG    | harbourmaster.config:<module>:152 - HM_DEFAULT_PORTS_DIR:   /userdata/roms/ports
+2025-03-13 10:17:16.190 | DEBUG    | harbourmaster.config:<module>:153 - HM_DEFAULT_SCRIPTS_DIR: /userdata/roms/ports
+Attempting to delete file at path: /userdata/system/.local/share/PortMaster/utils/pmsplash/stopsplash
+File 'stopsplash' deleted successfully.
+xkbcommon: ERROR: couldn't find a Compose file for locale "en_US" (mapped to "en_US")
+0: 1
+{'name': 'Batocera', 'version': '40oc', 'device': 'bcm2711', 'resolution': (640, 480), 'analogsticks': 2, 'cpu': 'unknown', 'capabilities': ['opengl', 'power', 'aarch64', 'restore', '4:3', '640x480', 'Batocera', 'bcm2711', 'analog_0', 'analog_1', 'analog_2', '1gb', '2gb', '4gb', '8gb', 'en_US'], 'primary_arch': 'aarch64', 'ram': 8192, 'glibc': '2.38'}
+/userdata/roms/ports/PortMaster.sh: line 116:  2685 Segmentation fault      $ESUDO ./pugwash $PORTMASTER_CMDS
+/userdata/roms/ports/PortMaster.sh: line 120: systemctl: command not found

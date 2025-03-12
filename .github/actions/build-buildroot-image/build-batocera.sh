@@ -29,6 +29,15 @@ sudo mount --type="squashfs" --options="loop" --source="/mnt/image/boot/batocera
 echo "Mount overlay"
 sudo mount --type="overlay" --options="lowerdir=/tmp/squashfs,upperdir=/tmp/upper,workdir=/tmp/work" --source="overlay" --target="/tmp/target"
 
+# Get batocera version
+echo "Get batocera version"
+BATOCERA_VERSION=$(cat /tmp/target/usr/share/batocera/batocera.version | awk '{print $1}')
+
+if [ "$BATOCERA_VERSION" -lt 40 ]; then
+    echo "Batocera version is less than 40"
+    sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/config_39.txt /mnt/image/config.txt
+fi
+
 # Add custom.sh
 echo "Add custom.sh"
 sudo cp $GITHUB_WORKSPACE/rpi/scripts/batocera/custom.sh /tmp/target/usr/share/batocera/datainit/system/custom.sh
@@ -44,7 +53,10 @@ sudo cp $GITHUB_WORKSPACE/rpi/libraries/batocera/* /tmp/target/usr/lib/
 
 # Add Multimedia keys for volume control
 # echo "Add Multimedia keys for volume control"
-# sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
+
+if [ "$BATOCERA_VERSION" -lt 40 ]; then
+    sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
+fi    
 sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/es_last_input.cfg /tmp/target/usr/share/batocera/datainit/system/configs/emulationstation/es_last_input.cfg
 
 # update S12populateshare to copy multimedia_keys.conf into system at boot
@@ -53,7 +65,9 @@ sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' 
 
 # Add PortMaster
 echo "Add PortMaster"
-sudo cp -r $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/* /tmp/target/usr/share/batocera/datainit/roms/ports/
+sudo mkdir -p /tmp/target/usr/share/batocera/datainit/system/.local/share/PortMaster
+sudo cp -r $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/PortMaster/* /tmp/target/usr/share/batocera/datainit/system/.local/share/PortMaster/
+sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/PortMaster.sh /tmp/target/usr/share/batocera/datainit/roms/ports/PortMaster.sh
 
 # repack squashfs
 echo "Repack squashfs"

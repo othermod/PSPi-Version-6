@@ -1,21 +1,39 @@
 #!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
 
 ## New Device Info
 #
+# - DEVICE_INFO_VERSION
+# - PM_VERSION
+# - DISPLAY_ORIENTATION
 # - DISPLAY_WIDTH
 # - DISPLAY_HEIGHT
 # - DISPLAY_ORIENTATION
 # - CFW_NAME
 # - CFW_VERSION
+# - CFW_GLIBC
 # - DEVICE_NAME
 # - DEVICE_CPU
 # - DEVICE_RAM
 # - DEVICE_ARCH
+# - DEVICE_HAS_ARMHF
+# - DEVICE_HAS_AARCH64
+# - DEVICE_HAS_X86
+# - DEVICE_HAS_X86_64
+# - ASPECT_X
+# - ASPECT_Y
 # - ANALOG_STICKS
 #
 # usage `source <path_to>/device_info.txt`
 
-DEVICE_INFO_VERSION="0.1.7"
+# So we can check the version
+if [ ! -z "$DEVICE_INFO_VERSION" ]; then
+    return
+fi
+
+DEVICE_INFO_VERSION="0.1.13"
 
 if [ -z "$controlfolder" ]; then
     SCRIPT_DIR="$(dirname "$0")"
@@ -44,20 +62,22 @@ if [ -f "/usr/share/plymouth/themes/text.plymouth" ]; then
 
     elif [[ $CFW_FFS == *"arkos"* ]]; then
         CFW_NAME=$(echo "${CFW_INFO}" | sed -n 's/title=\(.*\) (\([0-9]\{8\}\))/\1/p' | cut -d' ' -f 1)
-        CFW_VERSION=$(echo "${CFW_INFO}" | sed -n 's/title=\(.*\) (\([0-9]\{8\}\))/\2/p' | cut -d' ' -f 1)
+        CFW_VERSION=$(echo "${CFW_INFO}" | sed -n 's/title=\(.*\) (\([0-9]\{8\}\)).*$/\2/p' | cut -d' ' -f 1)
 
         if [[ $CFW_FFS == *"wummle"* ]]; then
             CFW_NAME="${CFW_NAME} wuMMLe"
+        elif [[ $CFW_FFS == *"aeux"* ]]; then
+            CFW_NAME="${CFW_NAME} AeUX"
         fi
     fi
 
     unset CFW_INFO
     unset CFW_FFS
 
-elif [ -f "$HOME/.var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg" ]; then
+elif [ -f "/app/bin/retrodeck.sh" ]; then
     # RetroDeck
     CFW_NAME="RetroDECK"
-    CFW_VERSION=$(grep 'version' "$HOME/.var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg" | awk -F= '{print $2}')
+    CFW_VERSION=$(grep 'version' "/var/config/retrodeck/retrodeck.cfg" | awk -F= '{print $2}')
 elif [ -f "/opt/muos/config/version.txt" ]; then
     # muOS - RG35XX Plus/H
     CFW_NAME="muOS"
@@ -65,10 +85,27 @@ elif [ -f "/opt/muos/config/version.txt" ]; then
 elif [ -e "$(which batocera-version)" ]; then
     CFW_NAME="Batocera"
     CFW_VERSION="$(batocera-version | cut -d' ' -f 1)"
+
+    TMP_NAME=$(grep -a '^OS_NAME=".*"' /etc/os-release | cut -d'"' -f 2)
+    if [ ! -z "$TMP_NAME" ]; then
+        CFW_NAME="$TMP_NAME"
+    fi
+    unset TMP_NAME
+elif [ -e "$(which system-version)" ]; then
+    CFW_NAME="REGLinux"
+    CFW_VERSION="$(system-version | cut -d' ' -f 1)"
 elif [ -d "/usr/trimui" ]; then
     # TrimUI Smart Pro
     CFW_NAME="TrimUI"
     CFW_VERSION="$(cat /etc/version)"
+elif [ -f "/usr/miyoo/version" ]; then
+    CFW_NAME="Miyoo"
+    CFW_VERSION=$(cat /usr/miyoo/version)
+elif lsusb | grep -q "1eaf:0024"; then
+    # uConsole
+    CFW_NAME="Debian GNU/Linux"
+    CFW_VERSION=$(grep -a '^VERSION_ID=' /etc/os-release | cut -d'"' -f 2)
+    DEVICE_NAME="uConsole"	
 else
     # AmberELEC / EmuELEC
     CFW_NAME=$(grep -a '^NAME=".*"' /etc/os-release | cut -d'"' -f 2)
@@ -94,23 +131,31 @@ elif [ -f "$HOME/.config/.DEVICE" ]; then
     DEVICE_NAME=$(cat "$HOME/.config/.DEVICE")
 elif [ -f "$HOME/.config/.OS_ARCH" ]; then
     DEVICE_NAME=$(cat "$HOME/.config/.OS_ARCH")
-elif [  -f "$HOME/.var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg" ]; then
+elif [  -f "/app/bin/retrodeck.sh" ]; then
     DEVICE_NAME="RetroDECK"
 elif [ -f "/boot/boot/batocera.board" ]; then
-    DEVICE_NAME=$(cat /boot/boot/batocera.board)
+    DEVICE_NAME=$(tr '[a-z]' '[A-Z]' < /boot/boot/batocera.board)
+elif [ -f "/boot/boot/system.board" ]; then
+    DEVICE_NAME=$(tr '[a-z]' '[A-Z]' < /boot/boot/system.board)
+elif [ -f "/opt/muos/config/device.txt" ]; then
+    DEVICE_NAME="$(cat /opt/muos/config/device.txt | tr '[:lower:]' '[:upper:]')"
+elif [ -f "/usr/miyoo/version" ]; then
+    DEVICE_NAME="Miyoo Flip"
 elif [ -f "/sys/firmware/devicetree/base/model" ]; then
     DEVICE_NAME=$(cat "/sys/firmware/devicetree/base/model" | cut -d' ' -f 2)
 
     if [[ "${DEVICE_NAME}" == "RGB10" ]]; then
         # This one is tricky :D
         DEVICE_NAME=$(cat "/sys/firmware/devicetree/base/model" 2>/dev/null)
-    fi
 
-    if [[ "${DEVICE_NAME}" == "" ]]; then
+    elif [[ "${DEVICE_NAME}" == "Pocket" ]]; then
+        # Retroid Pocket 5/Mini
         DEVICE_NAME=$(cat "/sys/firmware/devicetree/base/model" 2>/dev/null)
-    fi
 
-    if [[ "$CFW_NAME" == "AmberELEC" ]] && [[ -f "/storage/.config/device" ]]; then
+    elif [[ "${DEVICE_NAME}" == "" ]]; then
+        DEVICE_NAME=$(cat "/sys/firmware/devicetree/base/model" 2>/dev/null)
+
+    elif [[ "$CFW_NAME" == "AmberELEC" ]] && [[ -f "/storage/.config/device" ]]; then
         DEVICE_NAME=$(cat /storage/.config/device)
     fi
 else
@@ -118,9 +163,34 @@ else
 fi
 
 ANALOG_STICKS=2
-DEVICE_CPU=$(lscpu | grep 'Model name' | cut -f 2 -d ":" | awk '{$1=$1}1')
-DEVICE_ARCH=$(uname -m)
+DEVICE_CPU=$(lscpu | grep '^Model name' | cut -f 2 -d ":" | awk 'NR==1{print $1}')
 DISPLAY_ORIENTATION=0
+
+DEVICE_ARCH="aarch64"
+DEVICE_HAS_ARMHF="N"
+DEVICE_HAS_AARCH64="N"
+DEVICE_HAS_X86="N"
+DEVICE_HAS_X86_64="N"
+
+if [ -f "/lib/ld-linux-armhf.so.3" ]; then
+    DEVICE_ARCH="armhf"
+    DEVICE_HAS_ARMHF="Y"
+fi
+
+if [ -f "/lib/ld-linux-aarch64.so.1" ]; then
+    DEVICE_ARCH="aarch64"
+    DEVICE_HAS_AARCH64="Y"
+fi
+
+if [ -e "/lib/ld-linux.so.2" ] || [ -e "/usr/lib/ld-linux.so.2" ] || [ "$(uname -i)" = "i686" ]; then
+    DEVICE_ARCH="x86"
+    DEVICE_HAS_X86="Y"
+fi
+
+if [ -e "/lib/ld-linux-x86-64.so.2" ] || [ -e "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2" ] || [ "$(uname -i)" = "x86_64" ]; then
+    DEVICE_ARCH="x86_64"
+    DEVICE_HAS_X86_64="Y"
+fi
 
 ## FIXES
 # Here is where we can add custome rules to fill out extra info on the device.
@@ -150,6 +220,20 @@ case "$(echo "$DEVICE_NAME" | tr '[:upper:]' '[:lower:]')" in
                 DEVICE_NAME="RG353VS"
             fi
         fi
+        ;;
+
+    "rp5")
+        DEVICE_NAME="Retroid Pocket 5"
+        DEVICE_CPU="SD865"
+        ;;
+
+    "rpmini")
+        DEVICE_NAME="Retroid Pocket Mini"
+        DEVICE_CPU="SD865"
+        ;;
+
+    "retroid pocket 5"|"retroid pocket mini")
+        DEVICE_CPU="SD865"
         ;;
 
     "rk3326")
@@ -222,36 +306,70 @@ case "$(echo "$DEVICE_NAME" | tr '[:upper:]' '[:lower:]')" in
         DEVICE_CPU="RK3326"
         ;;
 
-     "RetroDECK")
+     "retrodeck")
         DEVICE_CPU="x86_64"
         ;;
 
-    "TrimUI Smart Pro")
+    "trimui smart pro"|"trimui-smart-pro")
         DEVICE_CPU="a133plus"
         ;;
 
-    "sun50iw9")
-        if [[ "$CFW_NAME" == "Batocera" ]]; then
-            ANALOG_STICKS=0
-            DEVICE_NAME="RG35XX PLUS"
-        elif [ -f "/opt/muos/config/device.txt" ]; then
-            if [ "$(cat /opt/muos/config/device.txt)" == "RG35XX-PLUS" ]; then
-                ANALOG_STICKS=0
-                DEVICE_NAME="RG35XX PLUS"
-            else
-                DEVICE_NAME="RG35XX H"
-            fi
-
-            DEVICE_ARCH="armhf"
-        else
-            DEVICE_NAME="RG35XX H"
-            DEVICE_ARCH="armhf"
-        fi
-
-        DEVICE_CPU="H700"
+    "trimui brick"|"trimui-brick")
+        DEVICE_CPU="a133plus"
+        ANALOG_STICKS=0
         ;;
 
+    "rg-cubexx")
+        DEVICE_NAME="RGCUBEXX-H"
+        DEVICE_CPU="h700"
+        ;;
+
+    "rgcubexx-h")
+        DEVICE_CPU="h700"
+        ;;
+
+    "rg28xx-h")
+        ANALOG_STICKS=0
+        DISPLAY_ORIENTATION=1
+        DEVICE_CPU="h700"
+        ;;
+
+    "rg28xx")
+        DEVICE_NAME="RG28XX-H"
+        ANALOG_STICKS=0
+        DISPLAY_ORIENTATION=1
+        DEVICE_CPU="h700"
+        ;;
+
+    "rg34xx"|"rg34xx-h"|"rg35xx-plus"|"rg35xx-sp"|"rg35xx-2024")
+        ANALOG_STICKS=0
+        DEVICE_CPU="h700"
+        ;;
+
+    "rg35xx-h"|"rg40xx-h")
+        DEVICE_CPU="h700"
+        ;;
+
+    "rg40xx-v")
+        ANALOG_STICKS=1
+        DEVICE_CPU="h700"
+        ;;
 esac
+
+# GLIBC
+
+CFW_GLIBC="230"
+
+for path in /lib /lib64 /lib/aarch64-linux-gnu /lib32 /lib/arm-linux-gnueabihf /usr/lib /usr/lib64 /usr/lib32; do
+    libc="$path/libc.so.6"
+    if [ -x "$libc" ]; then
+        CFW_GLIBC=$("$libc" 2>&1 | head -n 1 | awk '{print $NF}' | tr -d '.')
+        break
+    fi
+done
+
+unset libc
+unset path
 
 # get current resolution
 
@@ -290,6 +408,17 @@ GCD=$(gcd $DISPLAY_WIDTH $DISPLAY_HEIGHT)
 ASPECT_X=$((DISPLAY_WIDTH / GCD))
 ASPECT_Y=$((DISPLAY_HEIGHT / GCD))
 
+# TrimUI Hack. :[
+
+if [[ "$DEVICE_NAME" = "TrimUI Smart Pro" ]]; then
+    if [[ "${DISPLAY_WIDTH}x${DISPLAY_HEIGHT}" == "1024x768" ]]; then
+        DEVICE_NAME="TrimUI Brick"
+        ANALOG_STICKS=0
+    fi
+fi
+
+# Dump info
+
 cat << __INFO_DUMP__ | tee "$HOME/device_info_${CFW_NAME}_${DEVICE_NAME}.txt"
 # ${DEVICE_NAME} - ${CFW_NAME}
 \`\`\`bash
@@ -297,15 +426,20 @@ DEVICE_INFO_VERSION=${DEVICE_INFO_VERSION}
 PM_VERSION=${PM_VERSION:-Unknown}
 CFW_NAME=${CFW_NAME}
 CFW_VERSION=${CFW_VERSION}
+CFW_GLIBC=${CFW_GLIBC}
 DEVICE_NAME=${DEVICE_NAME}
 DEVICE_CPU=${DEVICE_CPU}
 DEVICE_ARCH=${DEVICE_ARCH}
 DEVICE_RAM=${DEVICE_RAM}
+DEVICE_HAS_ARMHF="${DEVICE_HAS_ARMHF}"
+DEVICE_HAS_AARCH64="${DEVICE_HAS_AARCH64}"
+DEVICE_HAS_X86="${DEVICE_HAS_X86}"
+DEVICE_HAS_X86_64="${DEVICE_HAS_X86_64}"
 DISPLAY_WIDTH=${DISPLAY_WIDTH}
 DISPLAY_HEIGHT=${DISPLAY_HEIGHT}
+DISPLAY_ORIENTATION=${DISPLAY_ORIENTATION}
 ASPECT_X=${ASPECT_X}
 ASPECT_Y=${ASPECT_Y}
-DISPLAY_ORIENTATION=${DISPLAY_ORIENTATION}
 ANALOG_STICKS=${ANALOG_STICKS}
 \`\`\`
 __INFO_DUMP__

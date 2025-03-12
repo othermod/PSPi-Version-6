@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+# SPDX-License-Identifier: MIT
+#
 
 controlfolder="/mnt/SDCARD/Apps/PortMaster/PortMaster"
 
@@ -12,65 +15,54 @@ export SDL_GAMECONTROLLERCONFIG_FILE="/$controlfolder/gamecontrollerdb.txt"
 ## TODO: Change to PortMaster/tty when Johnnyonflame merges the changes in,
 CUR_TTY=/dev/tty0
 
+source $controlfolder/control.txt
+[ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
+
 cd "$controlfolder"
+
+exec > >(tee "$controlfolder/log.txt") 2>&1
 
 export TERM=linux
 chmod 666 $CUR_TTY
 printf "\033c" > $CUR_TTY
 
-sdl2imgshow \
-    -i "$EX_RESOURCE_PATH/background.png" \
-    -f "$EX_RESOURCE_PATH/DejaVuSans.ttf" \
-    -s 48 \
-    -c "0,0,0" \
-    -t "Starting PortMaster" &
+source "$controlfolder/utils/pmsplash.txt"
 
-sleep 0.5
-pkill -f sdl2imgshow
+"$controlfolder/trimui/update.txt"
 
 ## Autoinstallation Code
 # This will automatically install zips found within the PortMaster/autoinstall directory using harbourmaster
-AUTOINSTALL=$(find "${toolsfolderloc}/PortMaster/autoinstall" -type f \( -name "*.zip" -o -name "*.squashfs" \))
+AUTOINSTALL=$(find "$controlfolder/autoinstall" -type f \( -name "*.zip" -o -name "*.squashfs" \))
 if [ -n "$AUTOINSTALL" ]; then
   source "$controlfolder/PortMasterDialog.txt"
-
-  echo "Starting Auto-Installation." > $CUR_TTY
 
   GW=$(PortMasterIPCheck)
   PortMasterDialogInit "no-check"
 
   PortMasterDialog "messages_begin"
 
-  PortMasterDialog "message" "Auto-Installation"
+  PortMasterDialog "message" "Auto-installation"
 
   # Install the latest runtimes.zip
-  if [ -f "${toolsfolderloc}/PortMaster/autoinstall/runtimes.zip" ]; then
+  if [ -f "$controlfolder/autoinstall/runtimes.zip" ]; then
     PortMasterDialog "message" "- Installing runtimes.zip, this could take a minute or two."
-    $ESUDO unzip -o "${toolsfolderloc}/PortMaster/autoinstall/runtimes.zip" -d "${toolsfolderloc}/PortMaster/libs"
-    $ESUDO rm -f "${toolsfolderloc}/PortMaster/autoinstall/runtimes.zip"
+    $ESUDO unzip -o "$controlfolder/autoinstall/runtimes.zip" -d "$controlfolder/libs"
+    $ESUDO rm -f "$controlfolder/autoinstall/runtimes.zip"
     PortMasterDialog "message" "- SUCCESS: runtimes.zip"
   fi
 
-  for file_name in "${toolsfolderloc}/PortMaster/autoinstall"/*.squashfs
+  for file_name in "$controlfolder/autoinstall"/*.squashfs
   do
-    if [ ! -f "$file_name" ]; then
-      continue
-    fi
-
-    $ESUDO mv -f "$file_name" "${toolsfolderloc}/PortMaster/libs"
+    $ESUDO mv -f "$file_name" "$controlfolder/libs"
     PortMasterDialog "message" "- SUCCESS: $(basename $file_name)"
   done
 
-  for file_name in "${toolsfolderloc}/PortMaster/autoinstall"/*.zip
+  for file_name in "$controlfolder/autoinstall"/*.zip
   do
     if [[ "$(basename $file_name)" == "PortMaster.zip" ]]; then
       continue
     fi
 
-    if [ ! -f "$file_name" ]; then
-      continue
-    fi
-
     if [[ $(PortMasterDialogResult "install" "$file_name") == "OKAY" ]]; then
       $ESUDO rm -f "$file_name"
       PortMasterDialog "message" "- SUCCESS: $(basename $file_name)"
@@ -79,8 +71,8 @@ if [ -n "$AUTOINSTALL" ]; then
     fi
   done
 
-  if [ -f "${toolsfolderloc}/PortMaster/autoinstall/PortMaster.zip" ]; then
-    file_name="${toolsfolderloc}/PortMaster/autoinstall/PortMaster.zip"
+  if [ -f "$controlfolder/autoinstall/PortMaster.zip" ]; then
+    file_name="$controlfolder/autoinstall/PortMaster.zip"
 
     if [[ $(PortMasterDialogResult "install" "$file_name") == "OKAY" ]]; then
       $ESUDO rm -f "$file_name"
@@ -89,6 +81,8 @@ if [ -n "$AUTOINSTALL" ]; then
       PortMasterDialog "message" "- FAILURE: $(basename $file_name)"
     fi
   fi
+
+  touch "$controlfolder/.trimui-refresh"
 
   PortMasterDialog "messages_end"
   if [ -z "$GW" ]; then
@@ -107,22 +101,24 @@ echo "Starting PortMaster." > $CUR_TTY
 
 chmod -R +x .
 
-rm -f "${controlfolder}/.pugwash-reboot"
+rm -f "$controlfolder/.pugwash-reboot"
+printf "\033c" > $CUR_TTY
 
 while true; do
-  ./pugwash 2>&1 | $ESUDO tee -a ./log.txt
+  ./pugwash --debug
 
-  if [ ! -f "${controlfolder}/.pugwash-reboot" ]; then
+  if [ ! -f "$controlfolder/.pugwash-reboot" ]; then
     break;
   fi
 
-  rm -f "${controlfolder}/.pugwash-reboot"
+  rm -f "$controlfolder/.pugwash-reboot"
 done
 
-if [ -f "${controlfolder}/.trimui-refresh" ]; then
-  rm -f "${controlfolder}/.trimui-refresh"
+if [ -f "$controlfolder/.trimui-refresh" ]; then
+  rm -f "$controlfolder/.trimui-refresh"
   # HULK SMASH
-  ${controlfolder}/trimui/image_smash.txt
+
+  "$controlfolder"/trimui/image_smash.txt
 fi
 
 unset LD_LIBRARY_PATH

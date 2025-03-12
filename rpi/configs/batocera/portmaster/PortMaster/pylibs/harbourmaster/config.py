@@ -1,4 +1,7 @@
 
+# SPDX-License-Identifier: MIT
+
+
 # System imports
 import pathlib
 import platform
@@ -25,11 +28,14 @@ HM_UPDATE_FREQUENCY=(60 * 60 * 1)  # Only check automatically once per hour.
 HM_TESTING=False
 HM_PERFTEST=False
 
+## Maximum temporary size is 100 mb, this can cause errors on TrimUI and muOS.
+HM_MAX_TEMP_SIZE = 1024 * 1024 * 100
+
 ################################################################################
 ## The following code is a simplification of the PortMaster toolsloc and whichsd code.
-HM_DEFAULT_PORTS_DIR = Path("/roms/ports")
+HM_DEFAULT_PORTS_DIR   = Path("/roms/ports")
 HM_DEFAULT_SCRIPTS_DIR = Path("/roms/ports")
-HM_DEFAULT_TOOLS_DIR = Path("/roms/ports")
+HM_DEFAULT_TOOLS_DIR   = Path("/roms/ports")
 
 if 'XDG_DATA_HOME' not in os.environ:
     os.environ['XDG_DATA_HOME'] = str(Path().home() / '.local' / 'share')
@@ -39,25 +45,26 @@ if (Path().cwd() / '..' / '.git').is_dir():
 
 if (Path().cwd() / '.git').is_dir():
     ## For testing
-    HM_DEFAULT_TOOLS_DIR = Path('.').absolute()
-    HM_DEFAULT_PORTS_DIR = Path('ports/').absolute()
+    HM_DEFAULT_TOOLS_DIR   = Path('.').absolute()
+    HM_DEFAULT_PORTS_DIR   = Path('ports/').absolute()
     HM_DEFAULT_SCRIPTS_DIR = Path('ports/').absolute()
     HM_TESTING=True
+
+elif Path("/mnt/SDCARD/MIYOO_EX/PortMaster").is_dir():
+    ## TrimUI Smart Pro
+    HM_DEFAULT_TOOLS_DIR   = Path("/mnt/SDCARD/MIYOO_EX/PortMaster")
+    HM_DEFAULT_PORTS_DIR   = Path("/mnt/SDCARD/MIYOO_EX/ports")
+    HM_DEFAULT_SCRIPTS_DIR = Path("/mnt/SDCARD/MIYOO_EX/ports")
 
 elif Path("/mnt/SDCARD/Apps/PortMaster").is_dir():
     ## TrimUI Smart Pro
     HM_DEFAULT_TOOLS_DIR   = Path("/mnt/SDCARD/Apps/PortMaster")
-
-    if Path("/mnt/SDCARD/Ports").is_dir():
-        HM_DEFAULT_PORTS_DIR = Path("/mnt/SDCARD/Ports")
-    else:
-        HM_DEFAULT_PORTS_DIR   = Path("/mnt/SDCARD/ports")
-
-    HM_DEFAULT_SCRIPTS_DIR = Path("/mnt/SDCARD/Roms/PORTS")
+    HM_DEFAULT_PORTS_DIR   = Path("/mnt/SDCARD/Data/ports")
+    HM_DEFAULT_SCRIPTS_DIR = Path("/mnt/SDCARD/Data/ports")
 
 elif Path("/userdata/roms/ports").is_dir():
     ## Batocera
-    HM_DEFAULT_TOOLS_DIR   = Path("/userdata/roms/ports")
+    HM_DEFAULT_TOOLS_DIR   = Path(os.environ['XDG_DATA_HOME'])
     HM_DEFAULT_PORTS_DIR   = Path("/userdata/roms/ports")
     HM_DEFAULT_SCRIPTS_DIR = Path("/userdata/roms/ports")
 
@@ -67,44 +74,76 @@ elif Path("/opt/muos").is_dir():
     HM_DEFAULT_PORTS_DIR   = Path("/mnt/mmc/ports")
     HM_DEFAULT_SCRIPTS_DIR = Path("/mnt/mmc/ROMS/Ports")
 
-    if '/mnt/sdcard' in subprocess.getoutput(['df']):
+    MUOS_MMC_TOGGLE        = Path('/mnt/mmc/MUOS/PortMaster/config/muos_mmc_master_race.txt')
+
+    if not MUOS_MMC_TOGGLE.is_file() and '/mnt/sdcard' in subprocess.getoutput(['df']):
         HM_DEFAULT_PORTS_DIR   = Path("/mnt/sdcard/ports")
         HM_DEFAULT_SCRIPTS_DIR = Path("/mnt/sdcard/ROMS/Ports")
 
 elif Path("/opt/system/Tools").is_dir():
     if Path("/roms2/tools").is_dir():
-        HM_DEFAULT_TOOLS_DIR = Path("/roms2/tools")
-        HM_DEFAULT_PORTS_DIR = Path("/roms2/ports")
+        HM_DEFAULT_TOOLS_DIR   = Path("/roms2/tools")
+        HM_DEFAULT_PORTS_DIR   = Path("/roms2/ports")
         HM_DEFAULT_SCRIPTS_DIR = Path("/roms2/ports")
 
     else:
-        HM_DEFAULT_TOOLS_DIR = Path("/roms/tools")
-        HM_DEFAULT_PORTS_DIR = Path("/roms/ports")
+        HM_DEFAULT_TOOLS_DIR   = Path("/roms/tools")
+        HM_DEFAULT_PORTS_DIR   = Path("/roms/ports")
         HM_DEFAULT_SCRIPTS_DIR = Path("/roms/ports")
 
 elif Path("/opt/tools/PortMaster").is_dir():
-    HM_DEFAULT_TOOLS_DIR = Path("/opt/tools")
-    HM_DEFAULT_PORTS_DIR = Path("/roms/ports")
+    HM_DEFAULT_TOOLS_DIR   = Path("/opt/tools")
+    HM_DEFAULT_PORTS_DIR   = Path("/roms/ports")
     HM_DEFAULT_SCRIPTS_DIR = Path("/roms/ports")
 
 elif Path("/storage/roms/ports_scripts").is_dir():
-    HM_DEFAULT_TOOLS_DIR = Path("/storage/roms/ports")
-    HM_DEFAULT_PORTS_DIR = Path("/storage/roms/ports")
+    HM_DEFAULT_TOOLS_DIR   = Path("/storage/roms/ports")
+    HM_DEFAULT_PORTS_DIR   = Path("/storage/roms/ports")
     HM_DEFAULT_SCRIPTS_DIR = Path("/storage/roms/ports_scripts")
 
 elif Path("/storage/roms/ports").is_dir():
-    HM_DEFAULT_TOOLS_DIR = Path("/storage/roms/ports")
-    HM_DEFAULT_PORTS_DIR = Path("/storage/roms/ports")
+    HM_DEFAULT_TOOLS_DIR   = Path("/storage/roms/ports")
+    HM_DEFAULT_PORTS_DIR   = Path("/storage/roms/ports")
     HM_DEFAULT_SCRIPTS_DIR = Path("/storage/roms/ports")
 
-## Check if retrodeck.cfg exists. Chose this file/location as platform independent from were retrodeck is installed.
-elif (Path.home() / ".var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg").is_file():
-    retrodeck_roms_path = retrodeck_roms_path = (Path.home() / ".var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg").read_text()
-    if retrodeck_roms_path != '':
-        retrodeck_roms_path = retrodeck_roms_path.join(re.findall(r'roms_folder=(.*)', retrodeck_roms_path)) + "/ports"
-        HM_DEFAULT_TOOLS_DIR   = Path(retrodeck_roms_path)
-        HM_DEFAULT_PORTS_DIR   = Path(retrodeck_roms_path)
-        HM_DEFAULT_SCRIPTS_DIR = Path(retrodeck_roms_path)
+## Check if retrodeck.sh exists. Chose this file/location as platform independent from were retrodeck is installed.
+elif Path("/var/config/retrodeck/retrodeck.cfg").is_file() or (Path.home() / ".var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg").is_file():
+    rdconfig=Path("/var/config/retrodeck/retrodeck.cfg")
+    HM_DEFAULT_TOOLS_DIR = Path("/var/data")
+
+    if not rdconfig.is_file():
+        rdconfig = (Path.home() / ".var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg")
+        HM_DEFAULT_TOOLS_DIR  = (Path.home() / ".var/app/net.retrodeck.retrodeck/data")
+
+    rdhome=None
+    ports_folder=None
+    roms_folder=None
+
+    with open(rdconfig, 'r') as fh:
+        for line in fh:
+            line = line.strip()
+
+            if line.startswith('rdhome='):
+                rdhome=Path(line.split('=', 1)[-1])
+
+            if line.startswith('ports_folder='):
+                ports_folder=Path(line.split('=', 1)[-1])
+
+            if line.startswith('roms_folder='):
+                roms_folder=Path(line.split('=', 1)[-1])
+
+    if rdhome is None:
+        logger.error(f"Unable to find the rdhome variable in {rdconfig}.")
+        exit(255)
+
+    if roms_folder is None:
+        roms_folder=rdhome / "roms"
+
+    if ports_folder is None:
+        ports_folder=rdhome / "PortMaster"
+
+    HM_DEFAULT_PORTS_DIR   = Path(ports_folder) / "ports"
+    HM_DEFAULT_SCRIPTS_DIR = Path(roms_folder) / "portmaster"
 
 else:
     HM_DEFAULT_TOOLS_DIR = Path("/roms/ports")
@@ -226,6 +265,7 @@ __all__ = (
     'HM_SCRIPTS_DIR',
     'HM_SORT_ORDER',
     'HM_SOURCE_DEFAULTS',
+    'HM_MAX_TEMP_SIZE',
     'HM_TESTING',
     'HM_TOOLS_DIR',
     'HM_UPDATE_FREQUENCY',

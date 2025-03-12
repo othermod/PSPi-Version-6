@@ -1,4 +1,6 @@
 
+# SPDX-License-Identifier: MIT
+
 import contextlib
 import datetime
 import functools
@@ -51,9 +53,14 @@ def json_safe_load(*args):
 
 
 def fetch(url):
-    r = requests.get(url, timeout=20)
-    if r.status_code != 200:
-        logger.error(f"Failed to download {url!r}: {r.status_code}")
+    try:
+        r = requests.get(url, timeout=20)
+        if r.status_code != 200:
+            logger.error(f"Failed to download {url!r}: {r.status_code}")
+            return None
+
+    except requests.exceptions.ConnectionError as err:
+        logger.error(f"Failed to download {url!r}: {err}")
         return None
 
     return r
@@ -187,6 +194,9 @@ def load_pm_signature(file_name):
                 if 'PORTMASTER:' not in line:
                     continue
 
+                if ',' not in line.split(':', 1)[1]:
+                    continue
+
                 return [
                     item.strip()
                     for item in line.split(':', 1)[1].strip().split(',', 1)]
@@ -201,6 +211,7 @@ def load_pm_signature(file_name):
         return None
 
     return None
+
 
 def add_pm_signature(file_name, info):
     ## Adds the portmaster signature to a bash script.
@@ -297,6 +308,11 @@ def hash_file(file_name):
 
 
 def runtime_nicename(runtime):
+    if isinstance(runtime, list):
+        return oc_join([
+            runtime_nicename(_runtime)
+            for _runtime in runtime])
+
     if runtime.startswith("frt"):
         return ("Godot/FRT {version}").format(version=runtime.split('_', 1)[1].rsplit('.', 1)[0])
 
@@ -306,8 +322,23 @@ def runtime_nicename(runtime):
     if runtime.startswith("mono"):
         return ("Mono {version}").format(version=runtime.split('-', 1)[1].rsplit('-', 1)[0])
 
+    if runtime.startswith("rlvm"):
+        return "RLVM"
+
+    if runtime.startswith("pyxel"):
+        return ("Pyxel {version}").format(version=runtime.split('_')[1])
+
+    if runtime.startswith("weston"):
+        return ("Weston {version}").format(version=runtime.rsplit('_', 1)[-1])
+
+    if runtime.startswith("mesa"):
+        return ("Mesa {version}").format(version=runtime.rsplit('_', 1)[-1])
+
     if "jdk" in runtime and runtime.startswith("zulu11"):
         return ("JDK {version}").format(version=runtime.split('-')[2][3:])
+
+    if "jre" in runtime and runtime.startswith("zulu11"):
+        return ("JRE {version}").format(version=runtime.split('-')[2][3:])
 
     return runtime
 
@@ -369,6 +400,14 @@ def download(file_name, file_url, md5_source=None, md5_result=None, callback=Non
 
             if callback is not None:
                 callback.progress(_("Downloading file."), length, total_length, 'data')
+
+    except CancelEvent as err:
+        if file_name.is_file():
+            file_name.unlink()
+
+        logger.error(f"Requests error: {err}")
+
+        raise
 
     except requests.RequestException as err:
         if file_name.is_file():
@@ -458,6 +497,7 @@ def get_dict_list(base_dict, key):
 
     return result
 
+
 def remove_dict_list(base_dict, key, value):
     if key not in base_dict:
         return
@@ -477,6 +517,7 @@ def remove_dict_list(base_dict, key, value):
 
         elif len(result) == 1:
             base_dict[key] = result[0]
+
 
 def get_path_fs(path):
     """

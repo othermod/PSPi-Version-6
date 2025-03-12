@@ -1,0 +1,194 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: portmaster\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-09-09 16:35+0800\n"
+"PO-Revision-Date: 2024-07-01 11:06\n"
+"Last-Translator: \n"
+"Language-Team: Swedish\n"
+"Language: sv_SE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Crowdin-Project: portmaster\n"
+"X-Crowdin-Project-ID: 610497\n"
+"X-Crowdin-Language: sv-SE\n"
+"X-Crowdin-File: themes.pot\n"
+"X-Crowdin-File-ID: 3\n"
+
+#: Fallout.theme.zip/theme.json:550, Stardew.theme.zip/theme.json:374, ff_VII.theme.zip/theme.json:257, Doom.theme.zip/theme.json:337
+msgid "Genres: {port_info.genres}    Download Size: {port_info.download_size}{if:port_info.runtime}    Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}"
+msgstr "Genrer: {port_info.genres}    Storlek: {port_info.download_size}{if:port_info.runtime}    Körtid: {port_info.runtime} ({port_info.runtime_status}){endif}"
+
+#: Fallout.theme.zip/theme.json:611, Stardew.theme.zip/theme.json:475, ff_VII.theme.zip/theme.json:363, Doom.theme.zip/theme.json:444
+msgid "{if:!ports_list.total_ports::ports_list.filter_ports}Available Ports: {ports_list.filter_ports} / {ports_list.total_ports}  \n"
+"Filters: {ports_list.filters}{endif}"
+msgstr "{if:!ports_list.total_ports::ports_list.filter_ports}Tillgängliga portar: {ports_list.filter_ports} / {ports_list.total_ports}  \n"
+"Filter: {ports_list.filters}{endif}"
+
+#: Fallout.theme.zip/theme.json:684, Stardew.theme.zip/theme.json:541, Zelda.theme.zip/theme.json:485, ff_VII.theme.zip/theme.json:435, Doom.theme.zip/theme.json:522
+#: default_theme/theme.json:414
+msgid "Free Space: {system.free_space}\n\n"
+"Porter: {port_info.porter}\n"
+"Genres: {port_info.genres}\n"
+"Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}\n\n"
+"Instruction: {port_info.instructions}"
+msgstr "Ledigt utrymme: {system.free_space}\n\n"
+"Portutvecklare: {port_info.porter}\n"
+"Genrer: {port_info.genres}\n"
+"Storlek: {port_info.download_size}{if:port_info.runtime}\n"
+"Körtid: {port_info.runtime} ({port_info.runtime_status}){endif}\n\n"
+"Instruktion: {port_info.instructions}"
+
+#: Fallout.theme.zip/theme.json:726
+msgid "PM: {system.portmaster_version}\n"
+"HM: {system.harbourmaster_version}\n"
+"Space: {system.free_space} free / {system.total_space} total\n"
+"Time: {system.time_24hr}\n"
+"Battery: {system.battery_level}"
+msgstr "PM: {system.portmaster_version}\n"
+"HM: {system.harbourmaster_version}\n"
+"Utrymme: {system.free_space} ledigt / {system.total_space} totalt\n"
+"Tid: {system.time_24hr}\n"
+"Batteri: {system.battery_level}"
+
+#: Fallout.theme.zip/theme.json:762, Stardew.theme.zip/theme.json:651, Zelda.theme.zip/theme.json:551, ff_VII.theme.zip/theme.json:523, Doom.theme.zip/theme.json:644
+#: default_theme/theme.json:499, default_theme/theme.json:625
+msgid "IP: {system.ip_address}"
+msgstr "IP: {system.ip_address}"
+
+#: Fallout.theme.zip/theme.json:831, Stardew.theme.zip/theme.json:739, Zelda.theme.zip/theme.json:633, ff_VII.theme.zip/theme.json:612, Doom.theme.zip/theme.json:741
+#: default_theme/theme.json:550
+msgid "Creator: {theme_info.creator}\n"
+"Status: {theme_info.status}"
+msgstr "Skapare: {theme_info.creator}\n"
+"Status: {theme_info.status}"
+
+#: Stardew.theme.zip/theme.json:605, ff_VII.theme.zip/theme.json:480, default_theme/theme.json:441
+msgid "Time: {system.time_24hr}\n"
+"CFW: {system.cfw_name} ({system.cfw_version})\n"
+"Device: {system.device_name}\n"
+"Battery: {system.battery_level}"
+msgstr "Tid: {system.time_24hr}\n"
+"CFW: {system.cfw_name} ({system.cfw_version})\n"
+"Enhet: {system.device_name}\n"
+"Batteri: {system.battery_level}"
+
+#: Stardew.theme.zip/theme.json:613
+msgid "PM: {system.portmaster_version}\n"
+"HM: {system.harbourmaster_version}\n"
+"Space: {system.free_space} free"
+msgstr "PM: {system.portmaster_version}\n"
+"HM: {system.harbourmaster_version}\n"
+"Utrymme: {system.free_space} ledigt"
+
+#: Zelda.theme.zip/theme.json:326
+msgid "Filters: {if:!ports_list.total_ports::ports_list.filter_ports} {ports_list.filters}{endif}"
+msgstr "Filter: {if:!ports_list.total_ports::ports_list.filter_ports} {ports_list.filters}{endif}"
+
+#: Zelda.theme.zip/theme.json:376
+msgid "Genres: {port_info.genres}\n"
+"Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}"
+msgstr "Genrer: {port_info.genres}\n"
+"Hämtningsstorlek: {port_info.download_size}{if:port_info.runtime}\n"
+"Körtid: {port_info.runtime} ({port_info.runtime_status}){endif}"
+
+#: Zelda.theme.zip/theme.json:522
+msgid "Time: {system.time_24hr}      Battery: {system.battery_level}"
+msgstr "Tid: {system.time_24hr}      Batteri: {system.battery_level}"
+
+#: ff_VII.theme.zip/theme.json:488, default_theme/theme.json:449
+msgid "PM: {system.portmaster_version}\n"
+"HM: {system.harbourmaster_version}\n"
+"Space: {system.free_space} free / {system.total_space} total"
+msgstr "PM: {system.portmaster_version}\n"
+"HM: {system.harbourmaster_version}\n"
+"Utrymme: {system.free_space} ledigt / {system.total_space} totalt"
+
+#: hiviz.theme.zip/theme.json:267
+msgid "• Porter: {port_info.porter}\n"
+"• Genres: {port_info.genres}\n"
+"• Description: {port_info.description}"
+msgstr "• Portutvecklare: {port_info.porter}\n"
+"• Genrer: {port_info.genres}\n"
+"• Beskrivning: {port_info.description}"
+
+#: hiviz.theme.zip/theme.json:327
+msgid "• Genres: {port_info.genres}\n"
+"• Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"• Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}\n"
+"• Description: {port_info.description}\n"
+"• Instructions:\n"
+"{port_info.instructions}"
+msgstr "• Genrer: {port_info.genres}\n"
+"• Hämtningsstorlek: {port_info.download_size}{if:port_info.runtime}\n"
+"• Körtid: {port_info.runtime} ({port_info.runtime_status}){endif}\n"
+"• Beskrivning: {port_info.description}\n"
+"• Instruktioner:\n"
+"{port_info.instructions}"
+
+#: hiviz.theme.zip/theme.json:375
+msgid "PM: {system.portmaster_version}, HM: {system.harbourmaster_version}"
+msgstr "PM: {system.portmaster_version}, HM: {system.harbourmaster_version}"
+
+#: hiviz.theme.zip/theme.json:463
+msgid "• Creator: {theme_info.creator}\n"
+"• Status: {theme_info.status}\n"
+"• Description:\n"
+"{theme_info.description}"
+msgstr "• Skapare: {theme_info.creator}\n"
+"• Status: {theme_info.status}\n"
+"• Beskrivning:\n"
+"{theme_info.description}"
+
+#: hiviz.theme.zip/theme.json:526, default_theme/theme.json:616
+msgid "Name: {runtime_info.name}\n"
+"Status: {runtime_info.status}\n"
+"Ports: {runtime_info.ports}\n"
+"Download Size: {runtime_info.download_size}\n"
+"Install Size: {runtime_info.disk_size}"
+msgstr "Namn: {runtime_info.name}\n"
+"Status: {runtime_info.status}\n"
+"Portar: {runtime_info.ports}\n"
+"Hämtningsstorlek: {runtime_info.download_size}\n"
+"Installeringsstorlek: {runtime_info.disk_size}"
+
+#: Doom.theme.zip/theme.json:586
+msgid "Time: {system.time_24hr}\n"
+"Battery: {system.battery_level}\n"
+"Space: {system.free_space} free"
+msgstr "Tid: {system.time_24hr}\n"
+"Batteri: {system.battery_level}\n"
+"Utrymme: {system.free_space} ledigt"
+
+#: basic_theme.theme.zip/theme.json:77
+msgid "Title: {port_info.title}\n"
+"Porter: {port_info.porter}\n"
+"Genres: {port_info.genres}\n"
+"Download Size: {port_info.download_size}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}\n"
+"Description: {port_info.description}"
+msgstr "Titel: {port_info.title}\n"
+"Portutvecklare: {port_info.porter}\n"
+"Genrer: {port_info.genres}\n"
+"Hämtningsstorlek: {port_info.download_size}{if:port_info.runtime}\n"
+"Körtid: {port_info.runtime} ({port_info.runtime_status}){endif}\n"
+"Beskrivning: {port_info.description}"
+
+#: default_theme/theme.json:315
+msgid "{if:!ports_list.total_ports::ports_list.filter_ports}Available Ports: {ports_list.filter_ports} / {ports_list.total_ports} \n"
+"Filters: {ports_list.filters}{endif}"
+msgstr "{if:!ports_list.total_ports::ports_list.filter_ports}Tillgängliga portar: {ports_list.filter_ports} / {ports_list.total_ports} \n"
+"Filter: {ports_list.filters}{endif}"
+
+#: default_theme/theme.json:343, default_theme/theme.json:843
+msgid "Genres: {port_info.genres}\n"
+"{if:port_info.install_size}Installed Size: {port_info.install_size}{else}Download Size: {port_info.download_size}{endif}{if:port_info.runtime}\n"
+"Runtime: {port_info.runtime} ({port_info.runtime_status}){endif}"
+msgstr "Genrer: {port_info.genres}\n"
+"{if:port_info.install_size}Storlek (installerad): {port_info.install_size}{else}Hämtningsstorlek: {port_info.download_size}{endif}{if:port_info.runtime}\n"
+"Körtid: {port_info.runtime} ({port_info.runtime_status}){endif}"
+

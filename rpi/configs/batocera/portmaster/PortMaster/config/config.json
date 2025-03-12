@@ -1,0 +1,13 @@
+{
+    "change_channel": false,
+    "disclaimer": true,
+    "featured_ports_checked": "2025-03-13T10:17:28.545002",
+    "first-run": false,
+    "porters_checked": "2025-03-13T10:17:32.038583",
+    "ports_info_checked": "2025-03-13T10:17:30.834449",
+    "release_channel": "stable",
+    "show_experimental": false,
+    "theme": "default_theme",
+    "update_checked": "2025-03-13T10:17:23.681704",
+    "version": 2
+}

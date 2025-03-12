@@ -1,0 +1,41 @@
+[
+    {
+        "name": "Ready to Run Bangers",
+        "image": "images/banger-ports.jpg",
+        "description": "Ports which are ready to run and are absolute bangers.",
+        "ports": [
+            "stargrovescramble.zip",
+            "globeba.zip",
+            "curseofthearrow.zip",
+            "mire.zip",
+            "rota.zip",
+            "echo_chamber.zip",
+            "help.no.brake.zip"
+        ]
+    },
+    {
+        "name": "Puzzling Puzzles",
+        "image": "images/puzzling-ports.jpg",
+        "description": "Ponder, Probe, and Prowl through Puzzling Ports!",
+        "ports": [
+            "nonny.zip",
+            "tiny-crate.zip",
+            "simplesokoban.zip",
+            "yatka.zip"
+        ]
+    },
+    {
+        "name": "PortMaster Picks",
+        "image": "images/portmaster-ports.jpg",
+        "description": "A selection of ports by the Masters of Ports. These quality ports are a great place to start with PortMaster.",
+        "ports": [
+            "devilutionx.zip",
+            "half-life.zip",
+            "maldita.castilla.zip",
+            "rvgl.zip",
+            "rawgl.zip",
+            "shovel.knight.zip",
+            "stardewvalley.zip"
+        ]
+    }
+]

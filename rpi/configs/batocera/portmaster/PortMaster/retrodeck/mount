@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# THIS IS AN ATTROCITY :D
+rm -fR "$2"
+unsquashfs -d "$2" "$1"

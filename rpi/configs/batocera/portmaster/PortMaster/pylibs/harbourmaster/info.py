@@ -1,4 +1,6 @@
 
+# SPDX-License-Identifier: MIT
+
 # System imports
 import pathlib
 
@@ -14,7 +16,7 @@ from .util import *
 ################################################################################
 ## Port Information
 PORT_INFO_ROOT_ATTRS = {
-    'version': 2,
+    'version': 4,
     'name': None,
     'items': None,
     'items_opt': None,
@@ -31,7 +33,8 @@ PORT_INFO_ATTR_ATTRS = {
     'image': {},
     'rtr': False,
     'exp': False,
-    'runtime': None,
+    'runtime': [],
+    'min_glibc': "",
     'reqs': [],
     'arch': [],
     }
@@ -102,6 +105,18 @@ def port_info_load(raw_info, source_name=None, do_default=False):
         else:
             return None
 
+    # This is a bizzare one, it turns out some versions are strings?!
+    if isinstance(info.get('version', None), str):
+        info['version'] = int(info['version'])
+
+    if 'version' in info and info['version'] > PORT_INFO_ROOT_ATTRS['version']:
+        logger.error(f'Unable to load port_info with newer version from {source_name!r}: {info}')
+
+        if do_default:
+            info = {}
+        else:
+            return None
+
     if info.get('version', None) == 1:
         # Update older json version to the newer one.
         info = info.copy()
@@ -119,6 +134,9 @@ def port_info_load(raw_info, source_name=None, do_default=False):
                 }
             del info['md5']
 
+    if info.get('version', None) == 2:
+        info['version'] = 3
+
     # WHOOPS! :O
     if info.get('attr', {}).get('runtime', None) == "blank":
         info['attr']['runtime'] = None
@@ -130,6 +148,23 @@ def port_info_load(raw_info, source_name=None, do_default=False):
         info['attr']['reqs'] = [
             key
             for key in info['attr']['reqs']]
+
+    # Version 3 to 4
+    if info.get('version', None) == 3:
+        info['version'] = 4
+
+        if info['attr']['runtime'] is None:
+            info['attr']['runtime'] = []
+
+        elif isinstance(info['attr']['runtime'], str):
+            info['attr']['runtime'] = [ info['attr']['runtime'] ]
+
+    # Catch errors because who fucking uses version numbers.
+    if info.get('attr', {}).get('runtime', []) == None:
+        info['attr']['runtime'] = []
+
+    if isinstance(info.get('attr', {}).get('runtime', []), str):
+        info['attr']['runtime'] = [ info['attr']['runtime'] ]
 
     # This strips out extra stuff
     port_info = {}

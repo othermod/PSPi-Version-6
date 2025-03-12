@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
 
 if [ ! -d "/dev/shm/portmaster" ]; then
   $ESUDO mkdir /dev/shm/portmaster

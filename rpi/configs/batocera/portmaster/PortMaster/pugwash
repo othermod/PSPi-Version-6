@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
+#
+# SPDX-License-Identifier: MIT
+#
 
 ## -- BEGIN PORTMASTER INFO --
-PORTMASTER_VERSION = '2023-01-07-1007'
-PORTMASTER_RELEASE_CHANNEL = 'developer'
+PORTMASTER_VERSION = '2025.03.03-0141'
+PORTMASTER_RELEASE_CHANNEL = 'stable'
 ## -- END PORTMASTER INFO --
 
-PORTMASTER_MIN_VERSION = '2024-04-06-0000'
+PORTMASTER_MIN_VERSION = '2025-02-17-0000'
 PORTMASTER_RELEASE_URL = 'https://github.com/PortsMaster/PortMaster-GUI/releases/latest/download/'
 PORTMASTER_RELEASE_VALUES = ('stable', 'beta', 'alpha')
 
@@ -24,6 +27,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import textwrap
@@ -140,13 +144,23 @@ ALL_LANGUAGES = {
     "pl_PL": _("Polish"),
     "pt_PT": _("Portuguese (Portugal)"),
     "pt_BR": _("Portuguese (Brazil)"),
+    # "ro_RO": _("Romanian"),
     "ru_RU": _("Russian"),
+    "sv_SE": _("Swedish"),
     "uk_UA": _("Ukrainian"),
     "zh_CN": _("Chinese Simplified"),
     }
 
 
 def check_lang(lang):
+    """
+    Check if `LANG_DIR / lang / "LC_MESSAGES"` exists
+
+    We simplify the language by removing any encoding eg: `en_AU.utf8` to `en_AU`
+    We then simplify the language by removing any sub-language: `en_AU` to `en`
+
+    We then check all languages on the list of languages.
+    """
     if lang is None:
         return None
 
@@ -237,6 +251,17 @@ gettext.textdomain('messages')
 
 ################################################################################
 ## Code starts here.
+def is_process_running(process_name):
+    """
+    Check if a process with the given name is running using pgrep.
+    """
+
+    try:
+        output = subprocess.check_output(['pgrep', '-f', process_name], stderr=subprocess.DEVNULL)
+        return bool(output.strip())  # If output exists, the process is running
+    except subprocess.CalledProcessError:
+        return False  # pgrep returns non-zero exit code if no process matches
+
 
 __IP_ADDRESS=None
 def get_ip_address(force_update=False):
@@ -359,7 +384,7 @@ class DirectoryScanner:
 
         yield total_size
 
-    def iterate(self, max_scans=30):
+    def iterate(self, max_scans=60):
         scanned_items = 0
         scanned = {}
 
@@ -509,6 +534,7 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
         logger.info(f"TTF DLL: {sdl2.sdlttf.get_dll_file()}, {nice_version(sdl2.sdlttf.TTF_Linked_Version()[0])}")
         logger.info(f"IMG DLL: {sdl2.sdlimage.get_dll_file()}, {nice_version(sdl2.sdlimage.IMG_Linked_Version()[0])}")
         logger.info(f"MIX DLL: {sdl2.sdlmixer.get_dll_file()}, {nice_version(sdl2.sdlmixer.Mix_Linked_Version()[0])}")
+        logger.info(f"HM_TESTING: {harbourmaster.HM_TESTING}")
 
         # Load controller.
         count = sdl2.SDL_NumJoysticks()
@@ -532,14 +558,14 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
         capabilities = harbourmaster.device_info()
 
         if sdl2.video.SDL_GetCurrentDisplayMode(0, display_mode) != 0:
-            print("Failed to get display mode:", sdl2.SDL_GetError())
+            logger.error("Failed to get display mode:", sdl2.SDL_GetError())
             self.display_width, self.display_height = capabilities['resolution']
 
         else:
             self.display_width = display_mode.w
             self.display_height = display_mode.h
             # Print the display width and height
-            print(f"Display size: {self.display_width}x{self.display_height}")
+            logger.info(f"Display size: {self.display_width}x{self.display_height}")
 
         if harbourmaster.HM_TESTING:
             capabilities = harbourmaster.device_info()
@@ -555,6 +581,7 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
                 # 'ogs'
                 # 'ogu'
                 # 'x55'
+                # 'ace'
                 )
 
             if not pretend_device:
@@ -580,12 +607,31 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
         capabilities['capabilities'].append(CURRENT_LANG)
 
         logger.info(capabilities)
+        print(capabilities)
 
         # Create the window
         if harbourmaster.HM_TESTING:
             window_flags = None
         else:
             window_flags = sdl2.SDL_WINDOW_FULLSCREEN
+
+            touch_file = harbourmaster.HM_TOOLS_DIR / "PortMaster" / "utils" / "pmsplash" / "stopsplash"
+
+            if touch_file.parent.is_dir():
+                touch_file.touch()
+
+            for i in range(10):
+                if not is_process_running(f"love.{capabilities['primary_arch']}"):
+                    break
+
+                sdl2.SDL_Delay(500)
+
+            if is_process_running(f"love.{capabilities['primary_arch']}"):
+                subprocess.check_output(["pkill", "-f", f"love.{capabilities['primary_arch']}"])
+
+                if touch_file.is_file():
+                    touch_file.unlink()
+
 
         self.window = sdl2.ext.Window("PortMaster", size=capabilities['resolution'], flags=window_flags)
         self.window.show()
@@ -594,6 +640,10 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
         renderer = sdl2.ext.Renderer(self.window, flags=sdl2.SDL_RENDERER_ACCELERATED)
 
         sdl2.SDL_SetHint(sdl2.SDL_HINT_RENDER_SCALE_QUALITY, b"2")
+
+        # Quickly present something, helps on ArkOS.
+        renderer.clear()
+        renderer.present()
 
         self.text_data = {}
         self.changed_keys = set()
@@ -628,7 +678,7 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
                 ]
         else:
             self.scenes = [
-                ('root', [MainMenuScene(self)]),
+                ('root', [TempMenuScene(self)]),
                 ]
 
         self.callback_messages = []
@@ -690,10 +740,27 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
 
         return cfg_data
 
+    def save_config(self, cfg_data):
+        cfg_dir = harbourmaster.HM_TOOLS_DIR / "PortMaster"
+        cfg_file = cfg_dir / "config" / "config.json"
+
+        if self.hm is None:
+            with open(cfg_file, 'w') as fh:
+                json.dump(cfg_data, fh, indent=4)
+
+        else:
+            self.hm.save_config()
+
     ## Loop stuff.
     def run(self):
-        if self.hm is not None and self.hm.platform.WANT_XBOX_FIX:
-            self.events.fix_xbox_mode()
+        if self.hm is not None:
+            if self.hm.platform.WANT_XBOX_FIX:
+                self.events.fix_xbox_mode()
+
+            if self.hm.platform_name in ('retrodeck', ):
+                self.events.fix_retrodeck_mode()
+
+            self.SWAP_BUTTONS = self.hm.platform.WANT_SWAP_BUTTONS
 
         try:
             while True:
@@ -726,6 +793,9 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
             if PORTMASTER_DEBUG:
                 print(f"UPS: {self.draw_counter} / {self.update_counter}")
 
+            ## Unload extra images.
+            self.images._clean()
+
             self.update_counter = 0
             self.draw_counter = 0
             self.updated = True
@@ -751,6 +821,7 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
                 Path("/sys/class/power_supply/battery/capacity"),
                 Path("/sys/class/power_supply/axp2202-battery/capacity"),
                 Path("/sys/class/power_supply/BAT1/capacity"),
+                Path("/sys/class/power_supply/qcom-battery/capacity"),
                 ]
 
             for battery_file in battery_paths:
@@ -768,7 +839,7 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
 
         # Update scanning
         if self.timers.elapsed('dir_scan_interval', 500, run_first=True):
-            self.dir_scanner.iterate(50)
+            self.dir_scanner.iterate(30)
 
         ## Check for any keys changed in our template system.
         if len(self.changed_keys):
@@ -890,10 +961,15 @@ class PortMasterGUI(pySDL2gui.GUI, harbourmaster.Callback):
         self.set_data("port_info.ready_to_run", port_info['attr']['rtr'] and _("Ready to Run") or _("Requires Files"))
         # self.set_data("port_info.image", port_image)
 
-        runtime = port_info['attr']['runtime']
-        if runtime is not None and runtime != "None":
-            self.set_data("port_info.runtime", harbourmaster.runtime_nicename(runtime))
-            if (self.hm.libs_dir / runtime).is_file():
+        runtimes = port_info['attr']['runtime']
+        if len(runtimes) > 0:
+            self.set_data("port_info.runtime", harbourmaster.runtime_nicename(runtimes))
+            installed_runtimes = 0
+            for runtime in runtimes:
+                if (self.hm.libs_dir / runtime).is_file():
+                    installed_runtimes += 1
+
+            if len(runtimes) == installed_runtimes:
                 self.set_data("port_info.runtime_status", _("Installed"))
             else:
                 self.set_data("port_info.runtime_status", _("Missing"))
@@ -1860,6 +1936,8 @@ def portmaster_check_update(pm, config, temp_dir):
             if pm.hm.platform.WANT_XBOX_FIX:
                 pm.events.fix_xbox_mode()
 
+            pm.SWAP_BUTTONS = pm.hm.platform.WANT_SWAP_BUTTONS
+
             if pm.message_box(update_reason, want_cancel=True):
                 pm.do_install(
                     "PortMaster",
@@ -1966,10 +2044,10 @@ def main(argv):
         pm = PortMasterGUI()
         pm.hm = None
 
-        # if not harbourmaster.HM_TESTING and not config['no-check']:
-        #     if portmaster_check_update(pm, config, temp_dir):
-        #         pm.quit()
-        #         return 0
+        if not harbourmaster.HM_TESTING and not config['no-check']:
+            if portmaster_check_update(pm, config, temp_dir):
+                pm.quit()
+                return 0
 
         with pm.enable_cancellable(False):
             pm.hm = HarbourMaster(config, temp_dir=temp_dir, callback=pm)
@@ -1980,12 +2058,17 @@ def main(argv):
                 pm.run()
 
         if not harbourmaster.HM_TESTING:
+            logger.debug(f"{pm.hm}: {pm.hm.platform.ES_NAME}")
             if pm.hm is not None and pm.hm.platform.ES_NAME is not None:
+                logger.debug(f"{pm.hm.platform.ports_changed()}")
                 if pm.hm.platform.ports_changed():
-                    refresh_file = (harbourmaster.HM_TOOLS_DIR / "PortMaster" / f".{pm.hm.platform.ES_NAME}-refresh")
+                    if pm.hm.platform.ES_NAME == 'show-refresh':
+                        pm.message_box(_("Ports have been added or removed, update your games list to see the new games or remove the uninstalled ones." + pm.hm.platform.ROMS_REFRESH_TEXT))
+                    else:
+                        refresh_file = (pm.hm.tools_dir / "PortMaster" / f".{pm.hm.platform.ES_NAME}-refresh")
+                        logger.debug(f"{refresh_file}")
 
-                    if not refresh_file.is_file():
-                        refresh_file.touch(0o644)
+                        refresh_file.touch(0o644, exist_ok=True)
 
         # if harbourmaster.HM_TESTING:
         #     for key, value in pm.text_data.items():

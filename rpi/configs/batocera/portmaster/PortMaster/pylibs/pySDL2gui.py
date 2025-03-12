@@ -71,6 +71,7 @@ import sdl2
 import sdl2.ext
 import sdl2.sdlmixer
 
+from loguru import logger
 
 try:
     import sdl2.sdlgfx as sdlgfx
@@ -105,6 +106,8 @@ class GUIThemeError(GUIRuntimeError):
 
 class GUI:
     def __init__(self, renderer, formatter=None):
+        self.SWAP_BUTTONS = False
+
         self.renderer = renderer
 
         self.resources = ResourceManager(self)
@@ -650,6 +653,11 @@ class Timer:
     def __init__(self):
         self._register = {}
 
+    def since(self, name):
+        time = sdl2.SDL_GetTicks64()
+
+        return  (time - self._register.setdefault(name, time))
+
     def elapsed(self, name, millis, *, run_first=False):
         """
         check if name was last checked more than millis seconds ago, if so reset the timer and return true, otherwise false and do nothing
@@ -989,7 +997,9 @@ class ImageManager():
     '''
     The ImageManager class loads images into Textures and caches them for later use
     '''
-    MAX_IMAGES = 100 # maximum number of images to cache
+
+    MAX_IMAGES = 30 # maximum number of images to cache
+
     def __init__(self, gui, max_images=None):
         '''
         Create a new Image manager that can load images into textures
@@ -1198,6 +1208,7 @@ class ImageManager():
     def _clean(self):
         'Remove old images when max_images is reached'
         for filename in self.cache[self.max_images:]:
+            logger.debug(f"Unloaded: {filename}")
             texture = self.textures.pop(filename)
             image = self.images.pop(filename)
             # image.destroy()
@@ -1374,8 +1385,8 @@ class EventManager:
         'LY': ('L_UP',   None, 'L_DOWN'),
         'RX': ('R_LEFT', None, 'R_RIGHT'),
         'RY': ('R_UP',   None, 'R_DOWN'),
-        'L2': (None,    None, 'L2'),
-        'R2': (None,    None, 'R2'),
+        'L2': (None,     None, 'L2'),
+        'R2': (None,     None, 'R2'),
         }
 
     REPEAT_MAP = [
@@ -1400,12 +1411,14 @@ class EventManager:
     # Trigger every 1 second
     REPEAT_RATE = 60
 
-    ANALOG_MIN = 2048
+    ANALOG_MIN = 4096
     TRIGGER_MIN = 1024
 
     def __init__(self, gui):
         self.gui = gui
         sdl2.ext.init(controller=True)
+
+        self.XBOX_FIXED = False
 
         self.running = True
         self.buttons = {
@@ -1445,8 +1458,15 @@ class EventManager:
             if sdl2.SDL_IsGameController(i) == sdl2.SDL_TRUE:
                 self.controller = sdl2.SDL_GameControllerOpen(i)
 
+    def fix_retrodeck_mode(self):
+        self.KEY_MAP[sdl2.SDLK_q] = 'START'
+
     def fix_xbox_mode(self):
+        if self.XBOX_FIXED:
+            return
+
         print("XBOX FIXER")
+        self.XBOX_FIXED = True
         self.BUTTON_MAP.update({
             sdl2.SDL_CONTROLLER_BUTTON_A: 'B',
             sdl2.SDL_CONTROLLER_BUTTON_B: 'A',
@@ -1481,7 +1501,7 @@ class EventManager:
 
                 key = self.KEY_MAP.get(event.key.keysym.sym, None)
                 if key is not None:
-                    # print(f'PRESSED {key}')
+                    logger.debug(f'PRESSED {key}')
                     self.buttons[key] = True
 
                     if key in self.repeat:
@@ -1490,7 +1510,7 @@ class EventManager:
             elif event.type == sdl2.SDL_KEYUP:
                 key = self.KEY_MAP.get(event.key.keysym.sym, None)
                 if key is not None:
-                    # print(f'RELEASED {key}')
+                    logger.debug(f'RELEASED {key}')
                     self.buttons[key] = False
 
                     if key in self.repeat:
@@ -1499,7 +1519,7 @@ class EventManager:
             elif event.type == sdl2.SDL_CONTROLLERBUTTONDOWN:
                 key = self.BUTTON_MAP.get(event.cbutton.button, None)
                 if key is not None:
-                    # print(f'PRESSED {key}')
+                    logger.debug(f'PRESSED {key}')
                     self.buttons[key] = True
 
                     if key in self.repeat:
@@ -1508,7 +1528,7 @@ class EventManager:
             elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
                 key = self.BUTTON_MAP.get(event.cbutton.button, None)
                 if key is not None:
-                    # print(f'RELEASED {key}')
+                    logger.debug(f'RELEASED {key}')
                     self.buttons[key] = False
 
                     if key in self.repeat:
@@ -1525,32 +1545,39 @@ class EventManager:
 
                     if axis_key is not None:
                         if last_axis_key is None:
-                            # print(f"PRESSED {axis_key}")
+                            logger.debug(f"PRESSED {axis_key}")
                             self.buttons[axis_key] = True
 
                             if axis_key in self.repeat:
                                 self.repeat[axis_key] = ticks_now + self.REPEAT_DELAY
+
                         elif last_axis_key != axis_key:
-                            # print(f"RELEASED {last_axis_key}")
-                            self.buttons[last_axis_key] = True
+                            logger.debug(f"RELEASED {last_axis_key}")
+                            self.buttons[last_axis_key] = False
                             if last_axis_key in self.repeat:
                                 self.repeat[last_axis_key] = None
 
-                    elif axis_key is None:
+                            logger.debug(f"PRESSED {axis_key}")
+                            self.buttons[axis_key] = True
+
+                            if axis_key in self.repeat:
+                                self.repeat[axis_key] = ticks_now + self.REPEAT_DELAY
+
+                    else:
                         if last_axis_key is not None:
-                            # print(f"RELEASED {last_axis_key}")
-                            self.buttons[last_axis_key] = True
+                            logger.debug(f"RELEASED {last_axis_key}")
+                            self.buttons[last_axis_key] = False
                             if last_axis_key in self.repeat:
                                 self.repeat[last_axis_key] = None
 
                     self.axis_button[key] = axis_key
 
             elif event.type == sdl2.SDL_CONTROLLERDEVICEADDED:
-                print(f"Opening {event.cdevice.which}")
+                # print(f"Opening {event.cdevice.which}")
                 controller = sdl2.SDL_GameControllerOpen(event.cdevice.which)
 
             elif event.type == sdl2.SDL_CONTROLLERDEVICEREMOVED:
-                print(f"Closing {event.cdevice.which}")
+                # print(f"Closing {event.cdevice.which}")
                 controller = sdl2.SDL_GameControllerFromInstanceID(event.cdevice.which)
                 sdl2.SDL_GameControllerClose(controller)
 
@@ -1559,7 +1586,7 @@ class EventManager:
             if next_repeat is not None and next_repeat <= ticks_now:
                 # Trigger was_pressed state
                 self.last_buttons[key] = False
-                # print(f'REPEAT {key} {ticks_now - next_repeat}')
+                print(f'REPEAT {key} {ticks_now - next_repeat}')
                 self.repeat[key] = ticks_now + self.REPEAT_RATE
 
     def any_pressed(self):
@@ -2719,13 +2746,13 @@ class Region:
                 self.gui.sounds.play(self.click_sound, volume=self.click_sound_volume)
                 changed = True
 
-            elif self.gui.events.was_pressed('UP'):
+            elif self.gui.events.was_pressed('UP') or self.gui.events.was_pressed('L_UP') or self.gui.events.was_pressed('R_UP'):
                 self.list_select(self.selected - 1, direction=-1, allow_wrap=True)
 
                 self.gui.sounds.play(self.click_sound, volume=self.click_sound_volume)
                 changed = True
 
-            elif self.gui.events.was_pressed('DOWN'):
+            elif self.gui.events.was_pressed('DOWN') or self.gui.events.was_pressed('L_DOWN') or self.gui.events.was_pressed('R_DOWN'):
                 self.list_select(self.selected + 1, direction=1, allow_wrap=True)
 
                 self.gui.sounds.play(self.click_sound, volume=self.click_sound_volume)

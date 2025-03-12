@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
 # NOTE: This script uses $PWD to setup the GL4ES directory!
 # Before calling this, ensure you are on the port root directory, e.g.:
 # > gamedir="/$directory/ports/stardewvalley"

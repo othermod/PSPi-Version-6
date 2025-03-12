@@ -1,4 +1,6 @@
 
+# SPDX-License-Identifier: MIT
+
 # System imports
 import copy
 import datetime
@@ -27,41 +29,59 @@ from .util import *
 # This maps device name to HW_INFO, also includes manufacturer and compatible cfw.
 DEVICES = {
     # Anbernic
-    "Anbernic RG353 M/V/P": {"device": "rg353m",      "manufacturer": "Anbernic",  "cfw": ["ArkOS", "JELOS"]},
-    "Anbernic RG353 VS/PS": {"device": "rg353ps",     "manufacturer": "Anbernic",  "cfw": ["ArkOS", "JELOS", "ROCKNIX"]},
-    "Anbernic RG351MP":     {"device": "rg351mp",     "manufacturer": "Anbernic",  "cfw": ["ArkOS", "AmberELEC", "JELOS", "TheRA"]},
-    "Anbernic RG503":       {"device": "rg503",       "manufacturer": "Anbernic",  "cfw": ["ArkOS", "JELOS", "ROCKNIX"]},
-    "Anbernic RG552":       {"device": "rg552",       "manufacturer": "Anbernic",  "cfw": ["AmberELEC", "JELOS", "ROCKNIX"]},
-    "Anbernic RG35XX PLUS": {"device": "rg35xx-plus", "manufacturer": "Anbernic",  "cfw": ["muOS", "Batocera"]},
-    "Anbernic RG35XX H":    {"device": "rg35xx-h",    "manufacturer": "Anbernic",  "cfw": ["muOS", "Batocera"]},
-    "Anbernic RG351P/M":    {"device": "rg351p",      "manufacturer": "Anbernic",  "cfw": ["ArkOS (Wummle)", "AmberELEC", "JELOS", "ROCKNIX"]},
-    "Anbernic RG351V":      {"device": "rg351v",      "manufacturer": "Anbernic",  "cfw": ["ArkOS", "AmberELEC", "JELOS", "ROCKNIX"]},
+    "Anbernic RG353 M/V/P": {"device": "rg353m",      "manufacturer": "Anbernic",  "cfw": ["ArkOS"]},
+    "Anbernic RG353 VS/PS": {"device": "rg353ps",     "manufacturer": "Anbernic",  "cfw": ["ArkOS", "ROCKNIX"]},
+    "Anbernic RG351MP":     {"device": "rg351mp",     "manufacturer": "Anbernic",  "cfw": ["ArkOS", "AmberELEC", "TheRA"]},
+    "Anbernic RG503":       {"device": "rg503",       "manufacturer": "Anbernic",  "cfw": ["ArkOS", "ROCKNIX"]},
+    "Anbernic RG552":       {"device": "rg552",       "manufacturer": "Anbernic",  "cfw": ["AmberELEC", "ROCKNIX"]},
+    "Anbernic RGCUBEXX":    {"device": "rgcubexx",    "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG40XX H":    {"device": "rg40xx-h",    "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG40XX V":    {"device": "rg40xx-v",    "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG35XX PLUS": {"device": "rg35xx-plus", "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG35XX H":    {"device": "rg35xx-h",    "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG35XX SP":   {"device": "rg35xx-sp",   "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG34XX":      {"device": "rg34xx-h",    "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG28XX":      {"device": "rg28xx",      "manufacturer": "Anbernic",  "cfw": ["muOS", "Knulli", "ROCKNIX"]},
+    "Anbernic RG351P/M":    {"device": "rg351p",      "manufacturer": "Anbernic",  "cfw": ["ArkOS (Wummle)", "AmberELEC", "ROCKNIX"]},
+    "Anbernic RG351V":      {"device": "rg351v",      "manufacturer": "Anbernic",  "cfw": ["ArkOS", "AmberELEC", "ROCKNIX"]},
 
     # Powkiddy
-    "Powkiddy RGB10":       {"device": "rgb10",     "manufacturer": "Powkiddy",  "cfw": ["ArkOS", "JELOS", "ROCKNIX"]},
-    "Powkiddy RGB20S":      {"device": "rgb20s",    "manufacturer": "Powkiddy",  "cfw": ["AmberELEC"]},
-    "Powkiddy RGB30":       {"device": "rgb30",     "manufacturer": "Powkiddy",  "cfw": ["ArkOS", "JELOS", "ROCKNIX"]},
-    "Powkiddy RK2023":      {"device": "rk2023",    "manufacturer": "Powkiddy",  "cfw": ["ArkOS", "JELOS", "ROCKNIX"]},
-    "Powkiddy X55":         {"device": "x55",       "manufacturer": "Powkiddy",  "cfw": ["JELOS"]},
-    "Powkiddy RGB10MAX3":   {"device": "rgb10max3", "manufacturer": "Powkiddy",  "cfw": ["JELOS", "ROCKNIX"]},
+    "Powkiddy RGB10":         {"device": "rgb10",        "manufacturer": "Powkiddy",  "cfw": ["ArkOS", "ROCKNIX"]},
+    "Powkiddy RGB20S":        {"device": "rgb20s",       "manufacturer": "Powkiddy",  "cfw": ["AmberELEC"]},
+    "Powkiddy RGB30":         {"device": "rgb30",        "manufacturer": "Powkiddy",  "cfw": ["ArkOS", "ROCKNIX"]},
+    "Powkiddy RK2023":        {"device": "rk2023",       "manufacturer": "Powkiddy",  "cfw": ["ArkOS", "ROCKNIX"]},
+    "Powkiddy X55":           {"device": "x55",          "manufacturer": "Powkiddy",  "cfw": ["ROCKNIX"]},
+    "Powkiddy RGB10MAX3":     {"device": "rgb10max3",    "manufacturer": "Powkiddy",  "cfw": ["ROCKNIX"]},
+    "Powkiddy RGB10MAX3 Pro": {"device": "rgb10max3pro", "manufacturer": "Powkiddy",  "cfw": ["ROCKNIX"]},
 
     # Hardkernel
-    "Hardkernel ODROID GO Advance": {"device": "oga", "manufacturer": "Hardkernel",  "cfw": ["ArkOS", "AmberELEC", "EmuELEC", "JELOS", "ROCKNIX"]},
-    "Hardkernel ODROID GO Super":   {"device": "ogs", "manufacturer": "Hardkernel",  "cfw": ["ArkOS", "AmberELEC", "EmuELEC", "JELOS", "ROCKNIX"]},
-    "Hardkernel ODROID GO Ultra":   {"device": "ogu", "manufacturer": "Hardkernel",  "cfw": ["ArkOS", "AmberELEC", "EmuELEC", "JELOS", "ROCKNIX"]},
+    "Hardkernel ODROID GO Advance": {"device": "oga", "manufacturer": "Hardkernel",  "cfw": ["ArkOS", "AmberELEC", "EmuELEC", "ROCKNIX"]},
+    "Hardkernel ODROID GO Super":   {"device": "ogs", "manufacturer": "Hardkernel",  "cfw": ["ArkOS", "AmberELEC", "EmuELEC", "ROCKNIX"]},
+    "Hardkernel ODROID GO Ultra":   {"device": "ogu", "manufacturer": "Hardkernel",  "cfw": ["ArkOS", "AmberELEC", "EmuELEC", "ROCKNIX"]},
 
     # Gameforce
-    "Gameforce Ace": {"device": "ace", "manufacturer": "Gameforce", "cfw": ["JELOS", "ROCKNIX"]},
+    "Gameforce Ace": {"device": "ace", "manufacturer": "Gameforce", "cfw": ["ROCKNIX"]},
     "Gameforce Chi": {"device": "chi", "manufacturer": "Gameforce", "cfw": ["ArkOS", "EmuELEC"]},
 
     # TrimUI
-    "TrimUI Smart Pro": {"device": "trimui-smart-pro", "manufacturer": "TrimUI", "cfw": ["TrimUI"]},
+    "TrimUI Smart Pro": {"device": "trimui-smart-pro", "manufacturer": "TrimUI", "cfw": ["TrimUI", "KNULLI"]},
+    "TrimUI Brick":     {"device": "trimui-brick",     "manufacturer": "TrimUI", "cfw": ["TrimUI", "KNULLI"]},
+
+    # Retroid Pocket
+    "Retroid Pocket 5":    {"device": "rp5",    "manufacturer": "Retroid Pocket", "cfw": ["ROCKNIX", "Batocera"]},
+    "Retroid Pocket Mini": {"device": "rpmini", "manufacturer": "Retroid Pocket", "cfw": ["ROCKNIX", "Batocera"]},
+
+    # ZPG GKD
+    "GKD Bubble": {"device": "gkd-bubble", "manufacturer": "Game Kiddy", "cfw": ["EMUELEC"]},
+
+    # Valve
+    "SteamDeck":  {"device": "steamdeck", "manufacturer": "Valve", "cfw": ["RetroDECK", "Batocera"]},
 
     # Generic
-    "XU10 Retro Handheld": {"device": "xu10", "manufacturer": "MagicX", "cfw": ["ArkOS", "AmberELEC", "JELOS", "ROCKNIX"]},
-    "R33S Retro Handheld": {"device": "r33s", "manufacturer": "Game Console", "cfw": ["ArkOS", "AmberELEC", "JELOS", "ROCKNIX"]},
-    "R35S Retro Handheld": {"device": "r35s", "manufacturer": "Game Console", "cfw": ["ArkOS", "AmberELEC", "JELOS", "ROCKNIX"]},
-    "R36S Retro Handheld": {"device": "r36s", "manufacturer": "Game Console", "cfw": ["ArkOS", "AmberELEC", "JELOS", "ROCKNIX"]},
+    "XU10 Retro Handheld": {"device": "xu10", "manufacturer": "MagicX", "cfw": ["ArkOS", "AmberELEC", "ROCKNIX"]},
+    "R33S Retro Handheld": {"device": "r33s", "manufacturer": "Game Console", "cfw": ["ArkOS", "AmberELEC", "ROCKNIX"]},
+    "R35S Retro Handheld": {"device": "r35s", "manufacturer": "Game Console", "cfw": ["ArkOS", "AmberELEC", "ROCKNIX"]},
+    "R36S Retro Handheld": {"device": "r36s", "manufacturer": "Game Console", "cfw": ["ArkOS", "AmberELEC", "ROCKNIX"]},
     }
 
 
@@ -79,8 +99,13 @@ HW_INFO = {
     "rg353ps": {"resolution": ( 640,  480), "analogsticks": 2, "cpu": "rk3566", "capabilities": ["power"], "ram": 1024},
 
     # Anbernic RG35XX
+    "rg40xx-h":    {"resolution": (640, 480), "analogsticks": 2, "cpu": "h700", "capabilities": ["power"], "ram": 1024},
+    "rg40xx-v":    {"resolution": (640, 480), "analogsticks": 1, "cpu": "h700", "capabilities": ["power"], "ram": 1024},
     "rg35xx-h":    {"resolution": (640, 480), "analogsticks": 2, "cpu": "h700", "capabilities": ["power"], "ram": 1024},
     "rg35xx-plus": {"resolution": (640, 480), "analogsticks": 0, "cpu": "h700", "capabilities": ["power"], "ram": 1024},
+    "rg35xx-sp":   {"resolution": (640, 480), "analogsticks": 0, "cpu": "h700", "capabilities": ["power"], "ram": 1024},
+    "rg34xx-h":    {"resolution": (720, 480), "analogsticks": 0, "cpu": "h700", "capabilities": ["power"], "ram": 1024},
+    "rg28xx":      {"resolution": (640, 480), "analogsticks": 0, "cpu": "h700", "capabilities": ["power"], "ram": 1024},
     "rg35xx":      {"resolution": (640, 480), "analogsticks": 0, "cpu": "h700", "capabilities": [], "ram": 256},
 
     # Hardkernel Devices
@@ -91,7 +116,7 @@ HW_INFO = {
     # Powkiddy
     "x55":          {"resolution": (1280, 720), "analogsticks": 2, "cpu": "rk3566", "capabilities": ["power"], "ram": 2048},
     "rgb10max3pro": {"resolution": ( 854, 480), "analogsticks": 2, "cpu": "s922x",  "capabilities": ["power"], "ram": 2048},
-    "rgb10max3":    {"resolution": (1280, 480), "analogsticks": 2, "cpu": "rk3566", "capabilities": ["power"], "ram": 1024},
+    "rgb10max3":    {"resolution": (1280, 720), "analogsticks": 2, "cpu": "rk3566", "capabilities": ["power"], "ram": 1024},
     "rgb10max2":    {"resolution": ( 854, 480), "analogsticks": 2, "cpu": "rk3326", "capabilities": [], "ram": 1024},
     "rgb10max":     {"resolution": ( 854, 480), "analogsticks": 2, "cpu": "rk3326", "capabilities": [], "ram": 1024},
     "rgb10s":       {"resolution": ( 480, 320), "analogsticks": 1, "cpu": "rk3326", "capabilities": [], "ram": 1024},
@@ -100,9 +125,16 @@ HW_INFO = {
     "rk2023":       {"resolution": ( 640, 480), "analogsticks": 2, "cpu": "rk3566", "capabilities": ["power"], "ram": 1024},
     "rk2020":       {"resolution": ( 480, 320), "analogsticks": 1, "cpu": "rk3326", "capabilities": [], "ram": 1024},
 
+    # Miyoo
+    "miyoo-flip":   {"resolution": ( 640,  480), "analogsticks": 2, "cpu": "rk3566", "capabilities": ["power"], "ram": 1024},
+
     # Gameforce Chi / Ace
     "chi":       {"resolution": ( 640,  480), "analogsticks": 2, "cpu": "rk3326", "capabilities": [], "ram": 1024},
-    "ace":       {"resolution": (1920, 1080), "analogsticks": 2, "cpu": "rk3588", "capabilities": ["power"], "ram": 8192},
+    "ace":       {"resolution": (1920, 1080), "analogsticks": 2, "cpu": "rk3588", "capabilities": ["power", "ultra"], "ram": 8192},
+
+    # Retroid Pocket
+    "rpmini":    {"resolution": (1280,  960), "analogsticks": 2, "cpu": "sd865", "capabilities": ["power", "ultra"], "ram": 6144},
+    "rp5":       {"resolution": (1920, 1080), "analogsticks": 2, "cpu": "sd865", "capabilities": ["power", "ultra"], "ram": 8192},
 
     # Generic
     "xu10":      {"resolution": ( 640,  480), "analogsticks": 2, "cpu": "rk3326", "capabilities": [], "ram": 1024},
@@ -112,10 +144,17 @@ HW_INFO = {
 
     # TrimUI
     "trimui-smart-pro": {"resolution": (1280, 720), "analogsticks": 2, "cpu": "a133plus", "capabilities": ["power"], "ram": 1024},
+    "trimui-brick":     {"resolution": (1024, 768), "analogsticks": 0, "cpu": "a133plus", "capabilities": ["power"], "ram": 1024},
+
+    # ZPG GKD
+    "gkd-bubble": {"resolution": (640, 480), "analogsticks": 2, "cpu": "rk3566",  "capabilities": ["power"], "ram": 1024},
 
     # Computer/Testing
     "pc":        {"resolution": (640, 480), "analogsticks": 2, "cpu": "unknown", "capabilities": ["opengl", "power"]},
-    "retrodeck": {"resolution": (1280, 720), "analogsticks": 2, "cpu": "x86_64", "capabilities": ["opengl", "power"]},
+
+    # TODO: fix this.
+    "retrodeck": {"resolution": (1280, 800), "analogsticks": 2, "cpu": "x86_64", "capabilities": ["opengl", "power", "ultra"], "ram": 16384},
+    "steamdeck": {"resolution": (1280, 800), "analogsticks": 2, "cpu": "x86_64", "capabilities": ["opengl", "power", "ultra"], "ram": 16384},
 
     # Default
     "default":   {"resolution": (640, 480), "analogsticks": 2, "cpu": "unknown", "capabilities": ["opengl", "power"]},
@@ -134,24 +173,110 @@ CFW_INFO = {
     "rocknix-rgb10max3": {"capabilities": []},
     "rocknix-rgb30":     {"capabilities": []},
     "rocknix":           {"capabilities": ["opengl"]},
-
-    ## Batocera Overrides
-    "batocera-rg35xx-h":    {"capabilities": ["aarch64"], "primary_arch": "aarch64"},
-    "batocera-rg35xx-plus": {"capabilities": ["aarch64"], "primary_arch": "aarch64"},
     }
 
 
+## OBSOLETE
 CPU_INFO = {
-    "rk3326":   {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
-    "rk3399":   {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
-    "rk3566":   {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
-    "rk3588":   {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
-    "h700":     {"capabilities": ["armhf"],            "primary_arch": "armhf"},
-    "a133plus": {"capabilities": ["aarch64"],          "primary_arch": "aarch64"},
-    "x86_64":   {"capabilities": ["x86_64"],           "primary_arch": "x86_64"},
-    "s922x":    {"capabilities": ["aarch64"],          "primary_arch": "aarch64"},
-    "unknown":  {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "rk3326":        {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "rk3399":        {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "rk3566-miyoo":  {"capabilities": ["aarch64"],          "primary_arch": "aarch64"},
+    "rk3566":        {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "rk3588":        {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "h700-knulli":   {"capabilities": ["aarch64"],          "primary_arch": "aarch64"},
+    "h700-batocera": {"capabilities": ["aarch64"],          "primary_arch": "aarch64"},
+    "h700-muos":     {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "h700":          {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "a133plus":      {"capabilities": ["aarch64"],          "primary_arch": "aarch64"},
+    "x86_64":        {"capabilities": ["x86_64"],           "primary_arch": "x86_64"},
+    "s922x":         {"capabilities": ["aarch64"],          "primary_arch": "aarch64"},
+    "sd865":         {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
+    "unknown":       {"capabilities": ["armhf", "aarch64"], "primary_arch": "aarch64"},
     }
+
+
+GLIBC_INFO = {
+    "arkos-*":     "2.30",
+    "trimui-*":    "2.33",
+    "knulli-*":    "2.38",
+    "muos-*":      "2.38",
+    "amberelec-*": "2.38",
+    "rocknix-*":   "2.40",
+    "miyoo-*":     "2.36",
+
+    "default":     "2.30",
+    }
+
+
+def cpu_info_v2(info):
+    if Path('/lib/ld-linux-armhf.so.3').exists():
+        info["capabilities"].append("armhf")
+        info['primary_arch'] = "armhf"
+
+    if Path('/lib/ld-linux-aarch64.so.1').exists():
+        info["capabilities"].append("aarch64")
+        info['primary_arch'] = "aarch64"
+
+    if Path('/lib/ld-linux.so.2').exists():
+        info["capabilities"].append("x86")
+        info['primary_arch'] = "x86"
+
+    if (
+            Path('/lib/ld-linux-x86-64.so.2').exists() or
+            Path('/lib64/ld-linux-x86-64.so.2').exists() or
+            Path('/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2').exists()):
+        info["capabilities"].append("x86_64")
+        info['primary_arch'] = "x86_64"
+
+    if HM_TESTING or 'primary_arch' not in info:
+        info["capabilities"].append("armhf")
+        info["capabilities"].append("aarch64")
+        info['primary_arch'] = "aarch64"
+
+
+_GLIBC_VER=None
+def get_glibc_version():
+    global _GLIBC_VER
+
+    lib_paths = [
+        # Most likely
+        '/lib/',
+        '/lib64/',
+        '/lib/aarch64-linux-gnu/',
+        '/lib32/',
+        '/lib/arm-linux-gnueabihf/',
+        # Least likely
+        '/usr/lib/',
+        '/usr/lib64/',
+        '/usr/lib32/',
+        ]
+
+    if _GLIBC_VER is None:
+        for lib_path in lib_paths:
+            libc_path = Path(lib_path) / 'libc.so.6'
+
+            if not libc_path.is_file():
+                continue
+    
+            try:
+                result = subprocess.run(
+                    [str(libc_path), "--version"],
+                    capture_output=True, text=True, check=True)
+
+                # The first line contains the glibc version
+                _GLIBC_VER = result.stdout.splitlines()[0].strip().split(' ')[-1].rstrip('.')
+
+            except Exception as e:
+                logger.error(f"Error retrieving glibc version: {e}")
+                # Failsafe
+                _GLIBC_VER = GLIBC_INFO['default']
+
+            break
+
+        else:
+            _GLIBC_VER = GLIBC_INFO['default']
+
+    return _GLIBC_VER
 
 
 def safe_cat(file_name):
@@ -175,35 +300,53 @@ def file_exists(file_name):
 
 
 def nice_device_to_device(raw_device):
-    raw_device = raw_device.split('\0', 1)[0]
+    raw_device = raw_device.split('\0', 1)[0].lower()
 
     pattern_to_device = (
-        ('sun50iw9', 'rg35xx-h'),
+        ('sun50iw9',  'rg35xx-h'),
         ('sun50iw10', 'trimui-smart-pro'),
 
-        ('Hardkernel ODROID-GO-Ultra',  'ogu'),
-        ('ODROID-GO Advance*',          'oga'),
-        ('ODROID-GO Super*',            'ogs'),
+        ('hardkernel odroid-go-ultra',  'ogu'),
+        ('odroid-go advance*',          'oga'),
+        ('odroid-go super*',            'ogs'),
 
-        ('Powkiddy RGB10 MAX 3', 'rgb10max3'),
-        ('Powkiddy RGB30',       'rgb30'),
-        ('Powkiddy RK2023',      'rk2023'),
-        ('Powkiddy x55',         'x55'),
+        ('powkiddy rgb10 max 3 pro', 'rgb10max3pro'),
+        ('powkiddy rgb10 max 3',     'rgb10max3'),
+        ('powkiddy rgb30',           'rgb30'),
+        ('powkiddy rk2023',          'rk2023'),
+        ('powkiddy x55',             'x55'),
 
-        ('Anbernic RG351MP*', 'rg351mp'),
-        ('Anbernic RG351V*',  'rg351v'),
-        ('Anbernic RG351*',   'rg351p'),
-        ('Anbernic RG353MP*', 'rg353mp'),
-        ('Anbernic RG353V*',  'rg353v'),
-        ('Anbernic RG353P*',  'rg353p'),
-        ('Anbernic RG552',    'rg552'),
+        ('anbernic rg28xx*',      'rg28xx'),
+        ('anbernic rg34xx*',      'rg34xx-h'),
+        ('anbernic rg35xx h*',    'rg35xx-h'),
+        ('anbernic rg35xx sp*',   'rg35xx-sp'),
+        ('anbernic rg35xx plus*', 'rg35xx-plus'),
+        ('anbernic rg40xx h*',    'rg40xx-h'),
+        ('anbernic rg40xx v*',    'rg40xx-v'),
 
-        ('GameForce ACE',     'ace'),
+        ('anbernic rg40xx*',      'rg40xx-h'),
+        ('anbernic rg35xx*',      'rg35xx-h'),
 
-        ('MagicX XU10',       'xu10'),
+        ('miyoo rk3566 355 v10*', 'miyoo-flip'),
+
+        ('anbernic rg351mp*', 'rg351mp'),
+        ('anbernic rg351v*',  'rg351v'),
+        ('anbernic rg351*',   'rg351p'),
+        ('anbernic rg353m*',  'rg353m'),
+        ('anbernic rg353v*',  'rg353v'),
+        ('anbernic rg353p*',  'rg353p'),
+        ('anbernic rg552',    'rg552'),
+
+        ('gameforce ace',     'ace'),
+
+        ('magicx xu10',       'xu10'),
+
+        ('retroid pocket 5',    'rp5'),
+        ('retroid pocket mini', 'rpmini'),
         )
 
     for pattern, device in pattern_to_device:
+        # logger.debug(f'{raw_device} -> {pattern}')
         if fnmatch.fnmatch(raw_device, pattern):
             raw_device = device
             break
@@ -228,11 +371,14 @@ def new_device_info():
     info = {}
 
    # Works on RetroDECK if flatplack deployed to $HOME folder.
-    retrodeck_version = safe_cat(Path.home() / '.var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg')
+    retrodeck_version = safe_cat('/var/config/retrodeck/retrodeck.cfg')
+    if retrodeck_version == '':
+        retrodeck_version = safe_cat('~/.var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg')
+
     if retrodeck_version != '':
         info['name'] = 'RetroDECK'
-        info['version'] = retrodeck_version.join(re.findall(r'version=(.*)', retrodeck_version))
-        info['device'] = 'RetroDECK'
+        info['version'] = ' '.join(re.findall(r'version=(.*)', retrodeck_version))
+        info['device'] = 'retrodeck'
 
     ## Works on muOS (obviously)
     muos_version = safe_cat('/opt/muos/config/version.txt')
@@ -242,19 +388,12 @@ def new_device_info():
 
     muos_device = safe_cat('/opt/muos/config/device.txt')
     if muos_device != '':
-        info['device'] = muos_device.lower().replace('-', ' ')
+        info['device'] = muos_device.lower().replace(' ', '-').split('\n')[0]
 
     # Works on TrimUI Smart Pro
     if Path('/usr/trimui').is_dir():
         info['name'] = 'TrimUI'
         info['version'] = safe_cat("/etc/version")
-
-    # Works on Batocera
-    batocera_version = safe_cat('/usr/share/batocera/batocera.version')
-    if batocera_version != '':
-        info['name'] = 'Batocera'
-        info['version'] = subprocess.getoutput('batocera-version').strip().split(' ', 1)[0]
-        info['device'] = safe_cat('/boot/boot/batocera.board').strip()
 
     # Works on ArkOS
     config_device = safe_cat('~/.config/.DEVICE')
@@ -264,9 +403,15 @@ def new_device_info():
     # Works on ArkOS
     plymouth = safe_cat('/usr/share/plymouth/themes/text.plymouth')
     if plymouth != '':
-        for result in re.findall(r'^title=(.*?) \(([^\)]+)\)$', plymouth, re.I | re.M):
+        for result in re.findall(r'^title=(.*?) \(([^\)]+)\)', plymouth, re.I | re.M):
             info['name'] = result[0].split(' ', 1)[0]
             info['version'] = result[1]
+
+    # Miyoo!
+    miyoo_version = safe_cat('/usr/miyoo/version')
+    if miyoo_version != '':
+        info['name'] = 'Miyoo'
+        info['version'] = miyoo_version.strip()
 
     # Works on uOS / JELOS / AmberELEC / muOS / ROCKNIX
     sfdbm = safe_cat('/sys/firmware/devicetree/base/model')
@@ -291,13 +436,33 @@ def new_device_info():
 
             info.setdefault(key, value)
 
+    # Works on Batocera
+    batocera_version = safe_cat('/usr/share/batocera/batocera.version')
+    if batocera_version != '':
+        info.setdefault('name', 'Batocera')
+        info['version'] = subprocess.getoutput('batocera-version').strip().split(' ', 1)[0]
+        info['device'] = safe_cat('/boot/boot/batocera.board').strip()
+
+    # REG Linux
+    reglinux_version = safe_cat('/usr/share/reglinux/system.version')
+    if reglinux_version != '':
+        info.setdefault('name', 'REGLinux')
+        info['version'] = subprocess.getoutput('system-version').strip().split(' ', 1)[0]
+        info['device'] = safe_cat('/boot/boot/system.board').strip()
+
     if 'device' not in info:
         info['device'] = old_device_info()
+
+    usr_trimui_res_enlang = safe_cat('/usr/trimui/res/lang/en.lang')
+    if 'Dpad to Analog Key(hold)' in usr_trimui_res_enlang:
+        info['device'] = 'trimui-brick'
 
     info['device'] = info['device'].lower().replace(' ', '-')
 
     info.setdefault('name', 'Unknown')
     info.setdefault('version', '0.0.0')
+
+    logger.info(info)
 
     return info
 
@@ -390,15 +555,22 @@ def find_device_by_resolution(resolution):
     return 'default'
 
 
-def expand_info(info, override_resolution=None, override_ram=None):
+def expand_info(info, override_resolution=None, override_ram=None, use_old_cpu_info=False):
     """
     This turns fetches device info and expands out the capabilities based on that device/cfw.
     """
 
     _merge_info(info, HW_INFO.get(info['device'], HW_INFO['default']))
 
-    if info['cpu'] in CPU_INFO:
-        _merge_info(info, CPU_INFO[info['cpu']])
+    if not use_old_cpu_info:
+        cpu_info_v2(info)
+
+    else:
+        if f"{info['cpu']}-{info['device']}" in CPU_INFO:
+            _merge_info(info, CPU_INFO[f"{info['cpu']}-{info['device']}"])
+
+        elif info['cpu'] in CPU_INFO:
+            _merge_info(info, CPU_INFO[info['cpu']])
 
     if f"{info['name'].lower()}-{info['device']}" in CFW_INFO:
         _merge_info(info, CFW_INFO[f"{info['name'].lower()}-{info['device']}"])
@@ -411,6 +583,23 @@ def expand_info(info, override_resolution=None, override_ram=None):
 
     if override_ram is not None:
         info['ram'] = override_ram
+
+    if use_old_cpu_info:
+        _name, _device = info['name'].lower(), info['device'].lower()
+        if f"{_name}-{_device}" in GLIBC_INFO:
+            info['glibc'] = GLIBC_INFO[f"{_name}-{_device}"]
+
+        elif f"{_name}-*" in GLIBC_INFO:
+            info['glibc'] = GLIBC_INFO[f"{_name}-*"]
+
+        elif f"*-{_device}" in GLIBC_INFO:
+            info['glibc'] = GLIBC_INFO[f"*-{_device}"]
+
+        else:
+            info['glibc'] = GLIBC_INFO['default']
+
+    else:
+        info['glibc'] = get_glibc_version()
 
     display_gcd = math.gcd(info['resolution'][0], info['resolution'][1])
     display_ratio = f"{info['resolution'][0] // display_gcd}:{info['resolution'][1] // display_gcd}"
@@ -473,7 +662,7 @@ def device_info(override_device=None, override_resolution=None):
 
     expand_info(info, override_resolution, override_ram)
 
-    logger.debug(f"DEVICE INFO: {info}")
+    logger.info(f"DEVICE INFO: {info}")
     __root_info = info
     return info
 

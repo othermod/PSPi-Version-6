@@ -1,8 +1,13 @@
+
+# SPDX-License-Identifier: MIT
+
 import functools
 import gettext
 import json
 import os
+import pathlib
 import shutil
+import subprocess
 
 import sdl2
 import sdl2.ext
@@ -10,6 +15,7 @@ import sdl2.ext
 import harbourmaster
 import pySDL2gui
 
+from pathlib import Path
 from loguru import logger
 
 
@@ -317,6 +323,10 @@ class BaseScene:
             self.tags['button_bar'].bar = None
             return
 
+        if self.gui.SWAP_BUTTONS:
+            key_to_image['A'], key_to_image['B'] = key_to_image['B'], key_to_image['A']
+            key_to_image['X'], key_to_image['Y'] = key_to_image['Y'], key_to_image['X']
+
         actions = {}
 
         for key, action in key_map.items():
@@ -362,6 +372,100 @@ class BlankScene(BaseScene):
 
         self.load_regions("blank", [])
         self.set_buttons({})
+
+
+class TempMenuScene(BaseScene):
+    def __init__(self, gui):
+        super().__init__(gui)
+        self.scene_title = _("Main Menu")
+
+        self.load_regions("main_menu", ['option_list'])
+        self.set_buttons({})
+
+    def do_update(self, events):
+        self.scene_deactivate()
+        self.gui.updated = True
+
+        cfg_data = self.gui.get_config()
+
+        if not cfg_data.get('disclaimer', False):
+            self.gui.scenes = [
+                ('root', [DisclaimerScene(self.gui)]),
+                ]
+
+        else:
+            self.gui.scenes = [
+                ('root', [MainMenuScene(self.gui)]),
+                ]
+
+        return True
+
+
+class DisclaimerScene(BaseScene):
+
+    def __init__(self, gui):
+        super().__init__(gui)
+        self.scene_title = _("Disclaimer")
+
+        ## Wait x seconds.
+        self.disclaimer_wait = 15
+
+        self.load_regions("disclaimer", ['disclaimer_text'])
+
+        self.tags['disclaimer_text'].text = (
+            "Disclaimer\n"
+            "\n"
+            "PortMaster does not endorse or support any form of piracy. All ready-to-run ports included in our software are provided with full respect to the wishes and licenses of the respective copyright holders. We take intellectual property rights very seriously and ensure that our offerings comply with all relevant legal requirements and permissions.\n"
+            "\n"
+            "It is important to note that game files for ports that are not ready-to-run must be obtained legally. Users are required to purchase or otherwise acquire these games through legitimate means to include support for them in PortMaster. By using our software, you agree to abide by these terms and respect the rights of content creators and developers."
+            )
+
+        self.last_elapsed = None
+
+    def do_draw(self):
+        elapsed = self.gui.timers.since('disclaimer_wait') // 1000
+
+        elapsed = min(elapsed, self.disclaimer_wait)
+
+        if elapsed != self.last_elapsed:
+            if elapsed < self.disclaimer_wait:
+                self.tags['button_bar'].bar = [f'Wait {self.disclaimer_wait - elapsed} seconds']
+            else:
+                self.set_buttons({'A': _('Accept'), 'B': _('Quit')})
+
+            self.last_elapsed = elapsed
+
+        super().do_draw()
+
+    def do_update(self, events):
+        super().do_update(events)
+
+        elapsed = self.gui.timers.since('disclaimer_wait') // 1000
+
+        elapsed = min(elapsed, self.disclaimer_wait)
+
+        if elapsed == self.disclaimer_wait:
+            if events.was_pressed('A'):
+                cfg_data = self.gui.get_config()
+                cfg_data['disclaimer'] = True
+                self.gui.save_config(cfg_data)
+
+                self.scene_deactivate()
+                self.gui.updated = True
+                self.gui.scenes = [
+                    ('root', [MainMenuScene(self.gui)]),
+                    ]
+
+                return True
+
+            if events.was_pressed('B'):
+                self.button_back()
+                if self.gui.message_box(
+                        _("Are you sure you want to exit PortMaster?"),
+                        want_cancel=True):
+
+                    self.gui.do_cancel()
+                    return True
 
 
 class MainMenuScene(BaseScene):
@@ -529,6 +633,21 @@ class OptionScene(BaseScene):
                 _("Metadata Refresh"),
                 description=_("Manually update port metadata with missing/updated information and artwork."))
 
+        if self.gui.hm.device['name'] == 'TrimUI':
+            self.tags['option_list'].add_option(
+                'trimui-port-mode-toggle',
+                _("Ports Location: ") +  (self.gui.hm.cfg_data.get('trimui-port-mode', 'roms') == 'roms' and _("Roms section") or _("Ports tab")),
+                description=_("Location where ports should be installed to."))
+
+        if self.gui.hm.device['name'] == 'muOS':
+            if '/mnt/sdcard' in subprocess.getoutput(['df']):
+                MUOS_MMC_TOGGLE = Path('/mnt/mmc/MUOS/PortMaster/config/muos_mmc_master_race.txt')
+
+                self.tags['option_list'].add_option(
+                    'muos-port-mode-toggle',
+                    _("Ports Location: ") +  (MUOS_MMC_TOGGLE.is_file() and _("SD 1") or _("SD 2")),
+                    description=_("Location where ports should be installed to."))
+
         self.tags['option_list'].add_option(None, _("System"))
 
         self.tags['option_list'].add_option(
@@ -537,9 +656,14 @@ class OptionScene(BaseScene):
             description=_("Manage port runtimes."))
 
         self.tags['option_list'].add_option(
+            'toggle-experimental',
+            _("Experimental Ports: ") + (self.gui.hm.cfg_data.get('show_experimental', False) and _("Enabled") or _("Disabled")),
+            description=_("Show or hide experimental ports."))
+
+        self.tags['option_list'].add_option(
             'update-ports',
             _("Update Ports"),
-            description=_("Update all ports and associated information"))
+            description=_("Fetch latest ports information."))
 
         self.tags['option_list'].add_option(
             'update-portmaster',
@@ -578,10 +702,6 @@ class OptionScene(BaseScene):
                 'toggle-all',
                 _("All Ports: ") + (self.gui.hm.cfg_data.get('show_all', False) and _("Enabled") or _("Disabled")),
                 description=_("Show all ports, ignoring requirements."))
-            self.tags['option_list'].add_option(
-                'toggle-experimental',
-                _("Experimental Ports: ") + (self.gui.hm.cfg_data.get('show_experimental', False) and _("Enabled") or _("Disabled")),
-                description=_("Show or hide experimental ports."))
             self.tags['option_list'].add_option(
                 'toggle-cwtbe',
                 _("CWTBE Mode: ") + ((self.gui.hm.tools_dir / "PortMaster" / "cwtbe_flag").is_file() and _("Enabled") or _("Disabled")),
@@ -781,12 +901,69 @@ class OptionScene(BaseScene):
 
             if selected_option == 'update-gamelist':
                 if self.gui.message_box(
-                        _("Are you sure you want to update your gamelist.xml?\n\nThis will override any scraped artwork or port information and will require a 30+ MB download."),
+                        _("Are you sure you want to update your gamelist.xml?\n\nThis will override any scraped artwork or port information and will require a 50+ MB download."),
                         want_cancel=True):
 
                     self.gui.update_gamelist_xml()
 
                 return True
+
+            if selected_option == 'trimui-port-mode-toggle':
+                language_map = {
+                    'roms':  _('Roms section'),
+                    'ports': _('Ports tab'),
+                    }
+
+                change_map = {
+                    'roms':  'ports',
+                    'ports': 'roms',
+                    }
+
+                from_mode = self.gui.hm.cfg_data.get('trimui-port-mode', 'roms')
+                to_mode = change_map[from_mode]
+                if self.gui.message_box(
+                        _("Are you sure you want to move ports from the {from_mode} to the {to_mode}").format(
+                            from_mode=language_map[from_mode],
+                            to_mode=language_map[to_mode]),
+                        want_cancel=True):
+
+                    self.gui.hm.cfg_data['trimui-port-mode'] = to_mode
+                    self.gui.hm.save_config()
+
+                    item = self.tags['option_list'].list_selected()
+                    self.tags['option_list'].list[item] = (
+                        _("Ports Location: ") +  language_map[to_mode])
+
+                    self.gui.hm.platform.do_move_ports()
+
+            if selected_option == 'muos-port-mode-toggle':
+                if '/mnt/sdcard' in subprocess.getoutput(['df']):
+                    MUOS_MMC_TOGGLE = Path('/mnt/mmc/MUOS/PortMaster/config/muos_mmc_master_race.txt')
+
+                    language_map = {
+                        True:  _('SDCARD 1'),
+                        False: _('SDCARD 2'),
+                        }
+
+                    if self.gui.message_box(
+                            _("Are you sure you want to manage and install ports on {to_loc}?\n\nAlready installed ports will not be moved.\nPortMaster will restart for this to take effect.").format(
+                                to_loc=language_map[(not MUOS_MMC_TOGGLE.is_file())]),
+                            want_cancel=True):
+
+                        self.gui.events.running = False
+
+                        if MUOS_MMC_TOGGLE.is_file():
+                            MUOS_MMC_TOGGLE.unlink()
+
+                        else:
+                            MUOS_MMC_TOGGLE.touch(0o644)
+
+                        if not harbourmaster.HM_TESTING:
+                            reboot_file = (harbourmaster.HM_TOOLS_DIR / "PortMaster" / ".pugwash-reboot")
+                            if not reboot_file.is_file():
+                                reboot_file.touch(0o644)
+
+                        return True
 
             if selected_option == 'runtime-manager':
                 self.gui.push_scene('runtime-manager', RuntimesScene(self.gui))
@@ -931,8 +1108,9 @@ class RuntimesScene(BaseScene):
             self.tags['runtime_list'].add_option(runtime, self.runtimes[runtime]['name'])
 
         for port_name, port_info in self.gui.hm.list_ports(filters=['installed']).items():
-            if port_info['attr']['runtime'] in self.runtimes:
-                self.runtimes[port_info['attr']['runtime']]['ports'].append(port_info['attr']['title'])
+            for runtime in port_info['attr']['runtime']:
+                if runtime in self.runtimes:
+                    self.runtimes[runtime]['ports'].append(port_info['attr']['title'])
 
         self.last_select = self.tags['runtime_list'].selected_option()
         self.last_verified = None
@@ -1092,7 +1270,7 @@ class ThemesScene(BaseScene):
 
             self.button_activate()
 
-            if self.gui.message_box(_("Do you want to change theme?\n\nYou will have to restart for it to take affect."), want_cancel=True):
+            if self.gui.message_box(_("Do you want to change theme?\n\nYou will have to restart for it to take effect."), want_cancel=True):
                 self.gui.hm.cfg_data['theme'] = self.last_select
                 self.gui.hm.cfg_data['theme-scheme'] = None
                 self.gui.hm.save_config()
@@ -1619,6 +1797,8 @@ class PortInfoPopup(BaseScene):
 
             self.config['buttons'] = {
                 'DOWN': 'pop_scene',
+                'L_DOWN': 'pop_scene',
+                'R_DOWN': 'pop_scene',
                 }
 
         if 'installed' in self.parent_info_scene.port_attrs:
@@ -1689,14 +1869,27 @@ class PortInfoScene(BaseScene):
 
                 self.config['buttons'] = {
                     'UP': 'port_info_popup',
+                    'L_UP': 'port_info_popup',
+                    'R_UP': 'port_info_popup',
+
                     'LEFT': 'prev_port',
+                    'L_LEFT': 'prev_port',
+                    'R_LEFT': 'prev_port',
+
                     'RIGHT': 'next_port',
+                    'L_RIGHT': 'next_port',
+                    'R_RIGHT': 'next_port',
                     }
 
             else:
                 self.config['buttons'] = {
                     'UP': 'prev_port',
+                    'L_UP': 'prev_port',
+                    'R_UP': 'prev_port',
+
                     'DOWN': 'next_port',
+                    'L_DOWN': 'next_port',
+                    'R_DOWN': 'next_port',
                     }
 
         if 'installed' in self.port_attrs:
@@ -1818,6 +2011,8 @@ class FiltersScene(BaseScene):
 
             # Attrs.
             "rtr":              _("Ready to Run"),
+            "!rtr":             _("Files Required"),
+            "exp":              _("Experimental"),
             "not installed":    _("Not Installed"),
             "update available": _("Update Available"),
             "broken":           _("Broken Ports"),
@@ -1829,9 +2024,15 @@ class FiltersScene(BaseScene):
             "paid":             _("Paid external assets needed."),
 
             # Runtimes.
-            "mono":             _("{runtime_name} Runtime").format(runtime_name="Mono"),
             "godot":            _("{runtime_name} Runtime").format(runtime_name="Godot/FRT"),
+            "mono":             _("{runtime_name} Runtime").format(runtime_name="Mono"),
+            "rlvm":             _("{runtime_name} Runtime").format(runtime_name="RLVM"),
             "solarus":          _("{runtime_name} Runtime").format(runtime_name="Solarus"),
+
+            # Architecture
+            "armhf":            _("ARM 32bit"),
+            "aarch64":          _("ARM 64bit"),
+            "x86_64":           _("x86 64bit"),
             }
 
         # Hack to make other appear last, by default the order will be 0, you can set it to -1 for it to appear at the top.
@@ -1858,6 +2059,7 @@ class FiltersScene(BaseScene):
             'attr',
             # 'status',
             'genres',
+            # 'architecture',
             'porters',
             ]
 
@@ -1924,7 +2126,7 @@ class FiltersScene(BaseScene):
                         selected_offset = len(self.tags['filter_list'].options) - 1
 
             elif display_order == 'attr':
-                for hm_genre in ['rtr', 'mono', 'godot', 'solarus', 'not installed', 'update available', 'broken']:
+                for hm_genre in ['rtr', '!rtr', 'mono', 'godot', 'solarus', 'rlvm', 'exp', 'not installed', 'update available', 'broken']:
                     if hm_genre in self.locked_genres:
                         continue
 
@@ -1945,6 +2147,35 @@ class FiltersScene(BaseScene):
                         if add_blank:
                             self.tags['filter_list'].add_option(None, "")
                         self.tags['filter_list'].add_option(None, _("Attributes:"))
+                        first_add = False
+
+                    self.tags['filter_list'].add_option(hm_genre, text)
+
+                    if selected_option == hm_genre:
+                        selected_offset = len(self.tags['filter_list'].options) - 1
+
+            elif display_order == 'architecture':
+                for hm_genre in ['armhf', 'aarch64', 'x86_64']:
+                    if hm_genre in self.locked_genres:
+                        continue
+
+                    if hm_genre in self.list_scene.options['skip_genres']:
+                        continue
+
+                    if hm_genre in genres:
+                        ports = total_ports
+                        text = ["    ", "_CHECKED", f"  {filter_translation.get(hm_genre, hm_genre)}", None, "    ", f"  {ports}"]
+                    else:
+                        ports = len(self.gui.hm.list_ports(genres + [hm_genre]))
+                        text = ["    ", "_UNCHECKED", f"  {filter_translation.get(hm_genre, hm_genre)}", None, "    ", f"  {ports}"]
+
+                    if ports == 0:
+                        continue
+
+                    if first_add:
+                        if add_blank:
+                            self.tags['filter_list'].add_option(None, "")
+                        self.tags['filter_list'].add_option(None, _("Architecture:"))
                         first_add = False
 
                     self.tags['filter_list'].add_option(hm_genre, text)
@@ -2212,6 +2443,7 @@ __all__ = (
     'PortsListScene',
     'RuntimesScene',
     'SourceScene',
+    'TempMenuScene',
     'ThemeSchemeScene',
     'ThemesScene',
     )

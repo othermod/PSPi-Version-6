@@ -36,7 +36,6 @@ To get started:
 
 - Connect your device to the internet and launch PortMaster from the "ports" console. This will update PortMaster to the latest version.
 - Install whatever games you would like to try and follow any included instructions.
-- Before launching a game, you need to open the game script in a text editor and change the "controlfolder" variable from `/roms/ports/PortMaster` to `/userdata/roms/ports/PortMaster` (See the included copy of Descent for an example)
 
 [Accessing Batocera via SSH](https://wiki.batocera.org/access_the_batocera_via_ssh)
 

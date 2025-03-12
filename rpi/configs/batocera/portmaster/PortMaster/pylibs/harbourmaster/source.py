@@ -1,4 +1,6 @@
 
+# SPDX-License-Identifier: MIT
+
 # System imports
 import datetime
 import json
@@ -257,12 +259,11 @@ class GitHubRawReleaseV1(BaseSource):
         if check_runtime and port_name in getattr(self, '_info', {}):
             port_info = self._info[port_name]
 
-            if port_info['attr'].get('runtime', None) is not None:
-                runtime = port_info['attr']['runtime']
-
-                runtime_file = (self.hm.libs_dir / runtime)
-                if not runtime_file.exists():
-                    size += self.hm.port_download_size(runtime)
+            if len(port_info['attr'].get('runtime', [])) > 0:
+                for runtime in port_info['attr']['runtime']:
+                    runtime_file = (self.hm.libs_dir / runtime)
+                    if not runtime_file.exists():
+                        size += self.hm.port_download_size(runtime)
 
         return size
 
@@ -823,8 +824,10 @@ class PortMasterV3(BaseSource):
         self.hm.callback.message("  - {}".format(_("Fetching info")))
 
         ## Download latest images.zip if needed.
-        if 'images.000.zip' in self._data:
-            return self._update2()
+
+        ## DISABLE FOR NOW, REENABLE LATER.
+        # if 'images.000.zip' in self._data:
+        #     return self._update2()
 
         if 'images.zip' not in self._data:
             return
@@ -906,6 +909,11 @@ class PortMasterV3(BaseSource):
 
         ## Load data from the assets.
         for key, asset in data['ports'].items():
+            asset = port_info_load(asset)
+            if asset is None:
+                ## Skip bad items.
+                continue
+
             result = {
                 'name': asset['name'],
                 'size': asset['source']['size'],
@@ -982,7 +990,12 @@ class PortMasterV3(BaseSource):
             return None
 
         if temp_dir is None:
-            temp_dir = self.hm.temp_dir
+            file_size = self._data[port_name]['size']
+
+            if file_size > HM_MAX_TEMP_SIZE:
+                temp_dir = self.hm.ports_dir
+            else:
+                temp_dir = self.hm.temp_dir
 
         md5_result[0] = self._data[port_name]['md5']
         zip_file = download(temp_dir / port_name, self._data[port_name]['url'], self._data[port_name]['md5'], callback=self.hm.callback)
@@ -1028,12 +1041,11 @@ class PortMasterV3(BaseSource):
         if check_runtime and port_name in getattr(self, '_info', {}):
             port_info = self._info[port_name]
 
-            if port_info['attr'].get('runtime', None) is not None:
-                runtime = port_info['attr']['runtime']
-
-                runtime_file = (self.hm.libs_dir / runtime)
-                if not runtime_file.exists():
-                    size += self.hm.port_download_size(runtime)
+            if len(port_info['attr'].get('runtime', [])) > 0:
+                for runtime in port_info['attr']['runtime']:
+                    runtime_file = (self.hm.libs_dir / runtime)
+                    if not runtime_file.exists():
+                        size += self.hm.port_download_size(runtime)
 
         return size
 

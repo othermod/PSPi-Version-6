@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+
+if [ -d "/mnt/SDCARD/Data/ports" ]; then
+    exit 0
+fi
+
+LASTPWD="$PWD"
+cd /mnt/SDCARD/
+
+# Function to get the name of a directory with its original case sensitivity
+directory_name() {
+    local dir="$1"
+    local parent_dir=$(dirname "$dir")
+    local original_dir=$(basename "$dir")
+    local found_dir=$(find "$parent_dir" -maxdepth 1 -iname "$original_dir" -type d)
+
+    if [ -n "$found_dir" ]; then
+        echo "$found_dir"
+    else
+        echo "$original_dir"
+    fi
+}
+
+# Function to check if a directory exists, ignoring case sensitivity
+directory_exists() {
+    local dir="$1"
+    local parent_dir=$(dirname "$dir")
+    local original_name=$(basename "$dir")
+    local found
+    found=$(find "$parent_dir" -maxdepth 1 -iname "$original_name" -type d)
+    [ -n "$found" ]
+}
+
+if directory_exists "Data" && [ ! "$(directory_name "Data")" = "Data" ]; then
+    # FUCK THIS SHIT
+    mv_directory="$(directory_name "Data")"
+    echo "Moving $mv_directory to portmaster_migration_backup"  | tee -a "System/portmaster_migration.log"
+    mkdir -p "portmaster_migration_backup"
+    mv -v "$mv_directory" "portmaster_migration_backup/" | tee -a "System/portmaster_migration.log"
+fi
+
+if directory_exists "Data/ports" && [ ! "$(directory_name "Data/ports")" = "Data/ports" ]; then
+    # Or this
+    mv_directory="$(directory_name "Data/ports")"
+    echo "Moving $mv_directory to portmaster_migration_backup"  | tee -a "System/portmaster_migration.log"
+    mkdir -p "portmaster_migration_backup"
+    mv -v "$mv_directory" "portmaster_migration_backup/" | tee -a "System/portmaster_migration.log"
+fi
+
+# Okay this should be safe...
+if ! mkdir -p "Data/ports"; then
+    # WELL FUCK.
+    echo "Error: Failed to create Data/ports directory." | tee -a "System/portmaster_migration.log"
+    cd "$LASTPWD"
+    exit 1
+fi
+
+# Move scripts and directories to Data/ports
+mv -v Roms/PORTS/*.sh Data/ports | tee -a "System/portmaster_migration.log"
+
+if directory_exists "ports"; then
+    ports_directory="$(directory_name "ports")"
+    mv -v "$ports_directory"/* "Data/ports" | tee -a "System/portmaster_migration.log"
+
+    if [ ! -z "$(ls -A ports)" ]; then
+        # If not empty, backup the directory, recreate Ports/ directory
+        mkdir -p "portmaster_migration_backup"
+        mv -v "$ports_directory" "portmaster_migration_backup/" | tee -a "System/portmaster_migration.log"
+    else
+        rm -fRv "$ports_directory" | tee -a "System/portmaster_migration.log"
+    fi
+fi
+
+# Okay we made it to the end...
+mkdir -v "Ports" | tee -a "System/portmaster_migration.log"
+
+cd "$LASTPWD"

@@ -1,3 +1,6 @@
+
+# SPDX-License-Identifier: MIT
+
 import copy
 import functools
 import gettext
@@ -167,6 +170,60 @@ def theme_load(gui, theme_file, color_scheme=None):
 
                 theme_data[section_name] = theme_merge(base_scheme.get(section_name, {}), section_data)
 
+    ## vvvvvvvv HARD CODED - DO NOT TOUCH vvvvvvvv
+    theme_data['disclaimer'] = {
+            "background": {
+                "font": "DejaVuSans.ttf",
+                "area": [0.0, 0.0, 1.0, 1.0],
+                "fill": [ 200, 200, 200, 255 ],
+                "border": 8,
+                "font-size": 36,
+                "font-color": [ 0, 0, 0 ],
+            },
+            "disclaimer_text": {
+                "font": "DejaVuSans.ttf",
+                "area": [0.05, 0.05, 0.95, 0.95],
+                "fill": [ 230, 230, 230 ],
+                "thickness": 6,
+                "text-wrap": True,
+                "border": 10,
+                "font-scale[1920x1152]": 3.0,
+                "font-scale[1920x1080]": 3.0,
+                "font-scale[1280x720]": 1.9,
+                "font-scale[960x544]": 1.4,
+                "font-scale[720x720]": 1.4,
+                "font-scale[854x480]": 1.3,
+                "font-scale[640x480]": 1.1,
+                "font-scale[480x320]": 0.75,
+                "font-size": 18,
+                "font-color": [ 0, 0, 0 ],
+                "align": "topleft",
+                "text": "",
+                "autoscroll": "slide",
+                "scroll-speed": 5,
+                "scroll-delay-start": 1000,
+                "scroll-delay-end": 1000,
+            },
+            "button_bar": {
+                "font": "DejaVuSans.ttf",
+                "area": [0.0, 0.93, 0.95, -5],
+                "font-scale[1920x1152]": 3.0,
+                "font-scale[1920x1080]": 3.0,
+                "font-scale[1280x720]": 1.9,
+                "font-scale[960x544]": 1.4,
+                "font-scale[720x720]": 1.4,
+                "font-scale[854x480]": 1.3,
+                "font-scale[640x480]": 1.1,
+                "font-scale[480x320]": 0.75,
+                "font-size": 16,
+                "font-color": [ 0, 0, 0 ],
+                "align": "midright",
+                "bar": ["Please wait."],
+            },
+        }
+    ## ^^^^^^^^ HARD CODED - DO NOT TOUCH ^^^^^^^^
+
+
     for section_name, section_data in theme_data.items():
         if section_name.startswith('#'):
             if section_name == "#base":
@@ -267,6 +324,8 @@ def theme_load(gui, theme_file, color_scheme=None):
     if 'featured_ports' not in sections:
         ## Temporary Hack
         sections['featured_ports'] = copy.deepcopy(sections['ports_list'])
+
+
 
     return sections
 

@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+
+export LOVE_VERSION="11.5"
+export RUNTIME_DIR="$controlfolder/runtimes/love_$LOVE_VERSION"
+export LOVE_GPTK="love.$DEVICE_ARCH"
+export LOVE_BINARY="$RUNTIME_DIR/love.$DEVICE_ARCH"
+export LOVE_RUN="env LD_LIBRARY_PATH=$RUNTIME_DIR/libs.$DEVICE_ARCH:$LD_LIBRARY_PATH $RUNTIME_DIR/love.$DEVICE_ARCH"
