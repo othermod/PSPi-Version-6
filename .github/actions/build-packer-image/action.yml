@@ -57,7 +57,6 @@ runs:
           if [ $(stat -c %s "$i") -gt $((2000*1024*1024)) ]; then
             7z a "$i.7z" "$i" -v1500m
             rm "$i"
-            ls -lh *.7z.*
           fi
         done
       working-directory: packer

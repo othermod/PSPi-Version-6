@@ -10,6 +10,7 @@ set -x
 sudo apt update
 sudo apt upgrade -y
 sudo apt install git lsb-release -y
+sudo systemctl disable install-retropie.service
 
 # Install RetroPie
 cd /opt
