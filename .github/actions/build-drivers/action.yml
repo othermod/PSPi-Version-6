@@ -41,7 +41,7 @@ runs:
         tar --extract --file=PSPi6.Drivers_64bit.tar.gz ./packer/drivers/bin
         for i in $(ls ./packer/drivers/bin)
         do
-          mv "./packer/drivers/bin/$i" "./drivers/${i}_64"
+          mv "./packer/drivers/bin/$i" "./drivers/${i}"
         done
 
         # Zip drivers

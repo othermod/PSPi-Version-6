@@ -12,23 +12,6 @@ echo "joysticks: $joysticks"
 
 params=""
 
-# Function to detect the architecture of the operating system
-detect_architecture() {
-    local arch
-    arch=$(uname -m)
-    case "$arch" in
-        x86_64|aarch64)
-            echo "64-bit OS detected"
-            ARCH_SUFFIX="_64"
-            ;;
-        *)
-            echo "32-bit OS detected"
-            ARCH_SUFFIX=""
-            ;;
-    esac
-}
-detect_architecture
-
 # Set additional parameters based on configuration variables
 if [ "$enable_dim" = "true" ]; then
     params="$params --dim $dim_seconds  "
@@ -48,4 +31,4 @@ fi
 
 echo "Starting PSPi with parameters: $params"
 
-/usr/bin/main$ARCH_SUFFIX $params
+/usr/bin/main $params
