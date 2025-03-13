@@ -1,6 +1,10 @@
 #!/bin/bash
 
-. /boot/firmware/pspi.conf
+if [ "$(uname -m)" = "armv7l" ]; then
+    . /boot/pspi.conf
+else
+    . /boot/firmware/pspi.conf
+fi
 
 echo "disable_osd: $disable_osd"
 

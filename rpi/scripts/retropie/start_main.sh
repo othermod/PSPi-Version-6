@@ -1,6 +1,13 @@
 #!/bin/bash
 
-. /boot/firmware/pspi.conf
+#!/bin/bash
+
+if [ "$(uname -m)" = "armv7l" ]; then
+    . /boot/pspi.conf
+else
+    . /boot/firmware/pspi.conf
+fi
+
 modprobe i2c-dev
 
 echo "enable_dim: $enable_dim"
@@ -14,19 +21,19 @@ params=""
 
 # Set additional parameters based on configuration variables
 if [ "$enable_dim" = "true" ]; then
-    params="$params --dim $dim_seconds  "
+    params="$params --dim $dim_seconds"
 fi
 
 if [ "$fast_mode" = "true" ]; then
-    params="$params --fast "
+    params="$params --fast"
 fi
 
 if [ "$disable_crc" = "true" ]; then
-    params="$params --nocrc "
+    params="$params --nocrc"
 fi
 
 if [ "$disable_gamepad" = "true" ]; then
-    params="$params --nogamepad "
+    params="$params --nogamepad"
 fi
 
 echo "Starting PSPi with parameters: $params"
