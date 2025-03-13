@@ -1,3 +1,27 @@
+# For more options and information see
+# http://rpf.io/configtxt
+# Some settings may impact device functionality. See link above for details
+
+# Enable 64-bit ARM architecture
+arm_64bit=1
+
+# Kernel
+kernel=boot/linux
+initramfs boot/initrd.lz4
+
+# Sets the initial CEC name of the device
+cec_osd_name=batocera
+
+# Disable overscan to remove black borders on the screen
+disable_overscan=1
+
+# Disable the rainbow splash screen at startup
+disable_splash=1
+
+# Enable I2C interface
+dtparam=i2c_arm=on
+
+# Disable I2S interface
 dtparam=i2s=off
 
 # Disable SPI interface

@@ -54,14 +54,14 @@ sudo cp $GITHUB_WORKSPACE/rpi/libraries/batocera/* /tmp/target/usr/lib/
 # Add Multimedia keys for volume control
 # echo "Add Multimedia keys for volume control"
 
-if [ "$BATOCERA_VERSION" -lt 40 ]; then
-    sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
-fi    
+# sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
 sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/es_last_input.cfg /tmp/target/usr/share/batocera/datainit/system/configs/emulationstation/es_last_input.cfg
 
-# update S12populateshare to copy multimedia_keys.conf into system at boot
-echo "Update S12populateshare to copy multimedia_keys.conf into system at boot"
-sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' /tmp/target/etc/init.d/S12populateshare
+# Update S12populateshare to copy files into system at boot
+echo "Update S12populateshare to copy files into system at boot"
+# sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' /tmp/target/etc/init.d/S12populateshare
+sudo sed -i '/bios\/ps2/i\            system\/.local \\' /tmp/target/etc/init.d/S12populateshare
+sudo sed -i '/bios\/ps2/i\            system\/configs\/emulationstation\es_last_input.cfg \\' /tmp/target/etc/init.d/S12populateshare
 
 # Add PortMaster
 echo "Add PortMaster"
