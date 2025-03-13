@@ -21,6 +21,7 @@ sudo cp $GITHUB_WORKSPACE/rpi/configs/pspi.conf /mnt/image/pspi.conf
 sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/image/overlays/
 sudo mkdir -p /mnt/image/drivers
 sudo cp $GITHUB_WORKSPACE/rpi/drivers/bin/* /mnt/image/drivers/
+sudo cp -f $GITHUB_WORKSPACE/rpi/drivers/bin/main_old/main /mnt/image/drivers/main
 
 # Mount squashfs
 echo "Mount squashfs"
@@ -52,12 +53,12 @@ echo "Add driver libraries"
 sudo cp $GITHUB_WORKSPACE/rpi/libraries/batocera/* /tmp/target/usr/lib/
 
 # Add Multimedia keys for volume control
-# echo "Add Multimedia keys for volume control"
-# sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
+echo "Add Multimedia keys for volume control"
+sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
 
 # Update S12populateshare to copy multimedia keys into system at boot
 echo "Update S12populateshare to copy multimedia keys into system at boot"
-# sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' /tmp/target/etc/init.d/S12populateshare
+sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' /tmp/target/etc/init.d/S12populateshare
 
 # Add PortMaster
 echo "Add PortMaster"

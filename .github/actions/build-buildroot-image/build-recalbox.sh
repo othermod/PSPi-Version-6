@@ -22,6 +22,7 @@ sudo cp $GITHUB_WORKSPACE/rpi/configs/recalbox/recalbox-user-config.txt /mnt/ima
 sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/image/overlays/
 sudo mkdir -p /mnt/image/drivers
 sudo cp $GITHUB_WORKSPACE/rpi/drivers/bin/* /mnt/image/drivers/
+sudo cp -f $GITHUB_WORKSPACE/rpi/drivers/bin/main_old/main /mnt/image/drivers/main
 
 # Mount squashfs
 echo "Mount squashfs"
