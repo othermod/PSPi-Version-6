@@ -31,7 +31,7 @@ default_setup() {
     echo "Configuring RaspiOS..."
 
     enable_i2c
-    set_binary_permissions
+    set_binary_permissions "/usr/bin/mouse_64 /usr/bin/main_64 /usr/bin/osd_64 /usr/local/bin/start_mouse.sh /usr/local/bin/start_main.sh /usr/local/bin/start_osd.sh"
     add_services "main osd mouse"
 }
 
@@ -39,7 +39,7 @@ retropie_32_setup() {
     echo "Configuring RetroPie..."
 
     enable_i2c
-    set_binary_permissions
+    set_binary_permissions "/usr/bin/main /usr/bin/osd /usr/local/bin/start_main.sh /usr/local/bin/start_osd.sh"
     add_services "main osd"
 }
 
@@ -47,7 +47,7 @@ retropie_64_setup() {
     echo "Configuring RetroPie..."
 
     enable_i2c
-    set_binary_permissions
+    set_binary_permissions "/usr/bin/main_64 /usr/bin/osd_64 /usr/local/bin/start_main.sh /usr/local/bin/start_osd.sh"
     add_services "main osd"
     echo "Adding user 'pi' to passwordless sudo..."
     cat <<EOF | sudo tee /etc/sudoers.d/pi
@@ -58,18 +58,9 @@ EOF
 
 set_binary_permissions() {
     echo "Setting permissions on binaries..."
-    [ -f /usr/bin/main_64 ] && chmod +x /usr/bin/main_64
-    [ -f /usr/bin/mouse_64 ] && chmod +x /usr/bin/mouse_64
-    [ -f /usr/bin/osd_64 ] && chmod +x /usr/bin/osd_64
-    [ -f /usr/bin/main_32 ] && chmod +x /usr/bin/main_32
-    [ -f /usr/bin/mouse_32 ] && chmod +x /usr/bin/mouse_32
-    [ -f /usr/bin/osd_32 ] && chmod +x /usr/bin/osd_32
-    [ -f /usr/bin/main ] && chmod +x /usr/bin/main
-    [ -f /usr/bin/mouse ] && chmod +x /usr/bin/mouse
-    [ -f /usr/bin/osd ] && chmod +x /usr/bin/osd
-    [ -f /usr/local/bin/start_main.sh ] && chmod +x /usr/local/bin/start_main.sh
-    [ -f /usr/local/bin/start_osd.sh ] && chmod +x /usr/local/bin/start_osd.sh
-    [ -f /usr/local/bin/start_mouse.sh ] && chmod +x /usr/local/bin/start_mouse.sh
+    for binary in $1; do
+        chmod +x $binary
+    done
 }
 
 enable_i2c() {
