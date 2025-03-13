@@ -73,7 +73,7 @@ jobs:
     strategy:
       matrix:
         # Resolves to the packer image name
-        os: [raspios, retropie, kali_cm4, kali_zero2]
+        os: [raspios, retropie_arm64, retropie_armhf, kali_cm4, kali_zero2]
     runs-on: ubuntu-latest
     continue-on-error: true
     needs:

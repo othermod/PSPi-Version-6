@@ -53,21 +53,18 @@ sudo cp $GITHUB_WORKSPACE/rpi/libraries/batocera/* /tmp/target/usr/lib/
 
 # Add Multimedia keys for volume control
 # echo "Add Multimedia keys for volume control"
-
 # sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
-sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/es_last_input.cfg /tmp/target/usr/share/batocera/datainit/system/configs/emulationstation/es_last_input.cfg
 
-# Update S12populateshare to copy files into system at boot
-echo "Update S12populateshare to copy files into system at boot"
+# Update S12populateshare to copy multimedia keys into system at boot
+echo "Update S12populateshare to copy multimedia keys into system at boot"
 # sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' /tmp/target/etc/init.d/S12populateshare
-sudo sed -i '/bios\/ps2/i\            system\/.local \\' /tmp/target/etc/init.d/S12populateshare
-sudo sed -i '/bios\/ps2/i\            system\/configs\/emulationstation\es_last_input.cfg \\' /tmp/target/etc/init.d/S12populateshare
 
 # Add PortMaster
 echo "Add PortMaster"
 sudo mkdir -p /tmp/target/usr/share/batocera/datainit/system/.local/share/PortMaster
 sudo cp -r $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/PortMaster/* /tmp/target/usr/share/batocera/datainit/system/.local/share/PortMaster/
 sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/PortMaster.sh /tmp/target/usr/share/batocera/datainit/roms/ports/PortMaster.sh
+sudo sed -i '/bios\/ps2/i\            system\/.local \\' /tmp/target/etc/init.d/S12populateshare
 
 # repack squashfs
 echo "Repack squashfs"
