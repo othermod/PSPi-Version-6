@@ -101,7 +101,7 @@ build {
       "${path.root}scripts/installers/install-pspi6.sh"
     ]
     env = {
-      "OS" = "RetroPie"
+      "OS" = "RetroPie_64"
     }
   }
 
@@ -236,7 +236,7 @@ build {
       "${path.root}scripts/installers/install-pspi6.sh"
     ]
     env = {
-      "OS" = "RetroPie"
+      "OS" = "RetroPie_32"
     }
   }
 
