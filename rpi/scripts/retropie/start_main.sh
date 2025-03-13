@@ -23,7 +23,7 @@ detect_architecture() {
             ;;
         *)
             echo "32-bit OS detected"
-            ARCH_SUFFIX="_32"
+            ARCH_SUFFIX=""
             ;;
     esac
 }

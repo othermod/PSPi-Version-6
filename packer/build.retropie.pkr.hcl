@@ -207,7 +207,7 @@ build {
 
   # Upload drivers
   provisioner "file" {
-    source = "${path.root}/../rpi/configs/retropie/drivers/"
+    source = "${path.root}/../rpi/drivers/bin/32bit/"
     destination = "/usr/bin/"
   }
 
