@@ -36,7 +36,7 @@ source "cross" "retropie_cm4_zero2_arm64" {
   qemu_binary_destination_path = "/usr/bin/qemu-aarch64-static"
 }
 
-source "arm" "retropie_zero2_armhf" {
+source "cross" "retropie_zero2_armhf" {
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi2_3_zero2w.img.gz"]
   file_checksum         = "224e64d8820fc64046ba3850f481c87e"
   file_checksum_type    = "md5"
@@ -74,7 +74,7 @@ source "arm" "retropie_zero2_armhf" {
   qemu_binary_destination_path = "/usr/bin/qemu-arm-static"
 }
 
-source "arm" "retropie_cm4_armhf" {
+source "cross" "retropie_cm4_armhf" {
   file_urls             = ["https://github.com/RetroPie/RetroPie-Setup/releases/download/4.8/retropie-buster-4.8-rpi4_400.img.gz"]
   file_checksum         = "b5daa6e7660a99c246966f3f09b4014b"
   file_checksum_type    = "md5"
