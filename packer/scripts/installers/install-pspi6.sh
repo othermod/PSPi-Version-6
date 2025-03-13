@@ -11,8 +11,11 @@ detect_os_and_setup_services() {
     Debian | Raspios | Kali | ubuntu)
         default_setup
         ;;
-    RetroPie)
-        retropie_setup
+    RetroPie_32)
+        retropie_32_setup
+        ;;
+    RetroPie_64)
+        retropie_64_setup
         ;;
     *)
         unknown_setup
@@ -32,7 +35,15 @@ default_setup() {
     add_services "main osd mouse"
 }
 
-retropie_setup() {
+retropie_32_setup() {
+    echo "Configuring RetroPie..."
+
+    enable_i2c
+    set_binary_permissions
+    add_services "main osd"
+}
+
+retropie_64_setup() {
     echo "Configuring RetroPie..."
 
     enable_i2c
@@ -47,9 +58,15 @@ EOF
 
 set_binary_permissions() {
     echo "Setting permissions on binaries..."
-    chmod +x /usr/bin/main_64
-    chmod +x /usr/bin/mouse_64
-    chmod +x /usr/bin/osd_64
+    [ -f /usr/bin/main_64 ] && chmod +x /usr/bin/main_64
+    [ -f /usr/bin/mouse_64 ] && chmod +x /usr/bin/mouse_64
+    [ -f /usr/bin/osd_64 ] && chmod +x /usr/bin/osd_64
+    [ -f /usr/bin/main_32 ] && chmod +x /usr/bin/main_32
+    [ -f /usr/bin/mouse_32 ] && chmod +x /usr/bin/mouse_32
+    [ -f /usr/bin/osd_32 ] && chmod +x /usr/bin/osd_32
+    [ -f /usr/bin/main ] && chmod +x /usr/bin/main
+    [ -f /usr/bin/mouse ] && chmod +x /usr/bin/mouse
+    [ -f /usr/bin/osd ] && chmod +x /usr/bin/osd
     chmod +x /usr/local/bin/start_main.sh
     chmod +x /usr/local/bin/start_osd.sh
     chmod +x /usr/local/bin/start_mouse.sh
