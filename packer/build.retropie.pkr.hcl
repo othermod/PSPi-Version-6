@@ -223,6 +223,12 @@ build {
     destination = "/usr/local/bin/start_osd.sh"
   }
 
+  # Upload start_osd.sh
+  provisioner "file" {
+    source = "${path.root}/../rpi/scripts/retropie/start_mouse.sh"
+    destination = "/usr/local/bin/start_mouse.sh"
+  }
+
   # Upload services
   provisioner "file" {
     source = "${path.root}/../rpi/services/"
