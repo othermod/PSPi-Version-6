@@ -1,0 +1,16 @@
+[Unit]
+Description=Install RetroPie on first boot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+ExecStart=/usr/bin/sudo /usr/local/bin/install-retropie.sh
+ExecStartPost=/usr/bin/sudo /bin/systemctl disable install-retropie.service
+StandardOutput=journal+console
+StandardError=journal+console
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,8 +1,8 @@
 packer {
   required_plugins {
-    # arm = {
-    #   version = ">= 1.0.1"
-    #   source = "github.com/mkaczanowski/packer-builder-arm"
-    # }
+    cross = {
+      version = ">= v1.1.3"
+      source  = "github.com/michalfita/cross"
+    }
   }
 }

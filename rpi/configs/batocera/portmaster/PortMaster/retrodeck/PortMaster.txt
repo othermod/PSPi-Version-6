@@ -1,0 +1,119 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+
+XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+
+controlfolder="$XDG_DATA_HOME/PortMaster"
+
+if [ -d "/app/bin/retrodeck.sh" ]; then
+  source /app/libexec/global.sh # loading the RetroDECK framework that even give access to variables such as roms_folder
+  directory="$roms_folder/portmaster"
+  cp retrodeck/control.txt $controlfolder
+fi
+
+source $controlfolder/control.txt
+[ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
+
+get_controls
+
+## TODO: Change to PortMaster/tty when Johnnyonflame merges the changes in,
+CUR_TTY=/dev/tty0
+
+cd "$controlfolder"
+
+echo "Starting PortMaster."
+
+chmod -R +x .
+
+exec > >(tee "$controlfolder/log.txt") 2>&1
+source "$controlfolder/utils/pmsplash.txt"
+
+## Autoinstallation Code
+# This will automatically install zips found within the PortMaster/autoinstall directory using harbourmaster
+AUTOINSTALL=$(find "$controlfolder/autoinstall" -type f \( -name "*.zip" -o -name "*.squashfs" \))
+if [ -n "$AUTOINSTALL" ]; then
+  source "$controlfolder/PortMasterDialog.txt"
+
+  GW=$(PortMasterIPCheck)
+  PortMasterDialogInit "no-check"
+
+  PortMasterDialog "messages_begin"
+
+  PortMasterDialog "message" "Auto-installation"
+
+  # Install the latest runtimes.zip
+  if [ -f "$controlfolder/autoinstall/runtimes.zip" ]; then
+    PortMasterDialog "message" "- Installing runtimes.zip, this could take a minute or two."
+    $ESUDO unzip -o "$controlfolder/autoinstall/runtimes.zip" -d "$controlfolder/libs"
+    $ESUDO rm -f "$controlfolder/autoinstall/runtimes.zip"
+    PortMasterDialog "message" "- SUCCESS: runtimes.zip"
+  fi
+
+  for file_name in "$controlfolder/autoinstall"/*.squashfs
+  do
+    $ESUDO mv -f "$file_name" "$controlfolder/libs"
+    PortMasterDialog "message" "- SUCCESS: $(basename $file_name)"
+  done
+
+  for file_name in "$controlfolder/autoinstall"/*.zip
+  do
+    if [[ "$(basename $file_name)" == "PortMaster.zip" ]]; then
+      continue
+    fi
+
+    if [[ $(PortMasterDialogResult "install" "$file_name") == "OKAY" ]]; then
+      $ESUDO rm -f "$file_name"
+      PortMasterDialog "message" "- SUCCESS: $(basename $file_name)"
+    else
+      PortMasterDialog "message" "- FAILURE: $(basename $file_name)"
+    fi
+  done
+
+  if [ -f "$controlfolder/autoinstall/PortMaster.zip" ]; then
+    file_name="$controlfolder/autoinstall/PortMaster.zip"
+
+    if [[ $(PortMasterDialogResult "install" "$file_name") == "OKAY" ]]; then
+      $ESUDO rm -f "$file_name"
+      PortMasterDialog "message" "- SUCCESS: $(basename $file_name)"
+    else
+      PortMasterDialog "message" "- FAILURE: $(basename $file_name)"
+    fi
+  fi
+
+  touch "$controlfolder/.es-de-refresh"
+
+  PortMasterDialog "messages_end"
+  if [ -z "$GW" ]; then
+    PortMasterDialogMessageBox "Finished running autoinstall.\n\nNo internet connection present so exiting."
+    PortMasterDialogExit
+    exit 0
+  else
+    PortMasterDialogMessageBox "Finished running autoinstall."
+    PortMasterDialogExit
+  fi
+fi
+
+rm -f "${controlfolder}/.pugwash-reboot"
+while true; do
+  ./pugwash $PORTMASTER_CMDS
+
+  if [ ! -f "${controlfolder}/.pugwash-reboot" ]; then
+    break;
+  fi
+
+  rm -f "${controlfolder}/.pugwash-reboot"
+done
+
+if [ -f "${controlfolder}/.es-de-refresh" ]; then
+  $ESUDO rm -f "${controlfolder}/.es-de-refresh"
+  if [[ "$portmaster_reload_esde" != "false" ]]; then
+    $ESUDO pkill -f es-de
+  fi
+fi
+
+unset LD_LIBRARY_PATH
+unset SDL_GAMECONTROLLERCONFIG
+
+printf "\033c"

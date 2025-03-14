@@ -1,0 +1,70 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+
+# TODO: check this
+CUR_TTY=/dev/tty0
+
+directory="userdata/roms"
+
+ESUDO=""
+ESUDOKILL="-1" # for 351Elec and EmuELEC use "-1" (numeric one) or "-k" 
+
+# Install our own shGenerator.py
+if ! grep 'gamecontrollerdb.txt' /usr/lib/python3.11/site-packages/configgen/generators/sh/shGenerator.py; then
+  cp -f /usr/lib/python3.11/site-packages/configgen/generators/sh/shGenerator.py /usr/lib/python3.11/site-packages/configgen/generators/sh/shGenerator.py.bak
+
+  if ! grep 'from generators.Generator import Generator' /usr/lib/python3.11/site-packages/configgen/generators/sh/shGenerator.py; then
+    # New style relative imports
+    cp -f $controlfolder/batocera/shGenerator.py /usr/lib/python3.11/site-packages/configgen/generators/sh/shGenerator.py
+  else
+    # Old style absolute imports
+    cp -f $controlfolder/knulli/shGenerator.py /usr/lib/python3.11/site-packages/configgen/generators/sh/shGenerator.py
+  fi
+
+  batocera-save-overlay
+fi
+
+if [ -f "$HOME/.config/gamecontrollerdb.txt" ]; then
+  export SDL_GAMECONTROLLERCONFIG_FILE="$HOME/.config/gamecontrollerdb.txt"
+elif [ -f "/tmp/gamecontrollerdb.txt" ]; then
+  export SDL_GAMECONTROLLERCONFIG_FILE="/tmp/gamecontrollerdb.txt"
+else
+  export SDL_GAMECONTROLLERCONFIG_FILE="/$controlfolder/batocera/gamecontrollerdb.txt"
+fi
+
+SDLDBFILE="${SDL_GAMECONTROLLERCONFIG_FILE}"
+SDLDBUSERFILE="${HOME}/.config/SDL-GameControllerDB/gamecontrollerdb.txt"
+[ ! -f "${SDLDBUSERFILE}" ] && SDLDBUSERFILE="$SDL_GAMECONTROLLERCONFIG_FILE"
+
+get_controls() {
+  # TODO: figure out SDL_GAMECONTROLLERCONFIG
+  ANALOGSTICKS="${ANALOG_STICKS:-2}"
+  LOWRES="N"
+
+  export SDL_GAMECONTROLLERCONFIG_FILE="/tmp/gamecontrollerdb.txt"
+
+  sdl_controllerconfig="$(< "${SDL_GAMECONTROLLERCONFIG_FILE}")"
+}
+
+if [ -e "/lib/ld-linux-x86-64.so.2" ]; then
+  # CRUSH KILL DESTROY
+  if [ -f "$controlfolder/gptokeyb.x86_64" ]; then
+    mv "$controlfolder/gptokeyb.x86_64" "$controlfolder/gptokeyb"
+  fi
+
+  if [ -f "$controlfolder/gptokeyb2.x86_64" ]; then
+    mv "$controlfolder/gptokeyb2.x86_64" "$controlfolder/gptokeyb2"
+  fi
+
+  if [ -f "$controlfolder/xdelta3.x86_64" ]; then
+    mv "$controlfolder/xdelta3.x86_64" "$controlfolder/xdelta3"
+  fi
+fi
+
+source $controlfolder/device_info.txt
+source $controlfolder/funcs.txt
+
+GPTOKEYB2="$ESUDO env LD_PRELOAD=$controlfolder/libinterpose.${DEVICE_ARCH}.so $controlfolder/gptokeyb2 $ESUDOKILL"
+GPTOKEYB="$ESUDO $controlfolder/gptokeyb $ESUDOKILL"

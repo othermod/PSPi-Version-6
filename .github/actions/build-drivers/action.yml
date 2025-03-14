@@ -19,26 +19,16 @@ runs:
       run: |
         echo "Create release value is ${{ inputs.createRelease }}"
         sudo apt-get update
-        sudo apt-get install fdisk gdisk qemu-user-static libarchive-tools tar parted qemu-utils
-      shell: bash
-
-    # Install packer arm plugin
-    - name: Install packer-builder-arm
-      run: |
-        mkdir -p $GITHUB_WORKSPACE/packer/plugins
-        cd $GITHUB_WORKSPACE/packer/plugins
-        git clone https://github.com/mkaczanowski/packer-builder-arm
-        cd packer-builder-arm
-        go mod download
-        go build -v .
+        sudo apt-get install fdisk gdisk qemu-system qemu-user-static libarchive-tools tar parted qemu-utils binfmt-support
       shell: bash
 
     # Build driver image
-    - name: Build driver image
+    - name: Build 64-bit driver image
       run: |
-        sudo packer build -only ${{ inputs.build }} "$GITHUB_WORKSPACE/packer/"
-      working-directory: packer/plugins/packer-builder-arm
-      shell: bash
+        sudo packer init ./
+        sudo packer build -only "drivers.cross.drivers_raspios_lite_arm64" "$GITHUB_WORKSPACE/packer/"
+      working-directory: packer
+      shell: bash      
 
     # Extract drivers from image & zip for release
     - name: Extract drivers from image
@@ -47,23 +37,16 @@ runs:
         cd $RUNNER_TEMP
         mkdir -p ./drivers
 
-        # Extract & rename 32bit drivers
-        tar --extract --file=PSPi6.Drivers_32bit.tar.gz ./packer/drivers/bin
-        for i in $(ls ./packer/drivers/bin)
-        do
-          mv "./packer/drivers/bin/$i" "./drivers/${i}_32"
-        done
-
         # Extract & rename 64bit drivers
         tar --extract --file=PSPi6.Drivers_64bit.tar.gz ./packer/drivers/bin
         for i in $(ls ./packer/drivers/bin)
         do
-          mv "./packer/drivers/bin/$i" "./drivers/${i}_64"
+          mv "./packer/drivers/bin/$i" "./drivers/${i}"
         done
 
         # Zip drivers
         zip drivers.zip ./drivers/* -r
-      working-directory: packer/plugins/packer-builder-arm
+      working-directory: packer
       shell: bash
 
     # Upload drivers as artifact

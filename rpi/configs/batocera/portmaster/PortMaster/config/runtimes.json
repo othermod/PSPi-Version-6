@@ -1,0 +1,565 @@
+{
+    "frt_2.1.6.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 2.1.6",
+        "remote": {
+            "aarch64": {
+                "md5": "4d0b51a4aeab28e8b0f565cf78616877",
+                "name": "Godot/FRT 2.1.6",
+                "size": 7180288,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_2.1.6.squashfs"
+            },
+            "armhf": {
+                "md5": "db20fc6e5280eac3e6a72891caf6ad0d",
+                "name": "Godot/FRT 2.1.6",
+                "size": 7368704,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-01_1113/frt_2.1.6.armhf.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.0.6_v1.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.0.6_v1",
+        "remote": {
+            "aarch64": {
+                "md5": "8b8862b2c3e797d011a244da08d13688",
+                "name": "Godot/FRT 3.0.6_v1",
+                "size": 8728576,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_3.0.6_v1.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.1.2.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.1.2",
+        "remote": {
+            "aarch64": {
+                "md5": "8ce551ab3f75129f58ff4ca846111c69",
+                "name": "Godot/FRT 3.1.2",
+                "size": 10158080,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_3.1.2.squashfs"
+            },
+            "armhf": {
+                "md5": "700d25393fb71030e2804fef221b8994",
+                "name": "Godot/FRT 3.1.2",
+                "size": 10199040,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-01_1113/frt_3.1.2.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "da9d64d4c5a5e9163c2fc3a3974224db",
+                "name": "Godot/FRT 3.1.2",
+                "size": 12230656,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-09-20_1106/frt_3.1.2.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.2.3.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.2.3",
+        "remote": {
+            "aarch64": {
+                "md5": "23061be0e3358651d3dfb29c5a621899",
+                "name": "Godot/FRT 3.2.3",
+                "size": 10952704,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_3.2.3.squashfs"
+            },
+            "armhf": {
+                "md5": "6e700fe085da74ced91a429c7bb12d00",
+                "name": "Godot/FRT 3.2.3",
+                "size": 10956800,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-01_1113/frt_3.2.3.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "3a9d600bc605ad38c75efd0e5934890d",
+                "name": "Godot/FRT 3.2.3",
+                "size": 12701696,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-09-20_1106/frt_3.2.3.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.3.4.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.3.4",
+        "remote": {
+            "aarch64": {
+                "md5": "98b382e4679abc55bf1fd61e38087eb6",
+                "name": "Godot/FRT 3.3.4",
+                "size": 11149312,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_3.3.4.squashfs"
+            },
+            "armhf": {
+                "md5": "72b718fc043df7ecdde0235cbe3c286e",
+                "name": "Godot/FRT 3.3.4",
+                "size": 11202560,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-01_1113/frt_3.3.4.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "109082b4d553393bb99723587de6385b",
+                "name": "Godot/FRT 3.3.4",
+                "size": 12992512,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-09-20_1106/frt_3.3.4.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.4.5.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.4.5",
+        "remote": {
+            "aarch64": {
+                "md5": "e44b15a1eb23ed2bb7b50c5889f7853f",
+                "name": "Godot/FRT 3.4.5",
+                "size": 11677696,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_3.4.5.squashfs"
+            },
+            "armhf": {
+                "md5": "d71653b4253abefa2ea4f96ab30cabf7",
+                "name": "Godot/FRT 3.4.5",
+                "size": 11714560,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-01_1113/frt_3.4.5.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "81f812c8f4fc71aed11101eaa6a55a10",
+                "name": "Godot/FRT 3.4.5",
+                "size": 13557760,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-09-20_1106/frt_3.4.5.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.5.2.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.5.2",
+        "remote": {
+            "aarch64": {
+                "md5": "d98d82d86ae7630b8ef62da9705cbda8",
+                "name": "Godot/FRT 3.5.2",
+                "size": 12775424,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_3.5.2.squashfs"
+            },
+            "armhf": {
+                "md5": "afbca31712765e107e5aa7b9593a7d31",
+                "name": "Godot/FRT 3.5.2",
+                "size": 12808192,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-01_1113/frt_3.5.2.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "43b70f8f18633b23d8623128e48811e2",
+                "name": "Godot/FRT 3.5.2",
+                "size": 14774272,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-09-20_1106/frt_3.5.2.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.5.3.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.5.3",
+        "remote": {
+            "aarch64": {
+                "md5": "80bc1cd671116473c8001a5978355516",
+                "name": "Godot/FRT 3.5.3",
+                "size": 12775424,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-06_1019/frt_3.5.3.squashfs"
+            },
+            "armhf": {
+                "md5": "54d39434c3ceb75b527e934c18456c0b",
+                "name": "Godot/FRT 3.5.3",
+                "size": 12804096,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-03-10_0307/frt_3.5.3.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "32b57a28a6129994673d33a74859b1af",
+                "name": "Godot/FRT 3.5.3",
+                "size": 14770176,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-09-20_1106/frt_3.5.3.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_3.6.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 3.6",
+        "remote": {
+            "aarch64": {
+                "md5": "e4ae381c50eb159fb28fe323dfda73a9",
+                "name": "Godot/FRT 3.6",
+                "size": 12324864,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-01-22_1104/frt_3.6.squashfs"
+            },
+            "armhf": {
+                "md5": "61663990b27727997508268b29933fe0",
+                "name": "Godot/FRT 3.6",
+                "size": 11419648,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-01-22_1104/frt_3.6.armhf.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_4.0.4.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 4.0.4",
+        "remote": {
+            "aarch64": {
+                "md5": "ef157b6be670eff984ab30d0e594171c",
+                "name": "Godot/FRT 4.0.4",
+                "size": 22716416,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_4.0.4.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "frt_4.1.3.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot/FRT 4.1.3",
+        "remote": {
+            "aarch64": {
+                "md5": "7afc70359868e56b2b0deaa496e765b2",
+                "name": "Godot/FRT 4.1.3",
+                "size": 23461888,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/frt_4.1.3.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "godot_4.2.2.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot 4.2.2",
+        "remote": {
+            "aarch64": {
+                "md5": "11d4dc7126bbdcb1d8502e2ef771791a",
+                "name": "Godot 4.2.2",
+                "size": 22069248,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.2.2.squashfs"
+            },
+            "armhf": {
+                "md5": "a0341c583691736dcb3de4efa2b83684",
+                "name": "Godot 4.2.2",
+                "size": 20279296,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.2.2.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "77721f39893ac3295272f5a3b51e9929",
+                "name": "Godot 4.2.2",
+                "size": 22958080,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.2.2.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "godot_4.3.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot 4.3",
+        "remote": {
+            "aarch64": {
+                "md5": "039930a0cbfa58d82c29c152b1cb4dba",
+                "name": "Godot 4.3",
+                "size": 23515136,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.3.squashfs"
+            },
+            "armhf": {
+                "md5": "c4103a7743510b18629859f9d818ca95",
+                "name": "Godot 4.3",
+                "size": 22011904,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.3.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "7570c1ffe7ad10f6911d256ff92e60d9",
+                "name": "Godot 4.3",
+                "size": 24436736,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.3.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "godot_4.4.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Godot 4.4",
+        "remote": {
+            "aarch64": {
+                "md5": "a15b9735113fdca2214c38ba8cf9a1a3",
+                "name": "Godot 4.4",
+                "size": 25055232,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.4.squashfs"
+            },
+            "armhf": {
+                "md5": "7614eb1c311d1a64174bff14d326a57e",
+                "name": "Godot 4.4",
+                "size": 24018944,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.4.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "4a2d9d3457b1cc238b9a951763bbeecc",
+                "name": "Godot 4.4",
+                "size": 26157056,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/godot_4.4.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "mesa_pkg_0.1.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Mesapack 0.1",
+        "remote": {
+            "aarch64": {
+                "md5": "793a28028b40c3023fc1094e41faba61",
+                "name": "Mesapack 0.1",
+                "size": 57966592,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-02-11_0956/mesa_pkg_0.1.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "mono-6.12.0.122-aarch64.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Mono 6.12.0.122",
+        "remote": {
+            "aarch64": {
+                "md5": "dc7145731bf17610c13c07d6e69de550",
+                "name": "Mono 6.12.0.122",
+                "size": 262057984,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/mono-6.12.0.122-aarch64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "pyxel_2.2.8_python_3.11.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Pyxel 2.2.8",
+        "remote": {
+            "aarch64": {
+                "md5": "965f1a8349165fa51af71768c93a10e5",
+                "name": "Pyxel 2.2.8",
+                "size": 37130240,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-12-14_0955/pyxel_2.2.8_python_3.11.squashfs"
+            },
+            "x86_64": {
+                "md5": "a206a24817354299f99aea712db4fb24",
+                "name": "Pyxel 2.2.8",
+                "size": 47755264,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-12-13_1501/pyxel_2.2.8_python_3.11_x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "renpy_8.1.3.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Ren'Py 8.1.3",
+        "remote": {
+            "aarch64": {
+                "md5": "103212c880e946647383260cc6658c99",
+                "name": "Ren'Py 8.1.3",
+                "size": 15757312,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-11_0117/renpy_8.1.3.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "renpy_8.3.4.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Ren'Py 8.3.4",
+        "remote": {
+            "aarch64": {
+                "md5": "f409354ae4c27f5d7554db53b3809896",
+                "name": "Ren'Py 8.3.4",
+                "size": 26169344,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-06_1114/renpy_8.3.4.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "rlvm.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Real Live VM",
+        "remote": {
+            "aarch64": {
+                "md5": "7e971304ec52e53c4b9c447d8db442b9",
+                "name": "Real Live VM",
+                "size": 8335360,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-11-12_1249/rlvm.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "solarus-1.6.5.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Solarus 1.6.5",
+        "remote": {
+            "aarch64": {
+                "md5": "e111f507cb976128a41d4bf3874d2731",
+                "name": "Solarus 1.6.5",
+                "size": 1904640,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-02-11_0846/solarus-1.6.5.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "weston_pkg_0.2.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Westonpack 0.2",
+        "remote": {
+            "aarch64": {
+                "md5": "3dea02ef628a05acfbe6eb85a39688d4",
+                "name": "Westonpack 0.2",
+                "size": 45191168,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-03-06_1114/weston_pkg_0.2.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "zulu11.48.21-ca-jdk11.0.11-linux.aarch64.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Java jdk11.0.11",
+        "remote": {
+            "aarch64": {
+                "md5": "fd4e76c68a2660159a02ad249e073955",
+                "name": "Java jdk11.0.11",
+                "size": 198504448,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-04-20_1331/zulu11.48.21-ca-jdk11.0.11-linux.aarch64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "zulu17.48.15-ca-jdk17.0.10-linux.aarch64.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Java jdk17.0.10",
+        "remote": {
+            "aarch64": {
+                "md5": "dee4a837e8bb2f04e3bc5eb21b9c073b",
+                "name": "Java jdk17.0.10",
+                "size": 198959104,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-05-02_0733/zulu17.48.15-ca-jdk17.0.10-linux.aarch64.squashfs"
+            },
+            "armhf": {
+                "md5": "3ae2ac56634d29602ce42c6ac03fc90b",
+                "name": "Java jdk17.0.10",
+                "size": 183930880,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-04-20_1331/zulu17.48.15-ca-jdk17.0.10-linux.armhf.squashfs"
+            },
+            "x86_64": {
+                "md5": "bda12d7a7afdec0687084a6828115790",
+                "name": "Java jdk17.0.10",
+                "size": 199073792,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2024-05-02_0733/zulu17.48.15-ca-jdk17.0.10-linux.x86_64.squashfs"
+            }
+        },
+        "status": "Unknown"
+    },
+    "zulu17.54.21-ca-jre17.0.13-linux.squashfs": {
+        "local": {
+            "arch": null,
+            "md5": null,
+            "status": "Not Installed"
+        },
+        "name": "Java jre17.0.13",
+        "remote": {
+            "aarch64": {
+                "md5": "fe012526d93c2f19018a8880b10120d6",
+                "name": "Java jre17.0.13",
+                "size": 46895104,
+                "url": "https://github.com/PortsMaster/PortMaster-New/releases/download/2025-01-20_2237/zulu17.54.21-ca-jre17.0.13-linux.squashfs"
+            }
+        },
+        "status": "Unknown"
+    }
+}

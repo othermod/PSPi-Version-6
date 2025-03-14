@@ -13,23 +13,6 @@ echo "disable_osd: $disable_osd"
 
 params=""
 
-# Function to detect the architecture of the operating system
-detect_architecture() {
-    local arch
-    arch=$(uname -m)
-    case "$arch" in
-        x86_64|aarch64)
-            echo "64-bit OS detected"
-            ARCH_SUFFIX="_64"
-            ;;
-        *)
-            echo "32-bit OS detected"
-            ARCH_SUFFIX="_32"
-            ;;
-    esac
-}
-detect_architecture
-
 # Set additional parameters based on configuration variables
 if [ "$enable_dim" = "true" ]; then
     params="$params --dim $dim_seconds  "
@@ -49,9 +32,9 @@ fi
 
 echo "Starting PSPi with parameters: $params"
 
-/boot/drivers/main$ARCH_SUFFIX $params &
+/boot/drivers/main $params &
 
 if [ "$disable_osd" = "false" ]; then
     sleep 1
-    /boot/drivers/osd$ARCH_SUFFIX &
+    /boot/drivers/osd &
 fi

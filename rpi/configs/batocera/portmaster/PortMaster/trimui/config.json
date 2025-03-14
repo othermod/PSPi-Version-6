@@ -1,0 +1,7 @@
+{
+"label":"PortMaster",
+"icon":"icon.png",
+"iconsel":"icon.png",
+"launch":"launch.sh",
+"description":"PortMaster: the ultimate port manager."
+}

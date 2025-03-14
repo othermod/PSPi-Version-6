@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# SPDX-License-Identifier: MIT
+#
+# TRIMUI EDITION
+
+if [ -f "/mnt/SDCARD/System/bin/gm" ]; then
+    source /mnt/SDCARD/System/etc/ex_config
+
+    find "/mnt/SDCARD/Imgs/PORTS/" -type f \( -iname "*-pre.jpg" -o -iname "*-pre.png" \) -exec sh -c 'input="{}"; output="$(echo "$input" | sed "s/\(.*\)-pre\..*/\1/").png"; gm convert "$input" -resize "244x244>" -format png "$output"; rm -vf "$input"' \;
+
+    find "/mnt/SDCARD/Ports/" -type f \( -iname "*-pre.jpg" -o -iname "*-pre.png" \) -exec sh -c 'input="{}"; output="$(echo "$input" | sed "s/\(.*\)\..*/\1/").png"; rename="$(echo "$input" | sed "s/\(.*\)-pre\..*/\1/").png"; gm mogrify -verbose -resize "170x170>" -gravity center -extent 195x195 -gravity north -extent 300x300 -background none -format png "$input"; mv -vf "$output" "$rename"' \;
+fi
+
+if [ -f /mnt/SDCARD/Roms/PORTS/PORTS_cache7.db ]; then
+    rm -f /mnt/SDCARD/Roms/PORTS/PORTS_cache7.db
+fi

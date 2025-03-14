@@ -64,7 +64,6 @@ jobs:
       - name: Build Drivers
         uses: ./.github/actions/build-drivers
         with:
-          build: 'drivers.*'
           createRelease: ${{ inputs.createRelease }}
           version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
 
@@ -74,8 +73,9 @@ jobs:
     strategy:
       matrix:
         # Resolves to the packer image name
-        os: [raspios, retropie]
+        os: [raspios, retropie_arm64, retropie_armhf, kali_cm4, kali_zero2]
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs:
       - build-drivers
       - run-gitversion
@@ -88,10 +88,6 @@ jobs:
         with:
           createRelease: ${{ inputs.createRelease }}
           build: ${{ matrix.os }}
-          AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
-          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
-          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
-          AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}
           version: ${{ env.VERSION }}
 
   build-buildroot-images:
@@ -113,34 +109,63 @@ jobs:
             PSPI_IMAGE_NAME: "Lakka5.0-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: recalbox
-            DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpi4_64/recalbox-rpi4_64.img.xz"
+            DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download/rpi4_64/recalbox-rpi4_64.img.xz"
             COMPRESSED_IMAGE_NAME: "recalbox-rpi4_64.img.xz"
             IMAGE_NAME: "recalbox-rpi4_64.img"
             CHECKSUM_TYPE: "sha1"
-            PSPI_IMAGE_NAME: "Recalbox9.1-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            PSPI_IMAGE_NAME: "Recalbox9.2.3-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: recalbox
-            DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download-wizard/rpizero2/recalbox-rpizero2.img.xz"
+            DOWNLOAD_URL: "https://upgrade.recalbox.com/latest/download/rpizero2/recalbox-rpizero2.img.xz"
             COMPRESSED_IMAGE_NAME: "recalbox-rpizero2.img.xz"
             IMAGE_NAME: "recalbox-rpizero2.img"
             CHECKSUM_TYPE: "sha1"
-            PSPI_IMAGE_NAME: "Recalbox9.1-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            PSPI_IMAGE_NAME: "Recalbox9.2.3-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: batocera
-            DOWNLOAD_URL: "https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-bcm2711-39-20240228.img.gz"
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2711/stable/41/batocera-bcm2711-41-20241217.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2711-41-20241217.img.gz"
+            IMAGE_NAME: "batocera-bcm2711-41-20241217.img"
+            CHECKSUM_TYPE: "md5"
+            PSPI_IMAGE_NAME: "Batocera41-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2837/stable/41/batocera-bcm2837-41-20241216.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2837-41-20241216.img.gz"
+            IMAGE_NAME: "batocera-bcm2837-41-20241216.img"
+            CHECKSUM_TYPE: "md5"
+            PSPI_IMAGE_NAME: "Batocera41-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2711/stable/40/batocera-bcm2711-40-20240802.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2711-40-20240802.img.gz"
+            IMAGE_NAME: "batocera-bcm2711-40-20240802.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera40-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2837/stable/40/batocera-bcm2837-40-20240803.img.gz"
+            COMPRESSED_IMAGE_NAME: "batocera-bcm2837-40-20240803.img.gz"
+            IMAGE_NAME: "batocera-bcm2837-40-20240803.img"
+            CHECKSUM_TYPE: "sha256"
+            PSPI_IMAGE_NAME: "Batocera40-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
+            VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
+          - os: batocera
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2711/stable/39/batocera-bcm2711-bcm2711-39-20240228.img.gz"
             COMPRESSED_IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img.gz"
             IMAGE_NAME: "batocera-bcm2711-bcm2711-39-20240228.img"
             CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Batocera39-CM4-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
           - os: batocera
-            DOWNLOAD_URL: "https://updates.batocera.org/bcm2837/stable/last/batocera-bcm2837-bcm2837-39-20240301.img.gz"
+            DOWNLOAD_URL: "https://mirrors.o2switch.fr/batocera/bcm2837/stable/39/batocera-bcm2837-bcm2837-39-20240301.img.gz"
             COMPRESSED_IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img.gz"
             IMAGE_NAME: "batocera-bcm2837-bcm2837-39-20240301.img"
             CHECKSUM_TYPE: "sha256"
             PSPI_IMAGE_NAME: "Batocera39-Zero2-PSPi6-v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}.img.gz"
             VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || needs.run-gitversion.outputs.version }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs:
       - build-drivers
       - run-gitversion
@@ -158,7 +183,3 @@ jobs:
           pspi_image_name: ${{ matrix.image.PSPI_IMAGE_NAME }}
           version: ${{ matrix.image.VERSION }}
           checksum_type: ${{ matrix.image.CHECKSUM_TYPE }}
-          AZCOPY_TENANT_ID: ${{ secrets.AZCOPY_TENANT_ID }}
-          AZCOPY_SPA_CLIENT_SECRET: ${{ secrets.AZCOPY_SPA_CLIENT_SECRET }}
-          AZCOPY_SPA_APPLICATION_ID: ${{ secrets.AZCOPY_SPA_APPLICATION_ID }}
-          AZCOPY_STORAGE_ACCOUNT_NAME: ${{ vars.AZCOPY_STORAGE_ACCOUNT_NAME }}

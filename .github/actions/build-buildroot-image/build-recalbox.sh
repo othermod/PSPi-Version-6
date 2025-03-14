@@ -22,6 +22,7 @@ sudo cp $GITHUB_WORKSPACE/rpi/configs/recalbox/recalbox-user-config.txt /mnt/ima
 sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/image/overlays/
 sudo mkdir -p /mnt/image/drivers
 sudo cp $GITHUB_WORKSPACE/rpi/drivers/bin/* /mnt/image/drivers/
+sudo cp -f $GITHUB_WORKSPACE/rpi/drivers/bin/main_old/main /mnt/image/drivers/main
 
 # Mount squashfs
 echo "Mount squashfs"
@@ -74,3 +75,15 @@ echo "Recompress image"
 gzip -9 $IMAGE_NAME
 echo "Move image to completed_images & rename"
 mv $IMAGE_NAME.gz ../completed_images/$PSPI_IMAGE_NAME
+
+# Split image using 7zip if over 2GB
+FILE_SIZE=$(stat -c%s "../completed_images/$PSPI_IMAGE_NAME")
+if [ $FILE_SIZE -gt $((2000*1024*1024)) ]; then
+    echo "Image is larger than 2GB. Compressing with 7zip..."
+    cd ../completed_images
+    7z a "$PSPI_IMAGE_NAME.7z" "$PSPI_IMAGE_NAME" -v1500M
+    rm "$PSPI_IMAGE_NAME"
+fi
+
+# output images in folder
+ls -lh ../completed_images

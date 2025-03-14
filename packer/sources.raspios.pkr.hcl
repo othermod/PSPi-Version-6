@@ -1,4 +1,4 @@
-source "arm" "raspios_cm4_zero2_arm64" {
+source "cross" "raspios_cm4_zero2_arm64" {
   file_urls             = ["https://downloads.raspberrypi.com/raspios_arm64/images/raspios_arm64-2023-12-06/2023-12-05-raspios-bookworm-arm64.img.xz"]
   file_checksum_url     = "https://downloads.raspberrypi.com/raspios_arm64/images/raspios_arm64-2023-12-06/2023-12-05-raspios-bookworm-arm64.img.xz.sha256"
   file_checksum_type    = "sha256"

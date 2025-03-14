@@ -1,11 +1,11 @@
-source "arm" "kali_zero2_armhf" {
-  file_urls             = ["https://kali.download/arm-images/kali-2023.4/kali-linux-2023.4-raspberry-pi-zero-2-w-armhf.img.xz"]
-  file_checksum         = "41f88cbecd97a3731768b88a396265f5cf51455c81452618f18cc53cbcc0ff9a"
+source "cross" "kali_zero2_armhf" {
+  file_urls             = ["https://kali.download/arm-images/kali-2024.4/kali-linux-2024.4-raspberry-pi-zero-2-w-armhf.img.xz"]
+  file_checksum         = "8424419091b76a062263762fb687cf6a41ee037d6d3dfb2367bb929270073275"
   file_checksum_type    = "sha256"
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "Kali2023.4-Zero2-PSPi6-${var.pspi_version}.img"
+  image_path            = "Kali2024.4-Zero2-PSPi6-${var.pspi_version}.img"
   image_size            = "13G"
   image_type            = "dos"
 
@@ -36,14 +36,14 @@ source "arm" "kali_zero2_armhf" {
   qemu_binary_destination_path = "/usr/bin/qemu-arm-static"
 }
 
-source "arm" "kali_cm4_arm64" {
-  file_urls             = ["https://kali.download/arm-images/kali-2023.4/kali-linux-2023.4-raspberry-pi-arm64.img.xz"]
-  file_checksum         = "ddee8c78f7e13b1ca3adf6e64115546727a5d525fd2ee51cac3d16b3f41717ec"
+source "cross" "kali_cm4_arm64" {
+  file_urls             = ["https://kali.download/arm-images/kali-2024.4/kali-linux-2024.4-raspberry-pi-arm64.img.xz"]
+  file_checksum         = "2862b309deb2d4bbdc6f8924f1ba26f67863df5c6c4a9bbfbbb5afa0ce368a4c"
   file_checksum_type    = "sha256"
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "Kali2023.4-CM4-PSPi6-${var.pspi_version}.img"
+  image_path            = "Kali2024.4-CM4-PSPi6-${var.pspi_version}.img"
   image_size            = "15G"
   image_type            = "dos"
 

@@ -1,0 +1,697 @@
+#!/usr/bin/env python3
+#
+# SPDX-License-Identifier: MIT
+#
+
+import datetime
+import hashlib
+import os
+import re
+import shutil
+import sys
+import textwrap
+import zipfile
+
+from pathlib import Path
+
+################################################################################
+## Insert our extra modules.
+PYLIB_PATH    = Path(__file__).parent / 'pylibs'
+EXLIB_PATH    = Path(__file__).parent / 'exlibs'
+PYLIB_ZIP     = Path(__file__).parent / 'pylibs.zip'
+PYLIB_ZIP_MD5 = Path(__file__).parent / 'pylibs.zip.md5'
+
+if not (Path(__file__).parent / '.git').is_dir() and not (Path(__file__).parent / '..' / '.git').is_dir():
+    if PYLIB_ZIP.is_file():
+        if PYLIB_PATH.is_dir():
+            print("- removing old pylibs.")
+            shutil.rmtree(PYLIB_PATH)
+
+        if EXLIB_PATH.is_dir():
+            print("- removing old exlibs.")
+            shutil.rmtree(EXLIB_PATH)
+
+        print("- extracting new pylibs.")
+        with zipfile.ZipFile(PYLIB_ZIP, 'r') as zf:
+            zf.extractall(Path(__file__).parent)
+
+        md5_check = hashlib.md5()
+        with PYLIB_ZIP.open('rb') as fh:
+            while True:
+                data = fh.read(1024 * 1024)
+                if len(data) == 0:
+                    break
+
+                md5_check.update(data)
+
+        with PYLIB_ZIP_MD5.open('wt') as fh:
+            fh.write(md5_check.hexdigest())
+
+        print("- recorded pylibs.zip.md5")
+
+        del md5_check
+
+        print("- removing pylibs.zip")
+        PYLIB_ZIP.unlink()
+
+## HACK D:
+__builtins__.PYLIB_PATH = PYLIB_PATH
+
+sys.path.insert(0, str(EXLIB_PATH))
+sys.path.insert(0, str(PYLIB_PATH))
+
+## STUFF :D
+__builtins__.PORTMASTER_DEBUG = False  ## This adds a lot of extra info
+
+################################################################################
+## Now load the stuff we include
+import utility
+import harbourmaster
+import requests
+
+from utility import cprint, do_cprint_output
+from loguru import logger
+
+from harbourmaster import (
+    HarbourMaster,
+    make_temp_directory,
+    add_list_unique,
+    )
+
+
+LOG_FILE = harbourmaster.HM_TOOLS_DIR / "PortMaster" / "harbourmaster.txt"
+if LOG_FILE.parent.is_dir():
+    LOG_FILE_HANDLE = logger.add(LOG_FILE, level="DEBUG", backtrace=True, diagnose=True)
+
+
+################################################################################
+## Utils
+class ConsoleCallback(harbourmaster.Callback):
+    def __init__(self, config):
+        self.last_message = None
+        self.config = config
+
+    def format_progress(self, amount, total, fmt=None):
+        if fmt == 'data':
+            if total is None:
+                return f"{harbourmaster.nice_size(amount)}"
+
+            else:
+                return f"{harbourmaster.nice_size(amount)} / {harbourmaster.nice_size(total)}"
+
+        elif fmt == '%':
+            if total is None:
+                return f"{min(amount, 100):.02f} %"
+
+            else:
+                return f"{min(amount / total * 100, 100):.02f} %"
+
+        else:
+            if total is None:
+                return f"{amount}"
+
+            else:
+                return f"{amount} / {total}"
+
+
+    def progress(self, message, amount, total=None, fmt=None):
+        if message is None:
+            self.last_message = None
+            return
+
+        if fmt != 'data':
+            return
+
+        if message != self.last_message:
+            cprint(f" - {message}")
+            self.last_message = message
+
+        if total is None:
+            sys.stdout.write(f"\r[{'?' * 40}] - {self.format_progress(amount, total, fmt)}")
+        else:
+            width = int(amount / total * 40)
+            sys.stdout.write(f"\r[{'|' * width}{' ' * (40 - width)}] - {self.format_progress(amount, total, fmt)}")
+
+        sys.stdout.flush()
+
+    def message(self, message):
+        if not self.config['quiet']:
+            cprint(f"{message}")
+
+    def message_box(self, message):
+        ...
+
+
+################################################################################
+## Commands
+
+
+def do_auto_update(hm, argv):
+    """
+    Force auto update available ports.
+    """
+    for source in hm.sources:
+        hm.sources[source].auto_update()
+
+    return 0
+
+
+def do_update(hm, argv):
+    """
+    Update available ports, checks for new releases.
+    """
+    if len(argv) == 0:
+        argv = ('all', )
+
+    if argv[0].lower() == 'all':
+        cprint('<b>Updating all port sources:</b>')
+        for source in hm.sources:
+            hm.sources[source].update()
+    else:
+        for arg in argv:
+            if arg not in hm.sources:
+                cprint(f'<warn>Unknown source {arg}</warn>')
+                continue
+
+            cprint(f'<b>Updating {arg}:<b/>')
+            hm.sources[arg].update()
+
+    return 0
+
+
+def do_list(hm, argv):
+    """
+    List available ports
+
+    {command} list [filters]
+    """
+    ports = hm.list_ports(argv)
+    available_filters = set()
+
+    cprint("Available ports:")
+    for port in sorted(ports.keys(), key=lambda port: ports[port]['attr']['title'].casefold()):
+        port_info = ports[port]
+        cprint(f"- <b>{port}<b>: <b,g,>{port_info['attr']['title']}</b,g,>")
+        cprint("")
+        cprint('\n'.join(textwrap.wrap(port_info['attr']['desc'], width=70, initial_indent='    ', subsequent_indent='    ')))
+        cprint("")
+        cprint("")
+
+        available_filters.update(hm.port_info_attrs(ports[port]))
+
+    available_filters -= set(argv)
+
+    cprint(f'<r>Filters</r>: <m>{", ".join(sorted(available_filters))}</m>')
+
+    return 0
+
+
+def do_ports(hm, argv):
+    """
+    List installed ports
+
+    {command} ports [filters]
+    """
+    if len(hm.installed_ports) > 0:
+        cprint("<b,g,>Installed Ports:</b,g,>")
+        for port in hm.installed_ports:
+            cprint(f"- <b>{port}</b>")
+
+        cprint()
+
+    if len(hm.unknown_ports) > 0:
+        cprint("<warn>Unknown Ports:</warn>")
+        for file_name in hm.unknown_ports:
+            cprint(f"- <b>{file_name}</b>")
+
+        cprint()
+
+    if len(hm.broken_ports) > 0:
+        cprint("<error>Broken Ports:</error>")
+        for port in hm.broken_ports:
+            cprint(f"- <b>{port}</b>")
+
+        cprint()
+
+    if sum((len(hm.installed_ports), len(hm.unknown_ports), len(hm.broken_ports))) == 0:
+        cprint("No ports found.")
+
+        cprint()
+
+    return 0
+
+
+def do_portsmd(hm, argv):
+    """
+    List available ports in a format portmaster can use.
+
+    {command} portsmd
+    """
+    if len(argv) > 0:
+        results = []
+        for arg in argv:
+            if arg == '':
+                continue
+
+            if ',' in arg:
+                results.extend([
+                    x
+                    for x in arg.split(',')
+                    if x != ''])
+            else:
+                results.append(arg)
+
+        argv = results
+
+    ports = hm.list_ports(argv)
+    available_filters = set()
+
+    cprint()
+    for port in sorted(ports.keys(), key=lambda port: ports[port]['attr']['title'].casefold()):
+        cprint(hm.portmd(ports[port]))
+        cprint()
+        available_filters.update(hm.port_info_attrs(ports[port]))
+
+    available_filters -= set(argv)
+
+    # Always remove these filters
+    available_filters -= {'installed', 'broken'}
+
+    cprint(f'<r>Filters</r>="<m>{",".join(sorted(available_filters))}</m>"')
+
+    return 0
+
+
+def do_portsjson(hm, argv):
+    """
+    List available ports in the new ports.json format.
+
+    {command} ports.json [filename]
+    """
+    import json
+    ports_info = hm.ports_info()
+
+    default_time = datetime.datetime.today().date().isoformat()
+
+    ports_json = {}
+    ports = hm.list_ports([])
+    utils = {}
+
+    ports_json['ports'] = []
+    ports_json['utils'] = utils
+
+    for port_name, port_info in ports.items():
+        media = {
+            "screenshot": None,
+            "cover": None,
+            "thumbnail": None,
+            "video" : None, ## Never :D
+            }
+
+        images = hm.port_images(port_name)
+        if images is not None:
+            for media_name in media.keys():
+                if media_name not in images:
+                    continue
+
+                media[media_name] = images[media_name].name
+
+        port_info['attr']['media'] = media
+
+        port_info['download_url'] = hm.port_download_url(port_name)
+        if "PortMaster-Releases" in port_info['download_url']:
+            port_info['download_url'] = re.sub(r"download/\d+-\d+-\d+_\d+/", "latest/download/", port_info['download_url'])
+
+        port_info['download_size'] = hm.port_download_size(port_name, check_runtime=False)
+        port_info['date_added'], port_info['date_updated'] = (
+            ports_info.get('ports', {}).get(port_name, {}).get('date', (default_time, default_time)))
+
+        del port_info['status']
+        del port_info['files']
+
+        ports_json['ports'].append(port_info)
+
+    for util_name in hm.list_utils():
+        util_info = {
+            'name': runtime_nicename(util_name),
+            'download_url': hm.port_download_url(util_name),
+            'download_size': hm.port_download_size(util_name),
+            }
+
+        utils[util_name] = util_info
+
+    if len(argv) > 0:
+        with open(argv[0], 'w') as fh:
+            json.dump(ports_json, fh, indent=4)
+
+    else:
+        print(json.dumps(ports_json, indent=4))
+
+    return 0
+
+
+def do_uninstall(hm, argv):
+    """
+    Uninstall a port
+
+    {command} uninstall Half-Life.zip             # Uninstall half-life.zip
+    """
+    if len(argv) == 0:
+        cprint("Missing arguments.")
+        return do_help(hm, ['uninstall'])
+
+    quiet = hm.callback.config['quiet']
+    hm.callback.config['quiet'] = False
+
+    try:
+        for arg in argv:
+            result = hm.uninstall_port(arg)
+            if result != 0:
+
+                return result
+
+    finally:
+        hm.callback.config['quiet'] = quiet
+
+    return 0
+
+
+def do_install(hm, argv):
+    """
+    Install a port
+
+    {command} install Half-Life.zip               # Install from highest priority repo
+    {command} install */Half-Life.zip             # Same as above.
+    {command} install pm/Half-Life.zip            # Install specifically from Portmaster repo
+    {command} install klops/Half-Life.zip         # Install specifically from Kloptops repo
+    {command} install https://example.com/example_port.zip # Download a port from a url
+    {command} install ./Half-Life.zip             # Install port from local file
+    """
+    if len(argv) == 0:
+        cprint("Missing arguments.")
+        return do_help(hm, ['install'])
+
+    quiet = hm.callback.config['quiet']
+    hm.callback.config['quiet'] = False
+
+    try:
+
+        for arg in argv:
+            result = hm.install_port(arg)
+            if result != 0:
+                return result
+
+    finally:
+        hm.callback.config['quiet'] = quiet
+
+    return 0
+
+
+def do_runtime_list(hm, argv):
+    """
+    List available runtimes
+
+    {command} runtime_list
+    """
+    runtimes = []
+
+    for source_prefix, source in hm.sources.items():
+        for runtime in source.utils:
+            add_list_unique(runtimes, runtime)
+
+    runtimes.sort()
+
+    cprint("<b>Available Runtimes:</b>")
+    for runtime in runtimes:
+        installed = ""
+        if (hm.libs_dir / runtime).is_file():
+            installed = " <b,g,>(installed)</b,g,>"
+
+        cprint(f"- {runtime}{installed}")
+
+    return 0
+
+
+def do_runtime_check(hm, argv):
+    """
+    Check if a runtime is installed, if not install it.
+
+    {command} runtime_check "mono-6.12.0.122-aarch64.squashfs"
+    """
+
+    if len(argv) == 0:
+        cprint("Missing arguments.")
+        return do_help(hm, ['runtime_check'])
+
+
+    quiet = hm.callback.config['quiet']
+    hm.callback.config['quiet'] = False
+
+    try:
+
+        return hm.check_runtime(argv[0])
+
+    finally:
+        hm.callback.config['quiet'] = quiet
+
+
+def do_reload(hm, argv):
+    """
+    Reloads ports list
+
+    {command} reload
+    """
+    hm.load_ports()
+
+    return 0
+
+
+def do_fifo_control(hm, argv):
+    """
+    {command} --quiet --no-check fifo_control /dev/shm/portmaster/hm_input /dev/shm/portmaster/hm_done > /dev/null &
+
+    echo "portsmd:/dev/shm/portmaster/ports.md:" | sudo tee /dev/shm/portmaster/hm_input > /dev/null
+
+    """
+    if len(argv) < 2:
+        return 0
+
+    logger.info("-- Beginning Fifo Control --")
+
+    fifo_file = Path(argv[0])
+    done_file = Path(argv[1])
+
+    if fifo_file.exists():
+        fifo_file.unlink()
+
+    if done_file.exists():
+        done_file.unlink()
+
+    try:
+        os.mkfifo(fifo_file, mode=0o777)
+
+        with open(argv[0], 'r') as pipe:
+            while True:
+                args = pipe.readline().strip()
+                if not args:
+                    continue
+
+                args = args.split(':')
+
+                if args[0] == 'exit':
+                    return 0
+
+                if len(args) < 2:
+                    continue
+
+                logger.info(f"fifo: {args}")
+                if args[1] == "":
+                    fifo_commands[args[0].casefold()](hm, args[2:])
+                else:
+                    with open(args[1], 'w') as fh:
+                        do_cprint_output(fh)
+                        fifo_commands[args[0].casefold()](hm, args[2:])
+                        do_cprint_output(None)
+
+                done_file.touch(mode=0o755, exist_ok=True)
+
+    finally:
+        if fifo_file.exists():
+            fifo_file.unlink()
+
+        logger.info("-- Endo Fifo Control --")
+
+
+def do_device_info(hm, argv):
+    import json
+
+    website_data = {}
+    for device_name, device_data in harbourmaster.DEVICES.items():
+        website_data[device_name] = {}
+
+        for cfw_name in device_data['cfw']:
+            info = {'name': cfw_name.lower(), 'version': 'N/A', 'device': device_data['device'], 'manufacturer': device_data['manufacturer']}
+            harbourmaster.expand_info(info, use_old_cpu_info=True)
+
+            website_data[device_name][cfw_name] = info
+
+    if len(argv) > 0:
+        with open(argv[0], 'w') as fh:
+            json.dump(website_data, fh, indent=4)
+
+    else:
+        print(json.dumps(website_data, indent=4))
+
+
+def do_help(hm, argv):
+    """
+    Shows general help or help for a particular command.
+
+    {command} help
+    {command} help list
+    """
+    command = sys.argv[0]
+    if '/' in command:
+        command = command.rsplit('/', 1)[1]
+
+    if len(argv) > 0:
+        if argv[0].lower() not in all_commands:
+            cprint(f"Error: unknown help command <b>{argv[0]}</b>")
+            do_help(hm, [])
+            return 255
+
+        cprint(textwrap.dedent(all_commands[argv[0].lower()].__doc__.format(command=command)).strip())
+        return 0
+
+    cprint(f"{command} <d>[flags]</d> <b><update></b> <d>[source or all]</d> ")
+    cprint(f"{command} <d>[flags]</d> <b><install/upgrade></b> <d>[source/]</d><port_name>.zip ")
+    cprint(f"{command} <d>[flags]</d> <uninstall> <port_name> ")
+    cprint(f"{command} <d>[flags]</d> <b><list/portsmd></b> <d>[source or all]</d> <d>[... filters]</d>")
+    cprint(f"{command} <d>[flags]</d> <b><ports.json></b> <d>[file name]</d>")
+    cprint(f"{command} <d>[flags]</d> <b><ports></b>")
+    cprint(f"{command} <d>[flags]</d> <b><runtime_check></b> <runtime>")
+    cprint(f"{command} <d>[flags]</d> <b><runtime_list></b>")
+    cprint(f"{command} <d>[flags]</d> <b><help></b> <command>")
+    cprint()
+    cprint("Flags:")
+    cprint("  --quiet        - less text")
+    cprint("  --debug        - more text")
+    cprint("  --no-check     - dont check for ports updates unless you run <b>update</b>")
+    cprint("  --offline      - don't make any internet connections, assumes --no-check.")
+    cprint("  --force-colour - force colour output")
+    cprint("  --no-colour    - force no colour output")
+    cprint("  --no-log       - do not log to harbourmaster.txt")
+    cprint()
+    cprint("All available commands: <b>" + ('</b>, <b>'.join(all_commands.keys())) + "</b>")
+    cprint()
+
+    return 0
+
+
+fifo_commands = {
+    'portsmd': do_portsmd,
+    'reload': do_reload,
+    'update': do_update,
+    'auto_update': do_auto_update,
+    }
+
+all_commands = {
+    'update': do_update,
+    'auto_update': do_auto_update,
+    'portsmd': do_portsmd,
+    'ports': do_ports,
+    'ports.json': do_portsjson,
+    'device_info': do_device_info,
+    'list': do_list,
+    'install': do_install,
+    'uninstall': do_uninstall,
+    'runtime_list': do_runtime_list,
+    'runtime_check': do_runtime_check,
+    'help': do_help,
+    }
+
+
+@logger.catch
+def main(argv):
+    global LOG_FILE_HANDLE
+
+    with make_temp_directory() as temp_dir:
+        argv = argv[:]
+
+        config = {
+            'quiet': False,
+            'no-check': False,
+            'offline': False,
+            'debug': False,
+            'no-colour': False,
+            'force-colour': False,
+            'no-log': False,
+            'help': False,
+            }
+
+        i = 1
+        while i < len(argv):
+            if argv[i] == '--':
+                del argv[i]
+                break
+
+            if argv[i].startswith('--'):
+                if argv[i][2:] in config:
+                    config[argv[i][2:]] = True
+                else:
+                    if not config['quiet']:
+                        logger.error(f"unknown argument {argv}")
+
+                del argv[i]
+                continue
+
+            i += 1
+
+        if config['offline']:
+            config['no-check'] = True
+
+        if config['quiet']:
+            logger.remove(0)  # For the default handler, it's actually '0'.
+            logger.add(sys.stderr, level="ERROR")
+        elif config['debug']:
+            logger.remove(0)  # For the default handler, it's actually '0'.
+            logger.add(sys.stderr, level="DEBUG")
+
+        if config['no-log']:
+            logger.remove(LOG_FILE_HANDLE)
+            LOG_FILE_HANDLE = None
+
+        if config['no-colour']:
+            utility.do_color(False)
+        elif config['force-colour']:
+            utility.do_color(True)
+
+        ccb = ConsoleCallback(config)
+        hm = HarbourMaster(config, temp_dir=temp_dir, callback=ccb)
+
+        if config['help']:
+            all_commands['help'](hm, argv[1:])
+            return 1
+
+        if len(argv) == 1:
+            all_commands['help'](hm, [])
+            return 1
+
+        if argv[1].casefold() == 'nothing':
+            ## This is used to lazily update sources.
+            return 0
+
+        if argv[1].casefold() == 'fifo_control':
+            do_fifo_control(hm, argv[2:])
+            return 0
+
+        if argv[1].casefold() not in all_commands:
+            cprint(f'Command <b>{argv[1]}</b> not found.')
+            all_commands['help'](hm, [])
+            return 2
+
+        return all_commands[argv[1].casefold()](hm, argv[2:])
+
+
+if __name__ == '__main__':
+    exit(main(sys.argv))

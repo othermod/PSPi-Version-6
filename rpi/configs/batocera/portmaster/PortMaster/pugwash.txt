@@ -1,0 +1,15 @@
+2025-03-13 10:17:19.746 | INFO     | __main__:__init__:531 - PM: 2025.03.03-0141
+2025-03-13 10:17:19.747 | INFO     | __main__:__init__:532 - HM: 2024-02-27
+2025-03-13 10:17:19.748 | INFO     | __main__:__init__:533 - SDL DLL: /usr/lib/libSDL2.so,  2.28.5
+2025-03-13 10:17:19.749 | INFO     | __main__:__init__:534 - TTF DLL: /usr/lib/libSDL2_ttf.so, 2.22.0
+2025-03-13 10:17:19.749 | INFO     | __main__:__init__:535 - IMG DLL: /usr/lib/libSDL2_image.so, 2.8.2
+2025-03-13 10:17:19.750 | INFO     | __main__:__init__:536 - MIX DLL: /usr/lib/libSDL2_mixer.so, 2.6.3
+2025-03-13 10:17:19.751 | INFO     | __main__:__init__:537 - HM_TESTING: False
+2025-03-13 10:17:19.751 | INFO     | __main__:__init__:547 - Opened GameController 0: b'PSPi-Controller'
+2025-03-13 10:17:19.752 | INFO     | __main__:__init__:548 -  b'03000000341200007856000001000000,PSPi-Controller,platform:Linux,b:b6,a:b3,dpdown:b11,leftx:a0,lefty:a1,dpleft:b9,rightshoulder:b7,leftshoulder:b8,dpright:b12,back:b1,start:b2,dpup:b10,y:b5,x:b4,guide:b15,'
+2025-03-13 10:17:19.806 | INFO     | harbourmaster.hardware:new_device_info:465 - {'name': 'Batocera', 'version': '40oc', 'device': 'bcm2711'}
+2025-03-13 10:17:19.809 | INFO     | harbourmaster.hardware:device_info:665 - DEVICE INFO: {'name': 'Batocera', 'version': '40oc', 'device': 'bcm2711', 'resolution': (640, 480), 'analogsticks': 2, 'cpu': 'unknown', 'capabilities': ['opengl', 'power', 'aarch64', 'restore', '4:3', '640x480', 'Batocera', 'bcm2711', 'analog_0', 'analog_1', 'analog_2', '1gb', '2gb', '4gb', '8gb'], 'primary_arch': 'aarch64', 'ram': 8192, 'glibc': '2.38'}
+2025-03-13 10:17:19.810 | INFO     | __main__:__init__:568 - Display size: 800x480
+2025-03-13 10:17:19.810 | INFO     | __main__:__init__:609 - {'name': 'Batocera', 'version': '40oc', 'device': 'bcm2711', 'resolution': (640, 480), 'analogsticks': 2, 'cpu': 'unknown', 'capabilities': ['opengl', 'power', 'aarch64', 'restore', '4:3', '640x480', 'Batocera', 'bcm2711', 'analog_0', 'analog_1', 'analog_2', '1gb', '2gb', '4gb', '8gb', 'en_US'], 'primary_arch': 'aarch64', 'ram': 8192, 'glibc': '2.38'}
+2025-03-13 10:17:21.816 | INFO     | pugtheme:theme_load:130 - Loading theme /userdata/system/.local/share/PortMaster/pylibs/default_theme/theme.json
+2025-03-13 10:17:23.680 | INFO     | __main__:portmaster_check_update:1897 - Checking for updates: 2025.03.03-0141 vs 2025.03.03-0141

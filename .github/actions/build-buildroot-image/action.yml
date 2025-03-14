@@ -25,18 +25,6 @@ inputs:
   checksum_type:
     description: 'Checksum type'
     required: true
-  AZCOPY_TENANT_ID:
-    description: 'Azure Tenant ID'
-    required: true
-  AZCOPY_SPA_CLIENT_SECRET:
-    description: 'Azure Service Principal Client Secret'
-    required: true
-  AZCOPY_SPA_APPLICATION_ID:
-    description: 'Azure Service Principal Application ID'
-    required: true
-  AZCOPY_STORAGE_ACCOUNT_NAME:
-    description: 'Azure Storage Account Name'
-    required: true
   
 runs:
   using: "composite"
@@ -47,6 +35,7 @@ runs:
       with:
         path: rpi/drivers/bin
         merge-multiple: true
+        name: drivers
 
     # Install dependencies
     - name: Install dependencies
@@ -65,10 +54,13 @@ runs:
 
         # Check file extension of downloaded checksum
         if [[ ${{ inputs.checksum_type }} == sha256 ]]; then
+          sha256sum ${{ inputs.compressed_image_name }}
           sha256sum -c $GITHUB_ACTION_PATH/checksums.sha256 --ignore-missing
         elif [[ ${{ inputs.checksum_type }} == sha1 ]]; then
+          sha1sum ${{ inputs.compressed_image_name }}
           sha1sum -c $GITHUB_ACTION_PATH/checksums.sha1 --ignore-missing
         elif [[ ${{ inputs.checksum_type }} == md5 ]]; then
+          md5sum ${{ inputs.compressed_image_name }}
           md5sum -c $GITHUB_ACTION_PATH/checksums.md5 --ignore-missing
         else
           echo "Unknown checksum file extension"
@@ -99,7 +91,7 @@ runs:
     # Generate sha256 filehash of image files
     - name: Generate sha256 filehash
       run: |
-        for i in $(ls *.img.gz)
+        for i in $(ls *.img.gz *.7z.* 2>/dev/null)
         do
           sha256sum "$i" | awk '{print $1}' > "$i.sha256"
         done
@@ -112,13 +104,12 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ inputs.version }}
-        name: v${{ inputs.version }}
-        body_path: .github/workflows/RELEASE_FORMAT.txt
         draft: true
-        fail_on_unmatched_files: true
+        fail_on_unmatched_files: false
         files: |
           ${{ runner.temp }}/completed_images/*.img.gz
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
+          ${{ runner.temp }}/completed_images/*.7z.*
 
     # Upload artifacts
     - name: Upload artifacts
@@ -129,3 +120,4 @@ runs:
         path: |
           ${{ runner.temp }}/completed_images/*.img.gz
           ${{ runner.temp }}/completed_images/*.img.gz.sha256
+          ${{ runner.temp }}/completed_images/*.7z.*

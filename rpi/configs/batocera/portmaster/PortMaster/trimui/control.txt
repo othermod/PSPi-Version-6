@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+
+# TODO: check this
+CUR_TTY=/dev/tty0
+
+controlfolder="/mnt/SDCARD/Apps/PortMaster/PortMaster"
+directory="mnt/SDCARD/Data"
+
+source /mnt/SDCARD/System/etc/ex_config
+
+PM_SCRIPTNAME="$(basename "${PM_SCRIPTNAME:-$0}")"
+PM_PORTNAME="${PM_SCRIPTNAME%.sh}"
+
+if [ -z "$PM_PORTNAME" ]; then
+  PM_PORTNAME="Port"
+fi
+
+ESUDO=""
+ESUDOKILL="-1" # for 351Elec and EmuELEC use "-1" (numeric one) or "-k" 
+export SDL_GAMECONTROLLERCONFIG_FILE="/$controlfolder/gamecontrollerdb.txt"
+# export SDL_GAMECONTROLLERCONFIG=$(grep "Deeplay" "/usr/lib/gamecontrollerdb.txt")
+
+get_controls() {
+  sdl2imgshow \
+      -i "$EX_RESOURCE_PATH/background.png" \
+      -f "$EX_RESOURCE_PATH/DejaVuSans.ttf" \
+      -s 48 \
+      -c "0,0,0" \
+      -t "Launching $PM_PORTNAME" &
+
+  sleep 0.5
+  pkill -f sdl2imgshow
+}
+
+source $controlfolder/device_info.txt
+source $controlfolder/funcs.txt
+
+GPTOKEYB2="$ESUDO env LD_PRELOAD=$PWD/libinterpose.aarch64.so $controlfolder/gptokeyb2 $ESUDOKILL"
+GPTOKEYB="$ESUDO $controlfolder/gptokeyb $ESUDOKILL"

@@ -1,0 +1,87 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: MIT
+#
+
+# TODO: check this
+CUR_TTY=/dev/stdout
+
+if [ -f "/app/bin/retrodeck.sh" ]; then
+  # loading the RetroDECK framework that even give access to variables such as roms_folder
+  source /app/libexec/global.sh
+
+  if [ -z "$ports_folder" ]; then
+    ports_folder="$rdhome/PortMaster"
+  fi
+
+  controlfolder="/var/data/PortMaster"
+  directory="$ports_folder"
+elif [ -f "/var/config/retrodeck/retrodeck.cfg" ]; then
+  # Fallback
+  ports_folder="$(grep "ports_folder" /var/config/retrodeck/retrodeck.cfg | awk -F= '{print $2}')"
+
+  if [ -z "$ports_folder" ]; then
+    rdhome="$(grep "rdhome" /var/config/retrodeck/retrodeck.cfg | awk -F= '{print $2}')"
+
+    ports_folder="$rdhome/PortMaster"
+  fi
+
+  controlfolder="/var/data/PortMaster"
+  directory="$ports_folder"
+else
+  # Another Fallback
+  ports_folder="$(grep "ports_folder" ~/.var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg | awk -F= '{print $2}')"
+
+  if [ -z "$ports_folder" ]; then
+    rdhome="$(grep "rdhome" ~/.var/app/net.retrodeck.retrodeck/config/retrodeck/retrodeck.cfg | awk -F= '{print $2}')"
+
+    ports_folder="$rdhome/PortMaster"
+  fi
+
+  controlfolder="$HOME/.var/app/net.retrodeck.retrodeck/data/PortMaster"
+  directory="$ports_folder"
+fi
+
+echo "\$controlfolder = $controlfolder"
+echo "\$directory = $directory"
+
+ESUDO=""
+ESUDOKILL="-k" # for 351Elec and EmuELEC use "-1" (numeric one) or "-k" 
+
+# TODO: might need to add other devices here.
+DEVICE="03000000de280000ff11000001000000"
+
+export SDL_GAMECONTROLLERCONFIG_FILE="$controlfolder/gamecontrollerdb.txt"
+export sdl_controllerconfig="$(grep "$SDL_GAMECONTROLLERCONFIG_FILE" -e "${DEVICE}")"
+
+echo "\$sdl_controllerconfig = $sdl_controllerconfig"
+
+# Enable mount hack :D
+export PATH="$controlfolder/retrodeck:$PATH"
+export LD_LIBRARY_PATH="$controlfolder/retrodeck:$LD_LIBRARY_PATH"
+
+get_controls() {
+  ANALOGSTICKS="2"
+  LOWRES="N"
+}
+
+# CRUSH KILL DESTROY
+if [ -f "$controlfolder/gptokeyb.x86_64" ]; then
+  mv "$controlfolder/gptokeyb.x86_64" "$controlfolder/gptokeyb"
+fi
+
+if [ -f "$controlfolder/gptokeyb2.x86_64" ]; then
+  mv "$controlfolder/gptokeyb2.x86_64" "$controlfolder/gptokeyb2"
+fi
+
+# CRUSH KILL DESTROY
+if [ -f "$controlfolder/xdelta3.x86_64" ]; then
+  mv "$controlfolder/xdelta3.x86_64" "$controlfolder/xdelta3"
+fi
+
+export PM_CAN_MOUNT="N"
+source $controlfolder/device_info.txt
+source $controlfolder/funcs.txt
+
+GPTOKEYB2="$ESUDO env LD_PRELOAD=$controlfolder/libinterpose.${DEVICE_ARCH}.so $controlfolder/gptokeyb2 $ESUDOKILL"
+GPTOKEYB="$ESUDO $controlfolder/gptokeyb $ESUDOKILL"

@@ -1,0 +1,1800 @@
+{
+    "prefix": "pmmv",
+    "api": "PortMasterV3",
+    "name": "PortMaster Multiverse",
+    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/latest/download/ports.json",
+    "last_checked": "2025-03-13T10:17:50.162529",
+    "version": 2,
+    "data": {
+        "ports": [
+            "am2r.zip",
+            "gta3.zip",
+            "gtavc.zip",
+            "loderunneronline.zip",
+            "pocketcrystalleague.zip",
+            "reborn.zip",
+            "rejuvenation.zip",
+            "pokewilds.zip",
+            "render96ex.zip",
+            "soh.zip",
+            "soh2.zip",
+            "super.mario.war.zip",
+            "smworld.zip",
+            "sm.zip",
+            "zeldadoi.zip",
+            "zeldaxd-mercurischess.zip",
+            "zelda-mercurischest.zip",
+            "zelda-mysteryofsolarusdx.zip",
+            "zelda-mysteryofsolarusxd.zip",
+            "zelda-roth-se.zip",
+            "zelda-bookofmudora.zip",
+            "zeldoschallenge.zip",
+            "zeldoschallenge2.zip",
+            "thextech.zip",
+            "tunics.zip",
+            "vdrift.zip",
+            "wipeout.zip",
+            "zelda3.zip",
+            "ziiaol.zip",
+            "zeldansq.zip",
+            "zeldaolb.zip",
+            "zelda_roth.zip",
+            "zelda3t.zip"
+        ],
+        "utils": [
+            "gameinfo.zip"
+        ],
+        "data": {
+            "am2r.zip": {
+                "name": "am2r.zip",
+                "size": 1474924,
+                "md5": "d3b0378c57d1ea68a696d7ead034f7c4",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-01-16_1454/am2r.zip"
+            },
+            "gta3.zip": {
+                "name": "gta3.zip",
+                "size": 6769441,
+                "md5": "3827e058f2829f6c9490b7b4fff3b21b",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-10_1445/gta3.zip"
+            },
+            "gtavc.zip": {
+                "name": "gtavc.zip",
+                "size": 6198815,
+                "md5": "859d07cabd65707177c643fb62f57f1e",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-10_1445/gtavc.zip"
+            },
+            "loderunneronline.zip": {
+                "name": "loderunneronline.zip",
+                "size": 30491428,
+                "md5": "641922a587d52ee1c169e8bf9525fae2",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/loderunneronline.zip"
+            },
+            "pocketcrystalleague.zip": {
+                "name": "pocketcrystalleague.zip",
+                "size": 22292188,
+                "md5": "9aec23b0499d5238395203c1d2ab1ba8",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-27_0256/pocketcrystalleague.zip"
+            },
+            "reborn.zip": {
+                "name": "reborn.zip",
+                "size": 12414489,
+                "md5": "94b1801cc35f01439ed42c2977089be2",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-22_1315/reborn.zip"
+            },
+            "rejuvenation.zip": {
+                "name": "rejuvenation.zip",
+                "size": 20254310,
+                "md5": "68b9866933bd395096fad3b20a6bc78b",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-22_1315/rejuvenation.zip"
+            },
+            "pokewilds.zip": {
+                "name": "pokewilds.zip",
+                "size": 2176859,
+                "md5": "97dd92be866f9213192eebcdf383a78b",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-27_1304/pokewilds.zip"
+            },
+            "render96ex.zip": {
+                "name": "render96ex.zip",
+                "size": 153580885,
+                "md5": "c80f74f6a2012230c11f5538ccec2f87",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-09_1835/render96ex.zip"
+            },
+            "soh.zip": {
+                "name": "soh.zip",
+                "size": 16892573,
+                "md5": "d2a6e213187fe1201575a3d12e10af94",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-12_0013/soh.zip"
+            },
+            "soh2.zip": {
+                "name": "soh2.zip",
+                "size": 10372350,
+                "md5": "8f4ab63f49983f838ad7242398c733a4",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-12_0013/soh2.zip"
+            },
+            "super.mario.war.zip": {
+                "name": "super.mario.war.zip",
+                "size": 38505494,
+                "md5": "bb35768b14836a8f1f9b50444705f8d5",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/super.mario.war.zip"
+            },
+            "smworld.zip": {
+                "name": "smworld.zip",
+                "size": 1111539,
+                "md5": "4fe69d88527a73ddca6165400c053a1f",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/smworld.zip"
+            },
+            "sm.zip": {
+                "name": "sm.zip",
+                "size": 1992726,
+                "md5": "126446e019c6473352e5b85f39d600eb",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/sm.zip"
+            },
+            "zeldadoi.zip": {
+                "name": "zeldadoi.zip",
+                "size": 45939526,
+                "md5": "8d419a438201ab6521c46605b75f86ea",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-12-03_1532/zeldadoi.zip"
+            },
+            "zeldaxd-mercurischess.zip": {
+                "name": "zeldaxd-mercurischess.zip",
+                "size": 281034,
+                "md5": "efec279d1ba43c066a6ea5e0dd438722",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zeldaxd-mercurischess.zip"
+            },
+            "zelda-mercurischest.zip": {
+                "name": "zelda-mercurischest.zip",
+                "size": 295537,
+                "md5": "5f3ed935638f52c0b96cac7ddaf699da",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-mercurischest.zip"
+            },
+            "zelda-mysteryofsolarusdx.zip": {
+                "name": "zelda-mysteryofsolarusdx.zip",
+                "size": 373096,
+                "md5": "457b529f2dbad12f7a8bb18c697eecef",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-mysteryofsolarusdx.zip"
+            },
+            "zelda-mysteryofsolarusxd.zip": {
+                "name": "zelda-mysteryofsolarusxd.zip",
+                "size": 279243,
+                "md5": "e0154aec77a86af6e13e52205aafcca2",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-mysteryofsolarusxd.zip"
+            },
+            "zelda-roth-se.zip": {
+                "name": "zelda-roth-se.zip",
+                "size": 281012,
+                "md5": "80108fe5b7a42dfab35a5cb7231076ce",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-roth-se.zip"
+            },
+            "zelda-bookofmudora.zip": {
+                "name": "zelda-bookofmudora.zip",
+                "size": 287352,
+                "md5": "054aeae2f66c18ff3655436adddfbc08",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-bookofmudora.zip"
+            },
+            "zeldoschallenge.zip": {
+                "name": "zeldoschallenge.zip",
+                "size": 306851,
+                "md5": "d18ef72048db5b1c01e2e81ff954ba52",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zeldoschallenge.zip"
+            },
+            "zeldoschallenge2.zip": {
+                "name": "zeldoschallenge2.zip",
+                "size": 773246,
+                "md5": "77af5488c52cb90375bfeffccaba8e35",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zeldoschallenge2.zip"
+            },
+            "thextech.zip": {
+                "name": "thextech.zip",
+                "size": 3985402,
+                "md5": "6f9db9c915fe4a345beedb82ef524149",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-01-22_1900/thextech.zip"
+            },
+            "tunics.zip": {
+                "name": "tunics.zip",
+                "size": 338792,
+                "md5": "c1a86024c14321b049b71fbe6ff128d3",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/tunics.zip"
+            },
+            "vdrift.zip": {
+                "name": "vdrift.zip",
+                "size": 1802704078,
+                "md5": "53065d590fb5f722aa327773c0f55c36",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-16_0559/vdrift.zip"
+            },
+            "wipeout.zip": {
+                "name": "wipeout.zip",
+                "size": 1147490,
+                "md5": "aaec9a2994f2239db92c8295abb5abba",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-09_1835/wipeout.zip"
+            },
+            "zelda3.zip": {
+                "name": "zelda3.zip",
+                "size": 1192243,
+                "md5": "33e5dcd24e70bfcbefd9d342a38ba997",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/zelda3.zip"
+            },
+            "ziiaol.zip": {
+                "name": "ziiaol.zip",
+                "size": 15062133,
+                "md5": "3c54180ba41c3678246d0e1af572e820",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-01-16_1454/ziiaol.zip"
+            },
+            "zeldansq.zip": {
+                "name": "zeldansq.zip",
+                "size": 21663234,
+                "md5": "cdf55095700bc1eaa48bbb0c8030e35a",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zeldansq.zip"
+            },
+            "zeldaolb.zip": {
+                "name": "zeldaolb.zip",
+                "size": 132427922,
+                "md5": "374abe87e49f43ea8df20d33261e4401",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zeldaolb.zip"
+            },
+            "zelda_roth.zip": {
+                "name": "zelda_roth.zip",
+                "size": 74527511,
+                "md5": "b94ed8500dc0af59570cd2ea82776a83",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zelda_roth.zip"
+            },
+            "zelda3t.zip": {
+                "name": "zelda3t.zip",
+                "size": 31189414,
+                "md5": "c1d0ef6c17b5a8e8169689bc0e4be588",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zelda3t.zip"
+            },
+            "gameinfo.zip": {
+                "name": "gameinfo.zip",
+                "size": 5511121,
+                "md5": "0ba562798fe76049efdcbe925cceb44e",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-27_0256/gameinfo.zip"
+            },
+            "images.zip": {
+                "name": "images.zip",
+                "size": 2768631,
+                "md5": "ed91d9c297ad870b356a1137b9060f9c",
+                "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-12_0013/images.zip"
+            }
+        },
+        "info": {
+            "am2r.zip": {
+                "version": 4,
+                "name": "am2r.zip",
+                "items": [
+                    "AM2R.sh",
+                    "am2r/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "AM2R",
+                    "desc": "Another Metroid 2 Remake.  An action-adventure game developed by Argentinian programmer Milton Guasti (also known as DoctorM64).",
+                    "inst": "You'll need to provide your own am2r android apk into the ports/am2r/gamedata folder.  Make sure it is named am2r.apk.  The name is case sensitive.",
+                    "genres": [
+                        "action",
+                        "adventure",
+                        "platformer"
+                    ],
+                    "porter": [
+                        "Johnny on Flame"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "armhf"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2021-12-21",
+                    "date_updated": "2025-01-16",
+                    "md5": "d3b0378c57d1ea68a696d7ead034f7c4",
+                    "release_id": "2025-01-16_1454",
+                    "size": 1474924,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-01-16_1454/am2r.zip"
+                }
+            },
+            "gta3.zip": {
+                "version": 4,
+                "name": "gta3.zip",
+                "items": [
+                    "Grand Theft Auto 3.sh",
+                    "gta3"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Grand Theft Auto 3",
+                    "porter": [
+                        "Orson"
+                    ],
+                    "desc": "Welcome to Liberty City. Where it all began. The critically acclaimed blockbuster Grand Theft Auto III brings to life the dark and seedy underworld of Liberty City. With a massive and diverse open world, a wild cast of characters from every walk of life, and the freedom to explore at will, Grand Theft Auto III puts the dark, intriguing, and ruthless world of crime at your fingertips.",
+                    "inst": "Copy all files from the original game to roms/ports/gta3. The game requires assets from the classic version released in 2001 (not the Definitive Edition, 2021). Versions from Steam and Rockstar Store are confirmed to work fine.\n\nIf needed, readjust analog sticks sensitivity by changing LeftStickSens/RightStickSens values in re3.ini.",
+                    "genres": [
+                        "action"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-10-28",
+                    "date_updated": "2024-04-10",
+                    "md5": "3827e058f2829f6c9490b7b4fff3b21b",
+                    "release_id": "2024-04-10_1445",
+                    "size": 6769441,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-10_1445/gta3.zip"
+                }
+            },
+            "gtavc.zip": {
+                "version": 4,
+                "name": "gtavc.zip",
+                "items": [
+                    "Grand Theft Auto Vice City.sh",
+                    "gtavc/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Grand Theft Auto Vice City",
+                    "porter": [
+                        "Orson"
+                    ],
+                    "desc": "Welcome to the 1980s. From the decade of big hair, excess, and pastel suits comes a story of one man's rise to the top of the criminal pile as Grand Theft Auto returns.",
+                    "inst": "Copy all files from the original game to roms/ports/gtavc. The game requires assets from the classic version released in 2002 (not the Definitive Edition, 2021). Versions from Steam and Rockstar Store are confirmed to work fine.\n\nIf needed, readjust analog sticks sensitivity by changing LeftStickSens/RightStickSens values in reVC.ini.",
+                    "genres": [
+                        "action"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-10-28",
+                    "date_updated": "2024-04-10",
+                    "md5": "859d07cabd65707177c643fb62f57f1e",
+                    "release_id": "2024-04-10_1445",
+                    "size": 6198815,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-10_1445/gtavc.zip"
+                }
+            },
+            "loderunneronline.zip": {
+                "version": 4,
+                "name": "loderunneronline.zip",
+                "items": [
+                    "Lode Runner Online.sh",
+                    "loderunneronline"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Lode Runner Online",
+                    "porter": [
+                        "tabreturn",
+                        "Slayer366"
+                    ],
+                    "desc": "This project is a fan-made cross-platform clone of Lode Runner Online: The Mad Monks' Revenge.",
+                    "inst": "You can download Lode Runner Online free at: https://mmr.quarkrobot.com/ . Download the Linux version and extract it, and place the game files in the gamedata directory. This has been tested with the LODERUNN-LINUX-2402.tar.gz release.\n\nYou can change controls in the options (cog) menu, but you must **plug in a mouse to assign the gamepad inputs.**\n\nFor the CD soundtrack, download the DLC here: https://mmr.quarkrobot.com/manual/get-started#soundtrack, and place the LR_AUDIO.PRS file in the port's *savadata* folder.",
+                    "genres": [
+                        "platformer",
+                        "puzzle"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": false,
+                    "runtime": [
+                        "mono-6.12.0.122-aarch64.squashfs"
+                    ],
+                    "reqs": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": "",
+                    "arch": []
+                },
+                "source": {
+                    "date_added": "2024-03-12",
+                    "date_updated": "2024-04-09",
+                    "md5": "641922a587d52ee1c169e8bf9525fae2",
+                    "release_id": "2024-04-09_1309",
+                    "size": 30491428,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/loderunneronline.zip"
+                }
+            },
+            "pocketcrystalleague.zip": {
+                "version": 4,
+                "name": "pocketcrystalleague.zip",
+                "items": [
+                    "Pocket Crystal League.sh",
+                    "pocketcrystalleague"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Pocket Crystal League",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "Pocket Crystal League (PCL) is a Poke-card game, although completely different to the Official TCG. The gameplay mechanics were partially inspired by Inscryption, being pretty straightforward and easy to learn.",
+                    "desc_md": null,
+                    "inst": "Game is ready to run!",
+                    "inst_md": null,
+                    "genres": [
+                        "casino/card"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-08-18",
+                    "date_updated": "2025-02-27",
+                    "md5": "9aec23b0499d5238395203c1d2ab1ba8",
+                    "release_id": "2025-02-27_0256",
+                    "size": 22292188,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-27_0256/pocketcrystalleague.zip"
+                }
+            },
+            "reborn.zip": {
+                "version": 4,
+                "name": "reborn.zip",
+                "items": [
+                    "Pokemon Reborn.sh",
+                    "reborn"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Pokemon Reborn",
+                    "porter": [
+                        "JanTrueno"
+                    ],
+                    "desc": "Reborn is a free 3rd-gen style downloadable game featuring all content through Generation 7. Experience a never-before-seen layer of strategy with the all-original Field Effects, using the terrain to outplay and overwhelm your opponent! Collect, train and battle with all 807 species available in-game and take on Gym Leaders of all 18 types as you fight to restore Reborn to prosperity!\n\nAre you ready?",
+                    "desc_md": "Reborn is a free 3rd-gen style downloadable game featuring all content through Generation 7. Experience a never-before-seen layer of strategy with the all-original Field Effects, using the terrain to outplay and overwhelm your opponent! Collect, train and battle with all 807 species available in-game and take on Gym Leaders of all 18 types as you fight to restore Reborn to prosperity!\n\n \n*Are you ready?*",
+                    "inst": "Download the legacy Windows version of the game here: https://www.rebornevo.com/pr/download/. Install the game and copy all assets within the \"Pokemon Reborn\" folder to the \"reborn\" portfolder. The version has to be 19.16 or 19.17, this can be checked with the version file included with the game.",
+                    "inst_md": "Download the legacy Windows version of the game [here](https://www.rebornevo.com/pr/download/). Install the game and copy all assets within the \"Pokemon Reborn\" folder to the \"reborn\" portfolder. The version has to be 19.16 or 19.17, this can be checked with the version file included with the game.",
+                    "genres": [
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [
+                        "power"
+                    ],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-10-11",
+                    "date_updated": "2025-02-22",
+                    "md5": "94b1801cc35f01439ed42c2977089be2",
+                    "release_id": "2025-02-22_1315",
+                    "size": 12414489,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-22_1315/reborn.zip"
+                }
+            },
+            "rejuvenation.zip": {
+                "version": 4,
+                "name": "rejuvenation.zip",
+                "items": [
+                    "Pokemon Rejuvenation.sh",
+                    "rejuvenation"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Pokemon Rejuvenation",
+                    "porter": [
+                        "JanTrueno"
+                    ],
+                    "desc": "Many decades ago, Aevium was once a united and strong blossoming region. However, the calamity known as Storm-9 tore the region apart.\n\nThe Aevium Region has lived a time of peace since then. People and the creatures inhabiting the lands band together to create a region worth living in. However, the dark and sinister organization, Team Xen, rises from the shadows to destroy what little peace the region has left.\n\nExplore the Aevium Region while also defending the land from Team Xen. Discover the dark secrets this world has kept hidden under the cracks that separate Aevium and shakes it to its very core. \n\nThis world needs you.\n\nWill you lend us your strength?",
+                    "desc_md": null,
+                    "inst": "Download the Windows version of the game here: https://www.rebornevo.com/rejuvdown/. Install the game and copy all assets within the \"Pokemon Rejuvenation\" folder to the \"rejuvenation\" portfolder. Version 13.5.0 is known to work, future updates may be incompatible.",
+                    "inst_md": "Download the Windows version of the game [here](https://www.rebornevo.com/rejuvdown/). Install the game and copy all assets within the \"Pokemon Rejuvenation\" folder to the \"rejuvenation\" portfolder. Version 13.5.0 is known to work, future updates may be incompatible.",
+                    "genres": [
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [
+                        "power"
+                    ],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-10-11",
+                    "date_updated": "2025-02-22",
+                    "md5": "68b9866933bd395096fad3b20a6bc78b",
+                    "release_id": "2025-02-22_1315",
+                    "size": 20254310,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-22_1315/rejuvenation.zip"
+                }
+            },
+            "pokewilds.zip": {
+                "version": 4,
+                "name": "pokewilds.zip",
+                "items": [
+                    "Pokewilds.sh",
+                    "pokewilds"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Pok\u00e9wilds",
+                    "porter": [
+                        "Jeod",
+                        "JanTrueno"
+                    ],
+                    "desc": "Pok\u00e9Wilds is an open-world Pok\u00e9mon fan game with survival and exploration elements. Built on Gen 2-style graphics, it features procedurally generated worlds, base-building, and freeform gameplay. Catch, train, and battle Pok\u00e9mon while exploring diverse biomes, crafting shelters, and uncovering hidden secrets.",
+                    "desc_md": null,
+                    "inst": "After installing the port, download the Windows game from https://github.com/SheerSt/pokewilds/releases and extract the `mods` and `app` folders, as well as `settings.txt`, into `ports/pokewilds/bin`.",
+                    "inst_md": null,
+                    "genres": [
+                        "rpg"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "zulu17.54.21-ca-jre17.0.13-linux.aarch64.squashfs"
+                    ],
+                    "reqs": [
+                        "ultra"
+                    ],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2025-02-27",
+                    "date_updated": "2025-02-27",
+                    "md5": "97dd92be866f9213192eebcdf383a78b",
+                    "release_id": "2025-02-27_1304",
+                    "size": 2176859,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-02-27_1304/pokewilds.zip"
+                }
+            },
+            "render96ex.zip": {
+                "version": 4,
+                "name": "render96ex.zip",
+                "items": [
+                    "render96ex.sh",
+                    "render96ex"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Render96ex",
+                    "porter": [
+                        "kotzebuedog"
+                    ],
+                    "desc": "Super Mario 64 is the first Super Mario game to feature 3D. Discover the precursor to Mario Odyssey in this boosted version with the support of enhanced 3d models, HD textures, HQ musics and sounds, 60 fps.",
+                    "desc_md": null,
+                    "inst": "Copy your Super Mario 64 USA rom in the render96ex folder and rename it to baserom.us.z64 (md5sum 20b854b239203baf6c961b850a4a51a2)",
+                    "inst_md": null,
+                    "genres": [
+                        "platformer"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [
+                        "!lowres"
+                    ],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-07-01",
+                    "date_updated": "2025-03-09",
+                    "md5": "c80f74f6a2012230c11f5538ccec2f87",
+                    "release_id": "2025-03-09_1835",
+                    "size": 153580885,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-09_1835/render96ex.zip"
+                }
+            },
+            "soh.zip": {
+                "version": 4,
+                "name": "soh.zip",
+                "items": [
+                    "Ship of Harkinian.sh",
+                    "soh"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Ship of Harkinian",
+                    "porter": [
+                        "Jeod",
+                        "beniamino"
+                    ],
+                    "desc": "A source port of Ocarina of Time &amp; Master Quest. Ship of Harkinian features extensive and significant enhancements over the original game, such as improved performance, increased frame-rate, native ultra-widescreen support, and extensive mod support (especially compared to emulated versions of the original), among other features.",
+                    "inst": "Follow the guide at https://www.shipofharkinian.com/setup-guide for your desired platform to create your oot.otr and/or oot-mq.otr files. Once created put in the ports/soh folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-04-10",
+                    "date_updated": "2025-03-12",
+                    "md5": "d2a6e213187fe1201575a3d12e10af94",
+                    "release_id": "2025-03-12_0013",
+                    "size": 16892573,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-12_0013/soh.zip"
+                }
+            },
+            "soh2.zip": {
+                "version": 4,
+                "name": "soh2.zip",
+                "items": [
+                    "Ship of Harkinian 2.sh",
+                    "soh2"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Ship of Harkinian 2",
+                    "porter": [
+                        "Jeod",
+                        "beniamino"
+                    ],
+                    "desc": "A source port of Majora's Mask. 2Ship2Harkinian (aka SoH2) features extensive and significant enhancements over the original game, such as improved performance, increased frame-rate, native ultra-widescreen support, and extensive mod support (especially compared to emulated versions of the original), among other features.",
+                    "inst": "Follow the guide in the readme to generate your mm.o2r file.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-06-10",
+                    "date_updated": "2025-03-12",
+                    "md5": "8f4ab63f49983f838ad7242398c733a4",
+                    "release_id": "2025-03-12_0013",
+                    "size": 10372350,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-12_0013/soh2.zip"
+                }
+            },
+            "super.mario.war.zip": {
+                "version": 4,
+                "name": "super.mario.war.zip",
+                "items": [
+                    "smw/",
+                    "Super Mario War.sh"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Super Mario War",
+                    "desc": "Super Mario War is a fan-made multiplayer Super Mario Bros. style deathmatch game in which players try to beat one another in a variety of gameplay modes.  Great fun even in single player mode.",
+                    "inst": "Ready to run.",
+                    "genres": [
+                        "platformer"
+                    ],
+                    "porter": [
+                        "Christian_Haitian"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2021-12-21",
+                    "date_updated": "2024-10-01",
+                    "md5": "bb35768b14836a8f1f9b50444705f8d5",
+                    "release_id": "2024-10-01_1015",
+                    "size": 38505494,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/super.mario.war.zip"
+                }
+            },
+            "smworld.zip": {
+                "version": 4,
+                "name": "smworld.zip",
+                "items": [
+                    "smworld.sh",
+                    "smworld"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Super Mario World (and All Stars)",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "Super Mario World is a 2D side-scrolling platform game in which the player controls Mario or Luigi, the protagonists of the game. The game has similar gameplay to earlier games in the Super Mario series \u2013 Super Mario Bros., Super Mario Bros. 2, and Super Mario Bros. 3 \u2013 but introduces new elements. As well as dashing and jumping, the player can also fly or float with the aid of the Cape Feather and P-Balloon and can execute the new Spin Jump move.[",
+                    "inst": "See Wiki",
+                    "genres": [
+                        "platformer"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.smb1.png",
+                            "cover.smbll.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-11-08",
+                    "date_updated": "2024-04-09",
+                    "md5": "4fe69d88527a73ddca6165400c053a1f",
+                    "release_id": "2024-04-09_1309",
+                    "size": 1111539,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/smworld.zip"
+                }
+            },
+            "sm.zip": {
+                "version": 4,
+                "name": "sm.zip",
+                "items": [
+                    "sm.sh",
+                    "sm"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Super Metroid (Redux Included)",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "Super Metroid (\u30b9\u30fc\u30d1\u30fc\u30e1\u30c8\u30ed\u30a4\u30c9 S\u016bp\u0101 Metoroido?), also known as Metroid 3, is a video game developed by Nintendo R&D1 and published by Nintendo for the Super Nintendo Entertainment System. Super Metroid is the third installment in the Metroid series. With its 24-megabit (3 megabyte) cartridge size, it was the largest video game on the Super Nintendo at the time of its release\n",
+                    "inst": "To make it work just copy the Super Metroid US rom renamed as sm.smc in the root folder.\nFor redux same thing, but use the redux Rom",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.sm.png",
+                            "cover.smredux.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-10-31",
+                    "date_updated": "2024-04-09",
+                    "md5": "126446e019c6473352e5b85f39d600eb",
+                    "release_id": "2024-04-09_1309",
+                    "size": 1992726,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/sm.zip"
+                }
+            },
+            "zeldadoi.zip": {
+                "version": 4,
+                "name": "zeldadoi.zip",
+                "items": [
+                    "Zelda Dungeons of Infinity.sh",
+                    "zeldadoi"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Dungeons of Infinity",
+                    "porter": [
+                        "t0b10",
+                        "Shallow",
+                        "JanTrueno",
+                        "Jeod"
+                    ],
+                    "desc": "This game is a procedurally-generated rogue-like 'Link to the Past' dungeon crawler. It's not a rom hack, it was created in Gamemaker Studio from scratch using the original assets. Many new features and assets were added to this game, but special care was put in to ensure it still looks, feels, and plays like the original game.\nThe goal of the game is to descend through the many enemy-infested dungeons to defeat Link's nemesis, Aghanim. Along the way you will find many weapons, items, and treasures that will help you along your quest.",
+                    "desc_md": null,
+                    "inst": "Ready to run",
+                    "inst_md": null,
+                    "genres": [
+                        "action",
+                        "adventure",
+                        "rpg"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [
+                        "4gb",
+                        "power"
+                    ],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-12-03",
+                    "date_updated": "2024-12-03",
+                    "md5": "8d419a438201ab6521c46605b75f86ea",
+                    "release_id": "2024-12-03_1532",
+                    "size": 45939526,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-12-03_1532/zeldadoi.zip"
+                }
+            },
+            "zeldaxd-mercurischess.zip": {
+                "version": 4,
+                "name": "zeldaxd-mercurischess.zip",
+                "items": [
+                    "The Legend of Zelda: Mercuris Chess.sh",
+                    "zeldaxd-mercurischess/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Mercuris Chess",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "The sequel to Mystery of Solarus XD. While Link and Zelda were away, a rich businessman bought Hyrule! There begins your next adventure, in a world where everything has a price and where truth and lies become undistinguishable.",
+                    "inst": "Download the game from https://solarus-games.org/games/the-legend-of-zelda-xd2-mercuris-chess/ and put in the ports/zeldaxd-mercurischess folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "efec279d1ba43c066a6ea5e0dd438722",
+                    "release_id": "2024-11-21_1538",
+                    "size": 281034,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zeldaxd-mercurischess.zip"
+                }
+            },
+            "zelda-mercurischest.zip": {
+                "version": 4,
+                "name": "zelda-mercurischest.zip",
+                "items": [
+                    "The Legend of Zelda: Mercuris' Chest (DEMO).sh",
+                    "zeldaxd-mercurischess/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Mercuris' Chest (DEMO)",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "Link is kidnapped and brought to an unknown region! A priest explains that Link's heroic skills are needed to combat a birdlike foe and defend a legendary chest, which contains a dangerous weapon. Who is this foe, and what's in the chest? And why does this region feel so...familiar?",
+                    "inst": "This game is currently in development with a demo available. Download the demo from https://solarus-games.org/games/the-legend-of-zelda-mercuris-chest/ and place in the `ports/zelda-mercurischest` folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-02-19",
+                    "date_updated": "2024-11-21",
+                    "md5": "5f3ed935638f52c0b96cac7ddaf699da",
+                    "release_id": "2024-11-21_1538",
+                    "size": 295537,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-mercurischest.zip"
+                }
+            },
+            "zelda-mysteryofsolarusdx.zip": {
+                "version": 4,
+                "name": "zelda-mysteryofsolarusdx.zip",
+                "items": [
+                    "The Legend of Zelda: Mystery of Solarus DX.sh",
+                    "zelda-mysteryofsolarusdx/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Mystery of Solarus DX",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "The Legend of Zelda: Mystery of Solarus DX is set to be a direct sequel to The Legend of Zelda: A Link to the Past on SNES, using the same graphics and game mechanisms. Mystery of Solarus DX was the first game made with the Solarus engine and in fact, Solarus was primarily designed for this game.",
+                    "inst": "Download the game from https://solarus-games.org/games/the-legend-of-zelda-mystery-of-solarus-dx/ and put in the ports/zelda-mysteryofsolarus folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "457b529f2dbad12f7a8bb18c697eecef",
+                    "release_id": "2024-11-21_1538",
+                    "size": 373096,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-mysteryofsolarusdx.zip"
+                }
+            },
+            "zelda-mysteryofsolarusxd.zip": {
+                "version": 4,
+                "name": "zelda-mysteryofsolarusxd.zip",
+                "items": [
+                    "The Legend of Zelda: Mystery of Solarus XD.sh",
+                    "zelda-mysteryofsolarusxd/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Mystery of Solarus XD",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "The Legend of Zelda: Mystery of Solarus XD is a parodic game that Solarus Team released on April 1st, 2011. Though it\u2019s a big April 1st joke, it\u2019s a real, full game with two huge dungeons and 5-10 hours of playing.\n\nIt was developed in a very short period of time, thanks to coffee, beer and pizzas. Though the development has been rushed to ship on time, the game is complete, with lots of jokes, references and quirky NPCs.",
+                    "inst": "Download the game from https://solarus-games.org/games/the-legend-of-zelda-mystery-of-solarus-xd/ and put in the ports/zelda-mysteryofsolarusxd folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "e0154aec77a86af6e13e52205aafcca2",
+                    "release_id": "2024-11-21_1538",
+                    "size": 279243,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-mysteryofsolarusxd.zip"
+                }
+            },
+            "zelda-roth-se.zip": {
+                "version": 4,
+                "name": "zelda-roth-se.zip",
+                "items": [
+                    "The Legend of Zelda: Return of the Hylain.sh",
+                    "zelda-roth-se/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Return of the Hylian SE",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "After Link\u2019s victory over Ganon in A Link to the Past, no one knows what Link\u2019s wish to the Triforce was. But this wish reunified the Light World and the Dark World and brought the Seven Wise Men\u2019s descendants back to life. Peace was back in Hyrule. But unfortunately, this wish also ressurected Ganon and his henchmen. He was preparing his revenge, but he couldn\u2019t do anything without the Triforce.\n\nOne night, a familiar voice speaks to Link in his sleep\u2026",
+                    "inst": "Download the game from https://solarus-games.org/games/the-legend-of-zelda-return-of-the-hylian-se/ and put in the ports/zelda-roth-sefolder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "80108fe5b7a42dfab35a5cb7231076ce",
+                    "release_id": "2024-11-21_1538",
+                    "size": 281012,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-roth-se.zip"
+                }
+            },
+            "zelda-bookofmudora.zip": {
+                "version": 4,
+                "name": "zelda-bookofmudora.zip",
+                "items": [
+                    "The Legend of Zelda: The Book of Mudora.sh",
+                    "zelda-bookofmudora/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: The Book of Mudora",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "Link\u2019s newest quest is set a few generations after Twilight Princess and spans two different continents of Hyrule. Explore eight unique temples and defeat enemies and bosses in order to gain powerful items to assist you in your goal. Explore many areas of Hyrule and assist different races in their conflicts.",
+                    "inst": "Download the game from https://solarus-games.org/games/the-legend-of-zelda-book-of-mudora/ and put in the ports/zelda-bookofmudora folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "054aeae2f66c18ff3655436adddfbc08",
+                    "release_id": "2024-11-21_1538",
+                    "size": 287352,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zelda-bookofmudora.zip"
+                }
+            },
+            "zeldoschallenge.zip": {
+                "version": 4,
+                "name": "zeldoschallenge.zip",
+                "items": [
+                    "The Legend of Zelda: Zeldo's Challenge.sh",
+                    "zeldoschallenge/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Zeldo's Challenge",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "This game is then the first entry in ZeldoRetro\u2019s series Le D\u00e9fi de Zeldo (Zeldo\u2019s Challenge). This first chapter is named La Revanche du Bingo (Bingo\u2019s Revenge), and is much less ambitious than its sequel. It contains only one dungeon, and no overworld to explore, which makes the game rather short. You may beat it under an hour.",
+                    "inst": "Download the game from https://solarus-games.org/games/defi-de-zeldo-ch-1/ and put in the ports/zeldoschallenge folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "d18ef72048db5b1c01e2e81ff954ba52",
+                    "release_id": "2024-11-21_1538",
+                    "size": 306851,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zeldoschallenge.zip"
+                }
+            },
+            "zeldoschallenge2.zip": {
+                "version": 4,
+                "name": "zeldoschallenge2.zip",
+                "items": [
+                    "The Legend of Zelda: Zeldo's Challenge 2.sh",
+                    "zeldoschallenge2/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "The Legend of Zelda: Zeldo's Challenge 2",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "After having touched the Trophy of Victory won at the end of the first chapter\u2019s dungeon, Link is teleported in High-rule, a parallel world where multiple video games universes are mixed up. Link must go to the Tower of Memories where Zeldo is waiting for him to get his revenge!",
+                    "inst": "Download the game from https://solarus-games.org/games/defi-de-zeldo-ch-2/ and put in the ports/zeldoschallenge2 folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "77af5488c52cb90375bfeffccaba8e35",
+                    "release_id": "2024-11-21_1538",
+                    "size": 773246,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/zeldoschallenge2.zip"
+                }
+            },
+            "thextech.zip": {
+                "version": 4,
+                "name": "thextech.zip",
+                "items": [
+                    "TheXtech.sh",
+                    "thextech"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "TheXTech",
+                    "porter": [
+                        "ddrsoul"
+                    ],
+                    "desc": "This is a direct continuation of the SMBX 1.3 engine. Add assets, worlds and play Mario-style games with built-in world editor and many other features!",
+                    "desc_md": null,
+                    "inst": "Download assets from https://github.com/TheXTech/TheXTech/releases, file thextech-smbx13-assets-full.7z, unpack it to ./thextech/assets/smbx.\nCheck README for more details!",
+                    "inst_md": null,
+                    "genres": [
+                        "platformer"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-09-08",
+                    "date_updated": "2025-01-22",
+                    "md5": "6f9db9c915fe4a345beedb82ef524149",
+                    "release_id": "2025-01-22_1900",
+                    "size": 3985402,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-01-22_1900/thextech.zip"
+                }
+            },
+            "tunics.zip": {
+                "version": 4,
+                "name": "tunics.zip",
+                "items": [
+                    "Tunics!.sh",
+                    "tunics!/"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Tunics!",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "Tunics! is a Rogue-like Legend of Zelda quest. It means it\u2019s only dungeons, and they are randomly generated. Moreover, once you\u2019re dead, you\u2019ll have to restart from the beginning, losing all your improvements (weapons, health, etc). It should be considered a well-polished proof-of-concept.",
+                    "inst": "Download game from https://solarus-games.org/games/tunics/ and put the .solarus file in the ports/tunics folder.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [
+                        "solarus-1.6.5.squashfs"
+                    ],
+                    "reqs": [],
+                    "arch": [],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-01-26",
+                    "date_updated": "2024-11-21",
+                    "md5": "c1a86024c14321b049b71fbe6ff128d3",
+                    "release_id": "2024-11-21_1538",
+                    "size": 338792,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-21_1538/tunics.zip"
+                }
+            },
+            "vdrift.zip": {
+                "version": 4,
+                "name": "vdrift.zip",
+                "items": [
+                    "VDrift.sh",
+                    "vdrift"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "VDrift",
+                    "porter": [
+                        "Cebion"
+                    ],
+                    "desc": "Drift is a cross-platform, open source driving simulation made with drift racing in mind.",
+                    "desc_md": null,
+                    "inst": "Ready to run!",
+                    "inst_md": null,
+                    "genres": [
+                        "racing"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-10-25",
+                    "date_updated": "2024-11-16",
+                    "md5": "53065d590fb5f722aa327773c0f55c36",
+                    "release_id": "2024-11-16_0559",
+                    "size": 1802704078,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-11-16_0559/vdrift.zip"
+                }
+            },
+            "wipeout.zip": {
+                "version": 4,
+                "name": "wipeout.zip",
+                "items": [
+                    "wipeout.sh",
+                    "Wip"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Wipeout",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "Wipeout is a racing game that is set in 2052, where players compete in the F3600 anti-gravity racing league. The game allows the player to pilot one of a selection of craft in races on several different tracks.",
+                    "inst": "Copy the game data inside the wipeout folder. A prepackaged zip is avaiable on phoboslab site",
+                    "genres": [
+                        "racing"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-10-29",
+                    "date_updated": "2025-03-09",
+                    "md5": "aaec9a2994f2239db92c8295abb5abba",
+                    "release_id": "2025-03-09_1835",
+                    "size": 1147490,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-03-09_1835/wipeout.zip"
+                }
+            },
+            "zelda3.zip": {
+                "version": 4,
+                "name": "zelda3.zip",
+                "items": [
+                    "zelda3.sh",
+                    "zelda"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Zelda A Link to The Past",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "*For devices with lower resolution of 640x480 or weird low res aspect ratio you need to modify the zelda3.ini file* The game begins with series protagonist Link, the last descendant of the Knights of Hyrule, and his uncle, being awakened by a telepathic message from Zelda, who says that she has been locked in Hyrule Castle's dungeon by Agahnim and requires rescue. Link's uncle goes to rescue her first, and Link follows despite his uncle's orders to remain home. His uncle is slain, though beforehand, Link receives a sword and shield from him. Link infiltrates Hyrule Castle and successfully hides Zelda in the Sanctuary as his uncle's last wish.",
+                    "inst": "Copy  the zelda3_assets.dat file in the root of the zelda folder. The file can be obtained from the snes rom.",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "exp": false,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-10-29",
+                    "date_updated": "2024-04-09",
+                    "md5": "33e5dcd24e70bfcbefd9d342a38ba997",
+                    "release_id": "2024-04-09_1309",
+                    "size": 1192243,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-04-09_1309/zelda3.zip"
+                }
+            },
+            "ziiaol.zip": {
+                "version": 4,
+                "name": "ziiaol.zip",
+                "items": [
+                    "Zelda II: Enhanced.sh",
+                    "ziiaol"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Zelda II: Enhanced",
+                    "porter": [
+                        "Jeod"
+                    ],
+                    "desc": "Zelda II Enhanced adds a ton of QoL improvements, widescreen, new areas, and new collectibles. The game is arguably much easier to play through.",
+                    "inst": "Download the .zip from https://hoverbat.itch.io/ziiaol and put in the assets folder.",
+                    "inst_md": "Download the .zip from https://hoverbat.itch.io/ziiaol and put in the assets folder.",
+                    "genres": [
+                        "action",
+                        "adventure",
+                        "platformer"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.png",
+                        "covers": [
+                            "cover.png"
+                        ],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": false,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "armhf"
+                    ],
+                    "desc_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2024-08-06",
+                    "date_updated": "2025-01-16",
+                    "md5": "3c54180ba41c3678246d0e1af572e820",
+                    "release_id": "2025-01-16_1454",
+                    "size": 15062133,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2025-01-16_1454/ziiaol.zip"
+                }
+            },
+            "zeldansq.zip": {
+                "version": 4,
+                "name": "zeldansq.zip",
+                "items": [
+                    "zeldansq",
+                    "zeldansq.sh"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Zelda Navi's Quest",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "At the end of the Time of Triumph, Link left Hyrule to take well-deserved holidays far from the kingdom's restlessness. Link set sail to discover distant lands and paradise islands where he gladly spent the many rupees he had borrowed from the princess.\n\nYet, his holiday took a decisive turn on a small island where he heard interesting rumours.\n\nThose rumours were about a very special island, the most fabulous beach resort, the marvellous Fairy Island. Link was very curious about it, and set sail again to see it by himself.\n\nBut what he found there wan't quite what he expected: a quick and painful death killed by a sea monster. His body was washed ashore on a beach... \n",
+                    "inst": "RTR\nTo continue dialogues you need to press accept. \nAlso to go after the boot image \n",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": true,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-11-06",
+                    "date_updated": "2024-10-01",
+                    "md5": "cdf55095700bc1eaa48bbb0c8030e35a",
+                    "release_id": "2024-10-01_1015",
+                    "size": 21663234,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zeldansq.zip"
+                }
+            },
+            "zeldaolb.zip": {
+                "version": 4,
+                "name": "zeldaolb.zip",
+                "items": [
+                    "zeldaolb",
+                    "zeldaolb.sh"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Zelda Oni Link Begins",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "Brought down by a terrible curse since his recent victory on the Dark Lord, Link is changing, day by day, into a powerful creature with a destructive nature named Oni-Link. Bannished from Hyrule, the young hylian asks the princess Zelda some help. She shows him his last hope: a portal to a secret world.",
+                    "inst": "RTR\nTo continue dialogues you need to press accept. \nAlso to go after the boot image \n",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": false,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-11-06",
+                    "date_updated": "2024-10-01",
+                    "md5": "374abe87e49f43ea8df20d33261e4401",
+                    "release_id": "2024-10-01_1015",
+                    "size": 132427922,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zeldaolb.zip"
+                }
+            },
+            "zelda_roth.zip": {
+                "version": 4,
+                "name": "zelda_roth.zip",
+                "items": [
+                    "zelda_roth",
+                    "zelda_roth.sh"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Zelda Return Of The Hylian",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "After the events that occured in Termina and the victory of the hero on his evil alter-ego, Zelda and Link knew that, from the bottom of hell, Ganon the immortal drawed his power from his wish to the Triforce, and rounded up his army with a view to invade Hyrule. Until the day when, after months spent watching out for an attack, an event came up and put an end to this endless waiting...\n",
+                    "inst": "RTR\nTo continue dialogues you need to press accept. \nAlso to go after the boot image \n",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": true,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-11-06",
+                    "date_updated": "2024-10-01",
+                    "md5": "b94ed8500dc0af59570cd2ea82776a83",
+                    "release_id": "2024-10-01_1015",
+                    "size": 74527511,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zelda_roth.zip"
+                }
+            },
+            "zelda3t.zip": {
+                "version": 4,
+                "name": "zelda3t.zip",
+                "items": [
+                    "zelda3t.sh",
+                    "zelda3t"
+                ],
+                "items_opt": null,
+                "attr": {
+                    "title": "Zelda Time to Triumph",
+                    "porter": [
+                        "Tekkenfede"
+                    ],
+                    "desc": "After the events that occured in Termina and the victory of the hero on his evil alter-ego, Zelda and Link knew that, from the bottom of hell, Ganon the immortal drawed his power from his wish to the Triforce, and rounded up his army with a view to invade Hyrule. Until the day when, after months spent watching out for an attack, an event came up and put an end to this endless waiting...\n\n",
+                    "inst": "RTR\nAfter the events that occured in Termina and the victory of the hero on his evil alter-ego, Zelda and Link knew that, from the bottom of hell, Ganon the immortal drawed his power from his wish to the Triforce, and rounded up his army with a view to invade Hyrule. Until the day when, after months spent watching out for an attack, an event came up and put an end to this endless waiting...\n\nTo continue dialogues you need to press accept. also to go after the boot image \n",
+                    "genres": [
+                        "action",
+                        "adventure"
+                    ],
+                    "image": {
+                        "screenshot": "screenshot.jpg",
+                        "covers": [],
+                        "thumbnail": null,
+                        "video": null
+                    },
+                    "rtr": true,
+                    "exp": true,
+                    "runtime": [],
+                    "reqs": [],
+                    "arch": [
+                        "aarch64"
+                    ],
+                    "desc_md": null,
+                    "inst_md": null,
+                    "min_glibc": ""
+                },
+                "source": {
+                    "date_added": "2023-11-06",
+                    "date_updated": "2024-10-01",
+                    "md5": "c1d0ef6c17b5a8e8169689bc0e4be588",
+                    "release_id": "2024-10-01_1015",
+                    "size": 31189414,
+                    "url": "https://github.com/PortsMaster-MV/PortMaster-MV-New/releases/download/2024-10-01_1015/zelda3t.zip"
+                }
+            }
+        }
+    }
+}

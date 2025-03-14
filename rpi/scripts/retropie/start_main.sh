@@ -1,6 +1,13 @@
 #!/bin/bash
 
-. /boot/pspi.conf
+#!/bin/bash
+
+if [ "$(uname -m)" = "armv7l" ]; then
+    . /boot/pspi.conf
+else
+    . /boot/firmware/pspi.conf
+fi
+
 modprobe i2c-dev
 
 echo "enable_dim: $enable_dim"
@@ -12,40 +19,23 @@ echo "joysticks: $joysticks"
 
 params=""
 
-# Function to detect the architecture of the operating system
-detect_architecture() {
-    local arch
-    arch=$(uname -m)
-    case "$arch" in
-        x86_64|aarch64)
-            echo "64-bit OS detected"
-            ARCH_SUFFIX="_64"
-            ;;
-        *)
-            echo "32-bit OS detected"
-            ARCH_SUFFIX="_32"
-            ;;
-    esac
-}
-detect_architecture
-
 # Set additional parameters based on configuration variables
 if [ "$enable_dim" = "true" ]; then
-    params="$params --dim $dim_seconds  "
+    params="$params --dim $dim_seconds"
 fi
 
 if [ "$fast_mode" = "true" ]; then
-    params="$params --fast "
+    params="$params --fast"
 fi
 
 if [ "$disable_crc" = "true" ]; then
-    params="$params --nocrc "
+    params="$params --nocrc"
 fi
 
 if [ "$disable_gamepad" = "true" ]; then
-    params="$params --nogamepad "
+    params="$params --nogamepad"
 fi
 
 echo "Starting PSPi with parameters: $params"
 
-/usr/bin/main$ARCH_SUFFIX $params
+/usr/bin/main $params

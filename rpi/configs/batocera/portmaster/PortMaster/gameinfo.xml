@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<gameList>
+  <game>
+    <path>./PortMaster.sh</path>
+    <name>PortMaster</name>
+    <desc>PortMaster is an open-source port manager designed for Linux-based handhelds. It allows users to download and install ports of games and applications seamlessly, leveraging custom configuration and compatibility settings.</desc>
+    <image>./PortMaster/cover.png</image>
+    <releasedate>20240101T000000</releasedate>
+    <developer>Community</developer>
+    <publisher>Open Source</publisher>
+    <genre>Utility</genre>
+    <players>1</players>
+  </game>
+</gameList>

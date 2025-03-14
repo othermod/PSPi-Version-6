@@ -21,6 +21,7 @@ sudo cp $GITHUB_WORKSPACE/rpi/configs/pspi.conf /mnt/image/pspi.conf
 sudo cp $GITHUB_WORKSPACE/rpi/overlays/* /mnt/image/overlays/
 sudo mkdir -p /mnt/image/drivers
 sudo cp $GITHUB_WORKSPACE/rpi/drivers/bin/* /mnt/image/drivers/
+sudo cp -f $GITHUB_WORKSPACE/rpi/drivers/bin/main_old/main /mnt/image/drivers/main
 
 # Mount squashfs
 echo "Mount squashfs"
@@ -28,6 +29,15 @@ sudo mount --type="squashfs" --options="loop" --source="/mnt/image/boot/batocera
 # Mount overlay
 echo "Mount overlay"
 sudo mount --type="overlay" --options="lowerdir=/tmp/squashfs,upperdir=/tmp/upper,workdir=/tmp/work" --source="overlay" --target="/tmp/target"
+
+# Get batocera version
+echo "Get batocera version"
+BATOCERA_VERSION=$(cat /tmp/target/usr/share/batocera/batocera.version | awk '{print $1}')
+
+if [ "$BATOCERA_VERSION" -lt 40 ]; then
+    echo "Batocera version is less than 40"
+    sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/config_39.txt /mnt/image/config.txt
+fi
 
 # Add custom.sh
 echo "Add custom.sh"
@@ -46,9 +56,16 @@ sudo cp $GITHUB_WORKSPACE/rpi/libraries/batocera/* /tmp/target/usr/lib/
 echo "Add Multimedia keys for volume control"
 sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/multimedia_keys.conf /tmp/target/usr/share/batocera/datainit/system/configs/multimedia_keys.conf
 
-# update S12populateshare to copy multimedia_keys.conf into system at boot
-echo "Update S12populateshare to copy multimedia_keys.conf into system at boot"
+# Update S12populateshare to copy multimedia keys into system at boot
+echo "Update S12populateshare to copy multimedia keys into system at boot"
 sudo sed -i '/bios\/ps2/i\            system\/configs\/multimedia_keys.conf \\' /tmp/target/etc/init.d/S12populateshare
+
+# Add PortMaster
+echo "Add PortMaster"
+sudo mkdir -p /tmp/target/usr/share/batocera/datainit/system/.local/share/PortMaster
+sudo cp -r $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/PortMaster/* /tmp/target/usr/share/batocera/datainit/system/.local/share/PortMaster/
+sudo cp $GITHUB_WORKSPACE/rpi/configs/batocera/portmaster/PortMaster.sh /tmp/target/usr/share/batocera/datainit/roms/ports/PortMaster.sh
+sudo sed -i '/bios\/ps2/i\            system\/.local \\' /tmp/target/etc/init.d/S12populateshare
 
 # repack squashfs
 echo "Repack squashfs"
@@ -80,3 +97,15 @@ echo "Compress image"
 gzip -9 $IMAGE_NAME
 echo "Move image to completed_images & rename"
 mv $IMAGE_NAME.gz ../completed_images/$PSPI_IMAGE_NAME
+
+# Split image using 7zip if over 2GB
+FILE_SIZE=$(stat -c%s "../completed_images/$PSPI_IMAGE_NAME")
+if [ $FILE_SIZE -gt $((2000*1024*1024)) ]; then
+    echo "Image is larger than 2GB. Compressing with 7zip..."
+    cd ../completed_images
+    7z a "$PSPI_IMAGE_NAME.7z" "$PSPI_IMAGE_NAME" -v1500M
+    rm "$PSPI_IMAGE_NAME"
+fi
+
+# output images in folder
+ls -lh ../completed_images

@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# SPDX-License-Identifier: MIT
+#
+
+if [ -f "/opt/graphicsmagick/activate.sh" ]; then
+    source /opt/graphicsmagick/activate.sh
+
+    find "/mnt/mmc/MUOS/info/catalogue/External - Ports" -type f \( -iname "*-pre.jpg" -o -iname "*-pre.png" \) -exec sh -c 'input="{}"; output="$(echo "$input" | sed "s/\(.*\)\..*/\1/").png"; gm convert "$input" -resize "320x240>" "$output"; mv -vf "$output" "$rename"; rm -fv "$input"' \;
+elif [ -e "/usr/bin/mogrify" ]; then
+    if [ -f "/mnt/mmc/MUOS/custom-boxart.sh" ]; then
+        RESIZE_CODE='/mnt/mmc/MUOS/custom-boxart.sh "$input" "$output"'
+    else
+        RESIZE_CODE='mogrify -verbose -resize "320x240>" -format png "$input"'
+    fi
+
+    INFO_CATALOG="/run/muos/storage/info/catalogue/External - Ports"
+    if [ ! -e "$INFO_CATALOG" ]; then
+        INFO_CATALOG="/mnt/mmc/MUOS/info/catalogue/External - Ports"
+    fi
+
+    find "$INFO_CATALOG" -type f -iname "*-pre.png" -exec sh -c 'input="{}"; output="$(echo "$input" | sed "s/\(.*\)\..*/\1/").png"; rename="$(echo "$input" | sed "s/\(.*\)-pre\..*/\1/").png"; '"$RESIZE_CODE"'; mv -vf "$output" "$rename"; rm -fv "$input"' \;
+
+    find "$INFO_CATALOG" -type f -iname "*-pre.jpg" -exec sh -c 'input="{}"; output="$(echo "$input" | sed "s/\(.*\)\..*/\1/").png"; rename="$(echo "$input" | sed "s/\(.*\)-pre\..*/\1/").png"; '"$RESIZE_CODE"'; mv -vf "$output" "$rename"; rm -fv "$input"' \;
+fi
