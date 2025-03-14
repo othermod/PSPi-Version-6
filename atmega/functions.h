@@ -74,10 +74,27 @@ void setBatteryLED() {
 }
 
 void toggleWiFiLED() {
-  if (state.wifiEnabled) {
-    setPinHigh(LED_WIFI);
-  } else {
-    setPinLow(LED_WIFI);
+  switch (state.wifiState) {
+    case 0:  // WiFi Disabled
+      setPinLow(LED_WIFI);
+      break;
+      
+    case 1:  // WiFi Enabled
+      setPinHigh(LED_WIFI);
+      break;
+      
+    case 2:  // WiFi Connecting - blink the LED
+      state.wifiBlinkCounter++; // Increment and let it roll over
+      if (state.wifiBlinkCounter == 0) {
+        setPinHigh(LED_WIFI);  // LED on when counter is 0
+      } else if (state.wifiBlinkCounter == 128) {
+        setPinLow(LED_WIFI);   // LED off when counter is 128 (50% duty cycle)
+      }
+      break;
+      
+    default:
+      setPinLow(LED_WIFI);  // Default to off for unknown states
+      break;
   }
 }
 
@@ -312,7 +329,8 @@ void checkRPi() {
 void processI2CCommand() {
   switch (rxData[0]) {
     case CMD_WIFI:
-      state.wifiEnabled = rxData[1];
+      state.wifiState = rxData[1];
+      state.wifiBlinkCounter == 127; // ensures the blinking LED always starts OFF
       toggleWiFiLED();
       break;
 

@@ -16,7 +16,8 @@ struct SystemState {
   bool sleeping;
   bool forceLedOrange;
   bool sleepPulseDirection;
-  bool wifiEnabled;
+  uint8_t wifiState;     // 0=disabled, 1=enabled, 2=connecting
+  uint8_t wifiBlinkCounter;  // Counter for WiFi LED blinking - will roll over naturally
   bool crcEnabled;
   uint8_t sleepExitCounter;
 };
@@ -75,6 +76,7 @@ void setup() {
   state.idleTimeout = 0;
   state.rpiTimeout = 1; // must be > 0 so display turns on when RPi is detected
   state.crcEnabled = true;
+  state.wifiState = 0; // Initialize WiFi as disabled
 
   readEEPROM(); // reads mute and brightness from eeprom. doesnt yet set them in hardware.
 
@@ -95,6 +97,11 @@ void normalModeFunctions() {
   checkShutdownButton();
   checkDisplayButton();
   checkHeadphones();
+  
+  // Handle WiFi LED blinking if in connecting state
+  if (state.wifiState == 2) {
+    toggleWiFiLED();
+  }
 }
 
 void mandatoryFunctions() {
