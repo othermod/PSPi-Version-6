@@ -380,9 +380,10 @@ void checkForInactiveI2C() {
     }
   }
 }
+
 void checkHeadphones() {
   if (!state.mute) {
-    i2cdata.status.headphones = !readPin(EN_AMP);
+    i2cdata.status.headphones = readPin(EN_AMP);
   }
 }
 

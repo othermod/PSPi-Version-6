@@ -84,7 +84,7 @@ void setup() {
 
   //delay(500);         // this is here to prevent a flicker if the Pi GPIO isn't stable at poweroff. still needed?
   setPinHigh(EN_5V);  // this powers the raspberry pi on. EN_5V pin was OP,DL at startup
-  //disableDisplay();   // not needed. pin was already low
+  //disableDisplay();   // not needed. pin is already low
 }
 
 void normalModeFunctions() {

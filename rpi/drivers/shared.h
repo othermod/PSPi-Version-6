@@ -30,7 +30,7 @@ typedef struct {
     union {
         struct Status {
             uint8_t brightness:3;     // Bits 0-2: Display brightness level (1-8)
-            uint8_t reserved:1;       // Bit 3: Reserved for future use
+            uint8_t headphones:1;       // Bit 3: Reserved for future use
             uint8_t sd_pressed:1;     // Bit 4: SD button status
             uint8_t sleeping:1;       // Bit 5: Sleep status
             uint8_t left_switch:1;    // Bit 6: Left switch status
