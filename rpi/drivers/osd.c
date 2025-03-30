@@ -463,9 +463,11 @@ int main() {
           if (leftSwitch != (shared_data->STATUS & 0b01000000)) {
             leftSwitch = shared_data->STATUS & 0b01000000;
             if (leftSwitch) {
-              clearLayer( & batteryLayer);
+              clearLayer(&batteryLayer);
+              clearLayer(&muteLayer); // Clear mute layer when left switch is activated
             } else {
-              drawBattery(& batteryLayer);
+              drawBattery(&batteryLayer);
+              drawMute(&muteLayer); // Redraw mute layer when left switch is deactivated
             }
           }
           previousStatus = shared_data->STATUS;
