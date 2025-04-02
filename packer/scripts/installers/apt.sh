@@ -7,7 +7,10 @@
 df -h
 
 apt-get update
-# apt full-upgrade -y
+
+# Ensure the system clock is synchronized
+sudo apt install -y ntpdate
+sudo ntpdate pool.ntp.org
 
 # Install & enable i2c
 set +e

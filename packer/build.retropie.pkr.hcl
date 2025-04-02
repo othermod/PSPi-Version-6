@@ -135,6 +135,14 @@ build {
     inline            = ["echo 'Reboot VM'", "reboot"]
   }
 
+  # disable the customization dialog, that raspberry pi os will show at boot
+  provisioner "shell" {
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.root}scripts/installers/disable-userconfig.sh"
+    ]
+  }
+
   # Cleanup
   provisioner "shell" {
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
