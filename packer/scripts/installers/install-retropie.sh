@@ -7,6 +7,8 @@
 ################################################################################
 set -x
 
+sleep 10
+sudo ntpdate pool.ntp.org
 sudo apt update
 sudo apt upgrade -y
 sudo apt install git lsb-release -y
