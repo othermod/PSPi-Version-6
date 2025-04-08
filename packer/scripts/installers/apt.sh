@@ -8,10 +8,6 @@ df -h
 
 apt-get update
 
-# Ensure the system clock is synchronized
-sudo apt install -y ntpdate
-sudo ntpdate pool.ntp.org
-
 # Install & enable i2c
 set +e
 apt-get install i2c-tools -y

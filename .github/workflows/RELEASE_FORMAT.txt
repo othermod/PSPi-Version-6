@@ -1,21 +1,20 @@
 ## What's Changed
 
-**Improvements**
+Improvements
+
 - Improved something, with better something.
 
-**Known Issues**
+Known Issues
+
 - We know about something
 
-**Bugfixes**
+Bugfixes
+
 - Fixed an issue
 
 ## Image Details
 
 ### RetroPie
-
-This RetroPie image will build/install RetroPie from https://github.com/RetroPie/RetroPie-Setup
-
-The image should be flashed with Raspberry Pi Imager with WiFi customisations completed. Upon connecting to your network, RetroPie will install. This will take a LONG time (Upwards of an hour) make sure your PSPi is charging.
 
 [How to SSH with RetroPie](https://retropie.org.uk/docs/SSH/)
 
@@ -23,6 +22,20 @@ These images support customisations via Raspberry Pi Imager
 
 Username: `pi`  
 Password: `raspberry`
+
+#### RetroPie 4.8 Standard
+
+This image is recommended for most users. It is the standard 32-bit RetroPie installation.
+
+#### PiOS RetroPie
+
+**When using Raspberry Pi Imager, do not change the default username from `pi`**
+
+This image a 64-bit PiOS base image which will build/install RetroPie on first boot. This image is recommended for advanced users.
+
+The image should be flashed with Raspberry Pi Imager with WiFi customisations completed. Upon connecting to your network, RetroPie will start installing. This will take a time, make sure your PSPi is charging. Your PSPi may reboot several times during this process.
+
+To install additional cores either use the retropie menu/script located at `/opt/RetroPie/retropie_setup.sh` or update retropie.conf located at `/boot/firmware/retropie.conf` You may also update this file by connecting your SD card to your PC and using a text editor.
 
 ### Batocera
 
@@ -61,7 +74,6 @@ This image does not support customisations via Raspberry Pi Imager
 
 Username: `root`  
 Password: `recalboxroot`
-
 
 ### Raspberry Pi OS
 

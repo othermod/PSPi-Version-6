@@ -52,6 +52,12 @@ build {
     destination = "/boot/firmware/pspi.conf"
   }
 
+  # Upload retropie.conf
+  provisioner "file" {
+    source = "${path.root}/../rpi/configs/retropie/retropie.conf"
+    destination = "/boot/firmware/retropie.conf"
+  }  
+
   # Upload overlays
   provisioner "file" {
     source = "${path.root}/../rpi/overlays/"
@@ -114,7 +120,7 @@ build {
   # Upload retropie service
   provisioner "file" {
     source = "${path.root}/scripts/installers/retropie.service"
-    destination = "/etc/systemd/system/install-retropie.service"
+    destination = "/etc/systemd/system/retropie.service"
   }
 
   # Enable retropie service
@@ -123,10 +129,10 @@ build {
     expect_disconnect = true
     inline            = [
       "echo 'Enable RetroPie Service'", 
-      "systemctl enable install-retropie.service",
+      "systemctl enable retropie.service",
       "chmod +x /usr/local/bin/install-retropie.sh"
     ]
-  }
+  }  
 
   # Reboot
   provisioner "shell" {
