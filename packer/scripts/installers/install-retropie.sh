@@ -124,6 +124,12 @@ if ! is_step_complete "setup_retropie"; then
         CHANGES_MADE=true
     fi
 
+    if ! is_step_complete "install_joy2key"; then
+        /opt/RetroPie-Setup/retropie_packages.sh joy2key || handle_failure "install_joy2key"
+        mark_step_complete "install_joy2key"
+        CHANGES_MADE=true
+    fi
+
     # Enable autostart for EmulationStation
     if ! is_step_complete "enable_autostart"; then
         /opt/RetroPie-Setup/retropie_packages.sh autostart enable || handle_failure "enable_autostart"
