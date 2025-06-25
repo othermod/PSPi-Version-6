@@ -330,7 +330,7 @@ void processI2CCommand() {
   switch (rxData[0]) {
     case CMD_WIFI:
       state.wifiState = rxData[1];
-      state.wifiBlinkCounter == 127; // ensures the blinking LED always starts OFF
+      state.wifiBlinkCounter = 127; // ensures the blinking LED always starts OFF
       toggleWiFiLED();
       break;
 
