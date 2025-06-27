@@ -78,11 +78,11 @@ void toggleWiFiLED() {
     case 0:  // WiFi Disabled
       setPinLow(LED_WIFI);
       break;
-      
+
     case 1:  // WiFi Enabled
       setPinHigh(LED_WIFI);
       break;
-      
+
     case 2:  // WiFi Connecting - blink the LED
       state.wifiBlinkCounter++; // Increment and let it roll over
       if (state.wifiBlinkCounter == 0) {
@@ -91,7 +91,7 @@ void toggleWiFiLED() {
         setPinLow(LED_WIFI);   // LED off when counter is 128 (50% duty cycle)
       }
       break;
-      
+
     default:
       setPinLow(LED_WIFI);  // Default to off for unknown states
       break;
@@ -248,14 +248,24 @@ void enableDisplay() {
 }
 
 void heartbeatLED() {
+  static uint8_t pauseCounter = 0;
+  // If at full green and in pause mode
+  if (state.powerLED == LED_FULL_GREEN && pauseCounter > 0) {
+    pauseCounter--;
+    if (pauseCounter == 0) {
+      state.sleepPulseDirection = !state.sleepPulseDirection; // End pause, reverse direction
+    }
+    setBatteryLED();
+    return; // Stay at full green during pause
+  }
+  // Normal LED fading
   state.powerLED += state.sleepPulseDirection ? 1 : -1;
   if (state.powerLED == LED_FULL_GREEN) {
-    state.sleepPulseDirection = !state.sleepPulseDirection;
-    delay(1000); // pause only when LED is full green
+    pauseCounter = 200; // Start 1-second pause (200 * 5ms)
   } else if (state.powerLED == LED_FULL_ORANGE) {
     state.sleepPulseDirection = !state.sleepPulseDirection;
   }
-  if (state.batLow) state.powerLED = LED_FULL_ORANGE; // always set power led to orange if battery is low
+  if (state.batLow) state.powerLED = LED_FULL_ORANGE;
   setBatteryLED();
 }
 
