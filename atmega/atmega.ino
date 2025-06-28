@@ -18,13 +18,13 @@ struct SystemState {
   bool forceLedOrange;
   bool sleepPulseDirection;
   uint8_t wifiState;     // 0=disabled, 1=enabled, 2=connecting
-  uint8_t wifiBlinkCounter;  // Counter for WiFi LED blinking - will roll over naturally
+  uint8_t wifiBlinkCounter;  // Counter for WiFi LED blink
   bool crcEnabled;
   uint8_t sleepExitCounter;
 };
 
 struct i2cStructure {
-  uint16_t buttons;  // Combined button states
+  uint16_t buttons;
   uint8_t senseSys;
   uint8_t senseBat;
   union {
@@ -94,7 +94,7 @@ void initHardware() {
   // Configure Timer for PWM
   TMR_CTRL = TMR_CTRL_INIT;
   TMR_B_INIT;
-  LED_BAT_COLOR = LED_FULL_GREEN;
+  SET_BAT_LED = LED_FULL_GREEN;
 }
 
 void calculateCRC() {
@@ -111,14 +111,29 @@ void calculateCRC() {
     }
   }
 
-  // Store CRC in i2cdata structure
+  // Store CRC in i2cdata structure. Look into making this a single uint16 (make sure order stays same as old fw)
   i2cdata.crc16H = crc >> 8;
   i2cdata.crc16L = crc & 0xFF;
 }
 
 void readEEPROM() {
-  i2cdata.status.brightness = EEPROM.read(EEPROM_BRIGHT_ADDR);
-  state.mute = EEPROM.read(EEPROM_MUTE_ADDR);
+  uint8_t brightness = EEPROM.read(EEPROM_BRIGHT_ADDR);
+  uint8_t mute = EEPROM.read(EEPROM_MUTE_ADDR);
+
+  // Handle freshly flashed atmega (0xFF EEPROM values)
+  if (brightness > 7) {
+    i2cdata.status.brightness = BRIGHTNESS_DEFAULT;  // Use default value (4)
+    writeBrightnessToEEPROM();  // Save default to EEPROM
+  } else {
+    i2cdata.status.brightness = brightness;
+  }
+
+  if (mute > 1) {
+    state.mute = MUTE_DEFAULT;  // Default to unmuted
+    writeMuteStatusToEEPROM();  // Save default to EEPROM
+  } else {
+    state.mute = mute;
+  }
 }
 
 void writeMuteStatusToEEPROM() {
@@ -136,7 +151,7 @@ void setBatteryLED() {
   } else if (state.sleeping) {
     color = state.powerLED;  // Use current sleep PWM value, but only if orange isnt forced
   }
-  LED_BAT_COLOR = color;
+  SET_BAT_LED = color; // this sets the hardware. probably not very clear this is a macro
 }
 
 void toggleWiFiLED() {
@@ -165,18 +180,25 @@ void toggleWiFiLED() {
 }
 
 void readBattery() {
-  //the adc read
-  state.sysVolt = state.sysVolt - (state.sysVolt >> VOLT_AVG_SHIFT) + analogRead(SENS_SYS);
-  state.batVolt = state.batVolt - (state.batVolt >> VOLT_AVG_SHIFT) + analogRead(SENS_BAT);
+  // Update voltage readings using exponential moving average (15/16 old + 1/16 new)
+  uint16_t newSysReading = analogRead(SENS_SYS);
+  uint16_t newBatReading = analogRead(SENS_BAT);
 
-  bool newBatLow = state.batLow ?
-                   (state.sysVolt <= BAT_GOOD) :
-                   (state.sysVolt < BAT_LOW);
+  state.sysVolt = state.sysVolt - (state.sysVolt >> VOLT_AVG_SHIFT) + newSysReading;
+  state.batVolt = state.batVolt - (state.batVolt >> VOLT_AVG_SHIFT) + newBatReading;
 
-  if (newBatLow != state.batLow) {
-    state.batLow = newBatLow;
+  // check whether the battery is low (includes hysteresis) and change the color if it did
+  // Check battery status with hysteresis to prevent oscillation
+  if (state.batLow && state.sysVolt > BAT_GOOD) {
+    // Transition from low to good - voltage recovered
+    state.batLow = false;
+    setBatteryLED();
+  } else if (!state.batLow && state.sysVolt < BAT_LOW) {
+    // Transition from good to low - voltage dropped
+    state.batLow = true;
     setBatteryLED();
   }
+
   //update i2c data
   i2cdata.senseSys = state.sysVolt >> VOLT_8BIT_SHIFT;
   i2cdata.senseBat = state.batVolt >> VOLT_8BIT_SHIFT;
@@ -295,7 +317,7 @@ void checkDisplayButton() {
 // EN_AMP is only used as open drain because its also driven low by the headphone board
 // this could be used to detect whether the headphones are plugged in
 void toggleAudioCircuit() {
-  if (state.mute or state.idle or state.sleeping) {
+  if (state.mute || state.idle || state.sleeping) {
     setPinAsOutput(EN_AMP);
     delay(1);
     setPinLow(EN_AUDIO_POWER);
@@ -488,16 +510,16 @@ void sleepModeFunctions() {
 
 void setup() {
   initHardware();
-  state.sysVolt = BAT_GOOD * 16;
-  state.batVolt = BAT_GOOD * 16;
+  state.sysVolt = BAT_GOOD;
+  state.batVolt = BAT_GOOD;
   state.powerLED = LED_FULL_GREEN;
   state.idle = true; // start in idle with audio muted
   //EN_AMP (D0): IP,NP
   //EN_AUDIO_POWER (D7): OP,DL
-  state.idleTimeout = 0;
+  state.idleTimeout = 0; // verify
   state.rpiTimeout = 1; // must be > 0 so display turns on when RPi is detected
   state.crcEnabled = true;
-  state.wifiState = 0; // Initialize WiFi as disabled
+  state.wifiState = 0; // Initialize WiFi LED as disabled. make sure hardware is set
 
   readEEPROM(); // reads mute and brightness from eeprom. doesnt yet set them in hardware.
 

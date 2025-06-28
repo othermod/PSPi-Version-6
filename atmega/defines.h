@@ -10,6 +10,7 @@
 #define BAT_LOW 1095     // 3.2V
 #define BAT_GOOD 1216    // 3.5V
 #define BRIGHTNESS_DEFAULT 4 // 0-7 are valid
+#define MUTE_DEFAULT 1 // 0-1 are valid
 #define UPDATE_INTERVAL_REACHED currentTime - lastUpdateTime >= (state.sleeping ? SLEEP_MODE_LOOP_MS : NORMAL_MODE_LOOP_MS)
 
 // Port B pins
@@ -42,18 +43,18 @@
 
 // ADC processing macros
 #define VOLT_AVG_SHIFT 4     // Voltage averaging shift
-#define VOLT_8BIT_SHIFT 3    // Voltage to 8-bit conversion
+#define VOLT_8BIT_SHIFT 3    // Voltage shift to fit into 8-bits
 
 // Timer configuration macros
 #if defined(__AVR_ATmega8__)|(__AVR_ATmega8A__)
   #define TMR_CTRL TCCR2
   #define TMR_CTRL_INIT ((1<<WGM21)|(1<<WGM20)|(1<<COM21)|(1<<CS20))
-  #define LED_BAT_COLOR OCR2
+  #define SET_BAT_LED OCR2
   #define TMR_B_INIT
 #elif defined(__AVR_ATmega328P__)
   #define TMR_CTRL TCCR2A
   #define TMR_CTRL_INIT ((1<<WGM21)|(1<<WGM20)|(1<<COM2A1))
-  #define LED_BAT_COLOR OCR2A
+  #define SET_BAT_LED OCR2A
   #define TMR_B_INIT TCCR2B=(1<<CS20)
 #else
   #error "Unsupported MCU"
