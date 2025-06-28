@@ -267,8 +267,8 @@ void readSPIButtons() {
 void readJoysticks() {
   i2cdata.joyLX = analogRead(JOY_LX) >> 2;
   i2cdata.joyLY = analogRead(JOY_LY) >> 2;
-  i2cdata.joyRX = analogRead(JOY_RX) >> 2;
-  i2cdata.joyRY = analogRead(JOY_RY) >> 2;
+  i2cdata.joyRXBits.analog = analogRead(JOY_RX) >> 3;
+  i2cdata.joyRYBits.analog = analogRead(JOY_RY) >> 3;
   i2cdata.joyRXBits.extraButton = !readPin(BTN_EXTRA1); // extra button state
   i2cdata.joyRYBits.extraButton = !readPin(BTN_EXTRA2); // extra button state
 }
