@@ -335,7 +335,7 @@ void heartbeatLED() {
   setBatteryLED();
 }
 
-void checkMuteButton() { // this does into hl
+void checkMuteButton() {
   if (READ_MUTE_BUTTON) {
     state.mutePressed = true;
   } else if (state.mutePressed) { // checks whether a previously pressed button was released. only occurs if mute is not pressed on this loop
@@ -488,9 +488,10 @@ void sleepModeFunctions() {
 
 void setup() {
   initHardware();
-  state.sysVolt = BAT_GOOD;
+  state.sysVolt = BAT_GOOD * 16;
+  state.batVolt = BAT_GOOD * 16;
   state.powerLED = LED_FULL_GREEN;
-  state.idle = true; // start with audio muted. make sure it is muted in hardware
+  state.idle = true; // start in idle with audio muted
   //EN_AMP (D0): IP,NP
   //EN_AUDIO_POWER (D7): OP,DL
   state.idleTimeout = 0;
