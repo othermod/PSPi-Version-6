@@ -60,7 +60,7 @@ struct i2cStructure {
 
 SystemState state;
 i2cStructure i2cdata;
-volatile byte rxData[3];
+volatile byte rxData[4];
 volatile bool pendingCommand = false;
 unsigned long lastUpdateTime = 0;
 
