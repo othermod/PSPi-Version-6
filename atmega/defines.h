@@ -10,7 +10,7 @@
 #define BAT_LOW 1095     // 3.2V
 #define BAT_GOOD 1216    // 3.5V
 #define BRIGHTNESS_DEFAULT 4 // 0-7 are valid
-#define MUTE_DEFAULT 1 // 0-1 are valid
+#define MUTE_DEFAULT false // 0-1 are valid
 #define UPDATE_INTERVAL_REACHED currentTime - lastUpdateTime >= (state.sleeping ? SLEEP_MODE_LOOP_MS : NORMAL_MODE_LOOP_MS)
 
 // Port B pins
