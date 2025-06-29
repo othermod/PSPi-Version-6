@@ -235,6 +235,7 @@ void disableDisplay() {
 }
 
 void initBacklight() {
+  // TPS61160 init sequence
   setPinLow(LCD_CONTROL);
   delayMicroseconds(T_OFF);
   setPinHigh(LCD_CONTROL);
@@ -242,6 +243,30 @@ void initBacklight() {
   setPinLow(LCD_CONTROL);
   delayMicroseconds(300);
   setPinHigh(LCD_CONTROL);
+
+  // Fade from off to target brightness. Unnecessary, but looks nice.
+  uint8_t targetRaw = i2cdata.status.brightness * 4 + 1;
+  for (uint8_t rawBrightness = 1; rawBrightness <= targetRaw; rawBrightness++) {
+    byte bytesToSend[] = {LCD_ADDR, rawBrightness};
+
+    noInterrupts();
+    for (int byte = 0; byte < 2; byte++) {
+      delayMicroseconds(T_START);
+      for (int i = 7; i >= 0; i--) {
+        bool bit = bytesToSend[byte] & (1 << i);
+        setPinLow(LCD_CONTROL);
+        delayMicroseconds(bit ? T_L_HB : T_L_LB);
+        setPinHigh(LCD_CONTROL);
+        delayMicroseconds(bit ? T_H_HB : T_H_LB);
+      }
+      setPinLow(LCD_CONTROL);
+      delayMicroseconds(T_EOS);
+      setPinHigh(LCD_CONTROL);
+    }
+    interrupts();
+
+    delay(20);  // Fade step timing
+  }
 }
 
 void readSPIButtons() {
@@ -332,7 +357,6 @@ void toggleAudioCircuit() {
 
 void enableDisplay() {
   initBacklight();
-  setBrightness();
 }
 
 void heartbeatLED() {
