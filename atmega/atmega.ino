@@ -233,6 +233,37 @@ void setBrightness() {
 }
 
 void disableDisplay() {
+  // Fade from current brightness down to minimum. Unnecessary, but looks nice.
+  uint8_t currentRaw = i2cdata.status.brightness * 4 + 1;
+
+  for (uint8_t rawBrightness = currentRaw; rawBrightness >= 1; rawBrightness--) {
+    byte bytesToSend[] = {LCD_ADDR, rawBrightness};
+
+    noInterrupts();
+    for (int byte = 0; byte < 2; byte++) {
+      // Start condition
+      delayMicroseconds(T_START);
+
+      // Send each bit MSB first
+      for (int i = 7; i >= 0; i--) {
+        bool bit = bytesToSend[byte] & (1 << i);
+        setPinLow(LCD_CONTROL);
+        delayMicroseconds(bit ? T_L_HB : T_L_LB);
+        setPinHigh(LCD_CONTROL);
+        delayMicroseconds(bit ? T_H_HB : T_H_LB);
+      }
+
+      // End of byte sequence
+      setPinLow(LCD_CONTROL);
+      delayMicroseconds(T_EOS);
+      setPinHigh(LCD_CONTROL);
+    }
+    interrupts();
+
+    delay(20);  // Fade step timing
+  }
+
+  // Now disable the pin (20ms after final brightness step, matching fade-in timing)
   setPinLow(LCD_CONTROL);
 }
 
@@ -413,9 +444,9 @@ void enterSleep() {
 void exitSleep() {
   i2cdata.status.sleeping = false;
   state.sleeping = false;
-  enableDisplay();
   toggleAudioCircuit();
   setBatteryLED();
+  enableDisplay();
 }
 
 void checkHoldSwitch() {
