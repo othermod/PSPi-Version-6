@@ -438,17 +438,15 @@ void enterSleep() {
   i2cdata.status.sleeping = true;
   state.sleeping = true;
   state.sleepExitCounter = 0;
-  state.sleepPauseCounter = 0;
+  state.sleepPauseCounter = 200;
+  state.sleepPulseDirection = FADE_TO_GREEN;
   toggleAudioCircuit();
   if (state.poweroffInitiated == false) { // only turn off display if the pi is detected. keeps lcd from coming on at poweron
     disableDisplay();
   }
-
   if (state.batLow || state.forceLedOrange) {
-    state.sleepPulseDirection = FADE_TO_GREEN;
     state.powerLED = LED_FULL_ORANGE;
   } else {
-    state.sleepPulseDirection = FADE_TO_ORANGE;
     state.powerLED = LED_FULL_GREEN;
   }
 }
