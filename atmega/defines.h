@@ -47,7 +47,7 @@
 #define VOLT_8BIT_SHIFT 3    // Voltage shift to fit into 8-bits
 
 // Timer configuration macros
-#if defined(__AVR_ATmega8__)|(__AVR_ATmega8A__)
+#if defined(__AVR_ATmega8__)||(__AVR_ATmega8A__)
   #define TMR_CTRL TCCR2
   #define TMR_CTRL_INIT ((1<<WGM21)|(1<<WGM20)|(1<<COM21)|(1<<CS20))
   #define SET_BAT_LED OCR2

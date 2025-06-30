@@ -233,6 +233,11 @@ void setBrightness() {
 }
 
 void disableDisplay() {
+  // first verify that backlight isnt off. if it is, then dont do anything. (this avoids conflicts between poweroff and sleep mode)
+  if (!readPin(LCD_CONTROL)) {
+    return;
+  }
+
   // Fade from current brightness down to minimum. Unnecessary, but looks nice.
   uint8_t currentRaw = i2cdata.status.brightness * 4 + 1;
 
@@ -268,6 +273,11 @@ void disableDisplay() {
 }
 
 void initBacklight() {
+  // first verify that backlight isnt on. if it is, then dont do anything. (this avoids conflict between poweroff and sleep mode)
+  if (readPin(LCD_CONTROL)) {
+    return;
+  }
+
   // TPS61160 init sequence
   setPinLow(LCD_CONTROL);
   delayMicroseconds(T_OFF);
@@ -429,8 +439,10 @@ void enterSleep() {
   state.sleeping = true;
   state.sleepExitCounter = 0;
   state.sleepPauseCounter = 0;
-  disableDisplay();
   toggleAudioCircuit();
+  if (state.poweroffInitiated == false) { // only turn off display if the pi is detected. keeps lcd from coming on at poweron
+    disableDisplay();
+  }
 
   if (state.batLow || state.forceLedOrange) {
     state.sleepPulseDirection = FADE_TO_GREEN;
@@ -446,7 +458,9 @@ void exitSleep() {
   state.sleeping = false;
   toggleAudioCircuit();
   setBatteryLED();
-  enableDisplay();
+  if (state.poweroffInitiated == false) { // only turn on display if the pi is detected. keeps lcd from coming on at poweron
+    enableDisplay();
+  }
 }
 
 void checkHoldSwitch() {
@@ -481,15 +495,21 @@ void checkRPi() {
     if (state.rpiTimeout > 0) {
       state.rpiTimeout--;
       if (state.rpiTimeout == 0 && state.poweroffInitiated) {
-        enableDisplay(); // re-enable display if it was previously disabled
         state.poweroffInitiated = false;
+        if (state.sleeping == false) {
+          enableDisplay(); // re-enable display if it was previously disabled (and hold switch isnt down)
+        }
+
       }
     }
   } else {
     // Pi not detected - increment timeout to move toward shutdown
     state.rpiTimeout++;
     if (state.rpiTimeout == RPI_TIMEOUT_DISPLAY) {
-      disableDisplay();
+      if (state.sleeping == false) {
+        disableDisplay(); // disable display if (and hold switch isnt already down)
+      }
+
       state.poweroffInitiated = true;
     }
     if (state.rpiTimeout == RPI_TIMEOUT_POWEROFF) {
@@ -581,7 +601,6 @@ void sleepModeFunctions() {
   heartbeatLED();
 }
 
-
 void setup() {
   initHardware();
   state.sysVolt = BAT_GOOD;
@@ -634,7 +653,7 @@ void loop() {
   unsigned long currentTime = millis();
   if (UPDATE_INTERVAL_REACHED) {    // Check if it's time to scan inputs
     lastUpdateTime = currentTime;
-    mandatoryFunctions();           // Always update critical system states at interval
+    mandatoryFunctions();           // Always update these
     if (state.sleeping) {
       sleepModeFunctions();         // update only when in sleep mode (at lower frequency)
     } else {
