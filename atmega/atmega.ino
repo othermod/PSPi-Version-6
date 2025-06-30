@@ -9,6 +9,7 @@ struct SystemState {
   uint16_t sysVolt;
   uint16_t batVolt;
   uint16_t rpiTimeout;
+  bool poweroffInitiated;
   uint8_t idleTimeout;
   uint8_t powerLED;
   bool batLow;
@@ -431,19 +432,35 @@ void checkHoldSwitch() {
   }
 }
 
+void forcePoweroff() {
+  setPinLow(EN_5V);
+  while (1) {
+    SET_BAT_LED = LED_FULL_GREEN;
+    delay(250);
+    SET_BAT_LED = LED_FULL_ORANGE;
+    delay(250);
+    }
+}
+
 void checkRPi() {
   if (readPin(RPI_DETECT)) {
-    if (state.rpiTimeout) {
-      enableDisplay();
-      state.rpiTimeout = 0;
+    // Pi detected, so poweroff should be gradually cancelled
+    if (state.rpiTimeout > 0) {
+      state.rpiTimeout--;
+      if (state.rpiTimeout == 0 && state.poweroffInitiated) {
+        enableDisplay(); // re-enable display if it was previously disabled
+        state.poweroffInitiated = false;
+      }
     }
   } else {
-    if (!state.rpiTimeout) disableDisplay();
-    if (state.rpiTimeout > RPI_TIMEOUT) {
-      setPinLow(EN_5V);
-      while (1) {} // Infinite loop until power is cut
-    } else {
-      state.rpiTimeout++;
+    // Pi not detected - increment timeout to move toward shutdown
+    state.rpiTimeout++;
+    if (state.rpiTimeout == RPI_TIMEOUT_DISPLAY) {
+      disableDisplay();
+      state.poweroffInitiated = true;
+    }
+    if (state.rpiTimeout == RPI_TIMEOUT_POWEROFF) {
+      forcePoweroff();
     }
   }
 }
@@ -541,7 +558,8 @@ void setup() {
   //EN_AMP (D0): IP,NP
   //EN_AUDIO_POWER (D7): OP,DL
   state.idleTimeout = 0; // verify
-  state.rpiTimeout = 1; // must be > 0 so display turns on when RPi is detected
+  state.rpiTimeout = 250; // > 0 so display turns on when RPi is detected
+  state.poweroffInitiated = true;
   state.crcEnabled = true;
   state.wifiState = 0; // Initialize WiFi LED as disabled. make sure hardware is set
 

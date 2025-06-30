@@ -1,7 +1,8 @@
 #define NORMAL_MODE_LOOP_MS 1       // Main loop interval
 #define SLEEP_MODE_LOOP_MS 5       // Sleep mode loop interval
 #define BTN_DEBOUNCE_LOOPS 10  // Buttons will remain "pressed" for this many loops
-#define RPI_TIMEOUT 1000       // RPi detection timeout number of loops before forcing poweroff
+#define RPI_TIMEOUT_DISPLAY 100     // RPi detection timeout number of loops before disabling the display
+#define RPI_TIMEOUT_POWEROFF 1250   // RPi detection timeout number of loops before forcing poweroff
 #define SLEEP_EXIT_LOOPS 100    // Number of consecutive loops needed to exit sleep mode
 #define I2C_ADDR 0x10
 #define I2C_IDLE_TRIGGER 200    // Loops before entering idle mode
