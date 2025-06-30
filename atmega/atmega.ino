@@ -22,6 +22,7 @@ struct SystemState {
   uint8_t wifiBlinkCounter;  // Counter for WiFi LED blink
   bool crcEnabled;
   uint8_t sleepExitCounter;
+  uint8_t sleepPauseCounter;
 };
 
 struct i2cStructure {
@@ -361,11 +362,10 @@ void enableDisplay() {
 }
 
 void heartbeatLED() {
-  static uint8_t pauseCounter = 0;
   // If at full green and in pause mode
-  if (state.powerLED == LED_FULL_GREEN && pauseCounter > 0) {
-    pauseCounter--;
-    if (pauseCounter == 0) {
+  if (state.powerLED == LED_FULL_GREEN && state.sleepPauseCounter > 0) {
+    state.sleepPauseCounter--;
+    if (state.sleepPauseCounter == 0) {
       state.sleepPulseDirection = !state.sleepPulseDirection; // End pause, reverse direction
     }
     setBatteryLED();
@@ -374,7 +374,7 @@ void heartbeatLED() {
   // Normal LED fading
   state.powerLED += state.sleepPulseDirection ? 1 : -1;
   if (state.powerLED == LED_FULL_GREEN) {
-    pauseCounter = 200; // Start 1-second pause (200 * 5ms)
+    state.sleepPauseCounter = 200; // Start 1-second pause (200 * 5ms)
   } else if (state.powerLED == LED_FULL_ORANGE) {
     state.sleepPulseDirection = !state.sleepPulseDirection;
   }
@@ -397,8 +397,10 @@ void enterSleep() {
   i2cdata.status.sleeping = true;
   state.sleeping = true;
   state.sleepExitCounter = 0;
+  state.sleepPauseCounter = 0;
   disableDisplay();
   toggleAudioCircuit();
+
   if (state.batLow || state.forceLedOrange) {
     state.sleepPulseDirection = FADE_TO_GREEN;
     state.powerLED = LED_FULL_ORANGE;
