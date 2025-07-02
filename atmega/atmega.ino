@@ -90,7 +90,7 @@ void initHardware() {
     BTN_SHUTDOWN (D4): IP,PU
     BTN_HLD (D5): IP,PU
     SWITCH_WIFI (D6): IP,PU
-    EN_AUDIO_POWER (D7): OP,DL // make sure driving this on earlier boards is ok
+    EN_AUDIO_POWER (D7): OP,DL
   */
 
   // Configure Timer for PWM
@@ -207,6 +207,11 @@ void readBattery() {
 }
 
 void setBrightness() {
+  // Only adjust brightness if the display is enabled.
+  if (state.sleeping || state.poweroffInitiated) {
+    return;
+  }
+
   byte bytesToSend[] = {LCD_ADDR, i2cdata.status.brightness * 4 + 1};
 
   noInterrupts();
