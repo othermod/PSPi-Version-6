@@ -233,12 +233,12 @@ void setBrightness() {
 }
 
 void disableDisplay() {
-  // first verify that backlight isnt off. if it is, then dont do anything. (this avoids conflicts between poweroff and sleep mode)
+  // Verify that the display isn't already off
   if (!readPin(LCD_CONTROL)) {
     return;
   }
 
-  // Fade from current brightness down to minimum. Unnecessary, but looks nice.
+  // Fade from current brightness down to minimum
   uint8_t currentRaw = i2cdata.status.brightness * 4 + 1;
 
   for (uint8_t rawBrightness = currentRaw; rawBrightness >= 1; rawBrightness--) {
@@ -246,10 +246,8 @@ void disableDisplay() {
 
     noInterrupts();
     for (int byte = 0; byte < 2; byte++) {
-      // Start condition
       delayMicroseconds(T_START);
 
-      // Send each bit MSB first
       for (int i = 7; i >= 0; i--) {
         bool bit = bytesToSend[byte] & (1 << i);
         setPinLow(LCD_CONTROL);
@@ -258,22 +256,25 @@ void disableDisplay() {
         delayMicroseconds(bit ? T_H_HB : T_H_LB);
       }
 
-      // End of byte sequence
       setPinLow(LCD_CONTROL);
       delayMicroseconds(T_EOS);
       setPinHigh(LCD_CONTROL);
     }
     interrupts();
 
-    delay(20);  // Fade step timing
+    delay(20);
   }
 
-  // Now disable the pin (20ms after final brightness step, matching fade-in timing)
   setPinLow(LCD_CONTROL);
 }
 
-void initBacklight() {
-  // first verify that backlight isnt on. if it is, then dont do anything. (this avoids conflict between poweroff and sleep mode)
+void enableDisplay() {
+  // Only enable if display should currently be on.
+  if (state.sleeping || state.poweroffInitiated) {
+    return;
+  }
+
+  //verify that the display isnt already on
   if (readPin(LCD_CONTROL)) {
     return;
   }
@@ -287,7 +288,7 @@ void initBacklight() {
   delayMicroseconds(300);
   setPinHigh(LCD_CONTROL);
 
-  // Fade from off to target brightness. Unnecessary, but looks nice.
+  // Fade from off to target brightness
   uint8_t targetRaw = i2cdata.status.brightness * 4 + 1;
   for (uint8_t rawBrightness = 1; rawBrightness <= targetRaw; rawBrightness++) {
     byte bytesToSend[] = {LCD_ADDR, rawBrightness};
@@ -308,7 +309,7 @@ void initBacklight() {
     }
     interrupts();
 
-    delay(20);  // Fade step timing
+    delay(20);
   }
 }
 
@@ -398,10 +399,6 @@ void toggleAudioCircuit() {
   }
 }
 
-void enableDisplay() {
-  initBacklight();
-}
-
 void heartbeatLED() {
   // If at full green and in pause mode
   if (state.powerLED == LED_FULL_GREEN && state.sleepPauseCounter > 0) {
@@ -441,9 +438,7 @@ void enterSleep() {
   state.sleepPauseCounter = 200;
   state.sleepPulseDirection = FADE_TO_GREEN;
   toggleAudioCircuit();
-  if (state.poweroffInitiated == false) { // only turn off display if the pi is detected. keeps lcd from coming on at poweron
-    disableDisplay();
-  }
+  disableDisplay();
   if (state.batLow || state.forceLedOrange) {
     state.powerLED = LED_FULL_ORANGE;
   } else {
@@ -456,9 +451,7 @@ void exitSleep() {
   state.sleeping = false;
   toggleAudioCircuit();
   setBatteryLED();
-  if (state.poweroffInitiated == false) { // only turn on display if the pi is detected. keeps lcd from coming on at poweron
-    enableDisplay();
-  }
+  enableDisplay();
 }
 
 void checkHoldSwitch() {
@@ -489,26 +482,18 @@ void forcePoweroff() {
 
 void checkRPi() {
   if (readPin(RPI_DETECT)) {
-    // Pi detected, so poweroff should be gradually cancelled
     if (state.rpiTimeout > 0) {
       state.rpiTimeout--;
       if (state.rpiTimeout == 0 && state.poweroffInitiated) {
         state.poweroffInitiated = false;
-        if (state.sleeping == false) {
-          enableDisplay(); // re-enable display if it was previously disabled (and hold switch isnt down)
-        }
-
+        enableDisplay();
       }
     }
   } else {
-    // Pi not detected - increment timeout to move toward shutdown
     state.rpiTimeout++;
     if (state.rpiTimeout == RPI_TIMEOUT_DISPLAY) {
-      if (state.sleeping == false) {
-        disableDisplay(); // disable display if (and hold switch isnt already down)
-      }
-
       state.poweroffInitiated = true;
+      disableDisplay();
     }
     if (state.rpiTimeout == RPI_TIMEOUT_POWEROFF) {
       forcePoweroff();
