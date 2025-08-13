@@ -1,11 +1,11 @@
 source "cross" "kali_zero2_armhf" {
-  file_urls             = ["https://kali.download/arm-images/kali-2024.4/kali-linux-2024.4-raspberry-pi-zero-2-w-armhf.img.xz"]
-  file_checksum         = "8424419091b76a062263762fb687cf6a41ee037d6d3dfb2367bb929270073275"
+  file_urls             = ["https://kali.download/arm-images/kali-2025.2/kali-linux-2025.2-raspberry-pi-zero-2-w-armhf.img.xz"]
+  file_checksum         = "3841dba6ac8266650cedda713ce02a81077942460dbbaa6cceb68bbdc5d558b3"
   file_checksum_type    = "sha256"
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "Kali2024.4-Zero2-PSPi6-${var.pspi_version}.img"
+  image_path            = "Kali2025.2-Zero2-PSPi6-${var.pspi_version}.img"
   image_size            = "13G"
   image_type            = "dos"
 
@@ -37,13 +37,13 @@ source "cross" "kali_zero2_armhf" {
 }
 
 source "cross" "kali_cm4_arm64" {
-  file_urls             = ["https://kali.download/arm-images/kali-2024.4/kali-linux-2024.4-raspberry-pi-arm64.img.xz"]
-  file_checksum         = "2862b309deb2d4bbdc6f8924f1ba26f67863df5c6c4a9bbfbbb5afa0ce368a4c"
+  file_urls             = ["https://kali.download/arm-images/kali-2025.2/kali-linux-2025.2-raspberry-pi-arm64.img.xz"]
+  file_checksum         = "4fcc1a64346a8ebb08ffd9cbfcb47467237ceec8ebf84e8907599f924b48e5bc"
   file_checksum_type    = "sha256"
   file_target_extension = "xz"
   file_unarchive_cmd    = ["xz", "--decompress", "$ARCHIVE_PATH"]
   image_build_method    = "resize"
-  image_path            = "Kali2024.4-CM4-PSPi6-${var.pspi_version}.img"
+  image_path            = "Kali2025.2-CM4-PSPi6-${var.pspi_version}.img"
   image_size            = "15G"
   image_type            = "dos"
 
