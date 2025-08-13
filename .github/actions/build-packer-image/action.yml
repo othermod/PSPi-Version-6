@@ -62,16 +62,6 @@ runs:
       working-directory: packer
       shell: bash
 
-    # Generate sha256 filehash of image files
-    - name: Generate sha256 filehash
-      run: |
-        for i in $(ls *.img.gz *.7z.* 2>/dev/null)
-        do
-          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
-        done
-      working-directory: packer
-      shell: bash
-
     # Update github release
     - name: Update Release
       if: github.ref == 'refs/heads/main' || inputs.createRelease == 'true'
@@ -82,7 +72,6 @@ runs:
         fail_on_unmatched_files: false
         files: |
           packer/*.img.gz
-          packer/*.img.gz.sha256
           packer/*.7z.*
 
     # Upload artifacts
@@ -93,5 +82,4 @@ runs:
         retention-days: 7
         path: |
           packer/*.img.gz
-          packer/*.img.gz.sha256
           packer/*.7z.*

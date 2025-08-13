@@ -88,16 +88,6 @@ runs:
         IMAGE_NAME: ${{ inputs.image_name }}
         PSPI_IMAGE_NAME: ${{ inputs.pspi_image_name }}
 
-    # Generate sha256 filehash of image files
-    - name: Generate sha256 filehash
-      run: |
-        for i in $(ls *.img.gz *.7z.* 2>/dev/null)
-        do
-          sha256sum "$i" | awk '{print $1}' > "$i.sha256"
-        done
-      working-directory: ${{ runner.temp }}/completed_images
-      shell: bash
-
     # Update github release
     - name: Update Release
       if: github.ref == 'refs/heads/main' || inputs.createRelease == 'true'
@@ -108,7 +98,6 @@ runs:
         fail_on_unmatched_files: false
         files: |
           ${{ runner.temp }}/completed_images/*.img.gz
-          ${{ runner.temp }}/completed_images/*.img.gz.sha256
           ${{ runner.temp }}/completed_images/*.7z.*
 
     # Upload artifacts
@@ -119,5 +108,4 @@ runs:
         retention-days: 7
         path: |
           ${{ runner.temp }}/completed_images/*.img.gz
-          ${{ runner.temp }}/completed_images/*.img.gz.sha256
           ${{ runner.temp }}/completed_images/*.7z.*
