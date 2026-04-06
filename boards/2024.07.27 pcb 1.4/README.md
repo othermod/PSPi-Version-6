@@ -2,7 +2,6 @@
 
 ## Notes
 
-- PCB 1.4 was produced before the spontaneous power-on fix was implemented. Boards with this revision may be affected by the issue.
 - Orders placed on or after April 1, 2026 include the corrected BAV70 diode instead of the BAT54C.
 - The current BOM shows the updated component (BAV70 instead of BAT54C).
 - If you have a PCB 1.4 board and are experiencing spontaneous power-on behavior, please apply the fix described below.
