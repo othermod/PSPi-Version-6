@@ -1,26 +1,15 @@
 # PSPi 6: 2023.08.12 Prototype Notes and Fixes
 
-## Ordering Notes
-- All boards in this project are 0.8mm thick. The default size for PCBs is 1.6mm, so make sure to change it.
-- The PSPi 6 mainboard needs double-sided assembly, which is pricey.
-- The CM4 carrier also needs both sides be placed, but it is not too difficult to solder the GPIO header, SD card, and switch if you want to save some money.
-- The headphone board only needs single sided assembly.
-
 ## Components to be Placed Manually
 
-Some components are not available for automatic placement and must be placed manually. Below is the list of these components with links to purchase them:
+**Note**: This prototype has different manual components than later revisions. Use this list instead of the one in boards/README.md.
+
+The following components are not available for automatic placement and must be placed manually:
 
 1. **Gold Plated Beads/Pads for Joystick Contact**: [AliExpress Link for 1.0mm Beads](https://s.click.aliexpress.com/e/_DDhnfcj) or [AliExpress Link for 1.3mm](https://s.click.aliexpress.com/e/_DEbcF3V)
 2. **PSP Barrel Jack SMD Connector**: [AliExpress Link](https://s.click.aliexpress.com/e/_DErpHYb)
 3. **PSP Headphone Jack Connector**: [AliExpress Link](https://s.click.aliexpress.com/e/_DDpWHFz)
 4. **miniUSB Connector**: [LCSC Link](https://www.lcsc.com/product-detail/_Jing-Extension-of-the-Electronic-Co-_C13453.html)
-
-The following items are also needed:
-1. **M2.5x6mm Standoffs**: [AliExpress Link](https://s.click.aliexpress.com/e/_DBPcEQb)
-2. **M2.5 Washer (0.5mm Thick)**: [AliExpress Link](https://s.click.aliexpress.com/e/_DFXVGBT)
-3. **M2.5 Screw (3mm Long)**: [AliExpress Link](https://s.click.aliexpress.com/e/_Dlp9Lxn)
-4. **M2.5 Screw (5mm Long)**: [AliExpress Link](https://s.click.aliexpress.com/e/_Dlp9Lxn)
-5. **Pin Protection 3D Print**
 
 ## Current Bugs
 
@@ -43,3 +32,8 @@ The following items are also needed:
 ### Bug 5: [Flickering Charge LED During Charging]
 - **Issue**: [The Charge IC pulses the LED quickly, and it causes the green and orange LEDs to show simultaneously]
 - **Fix**: [Remove R5 (2K Ohm) and replace it with a 100K Ohm resistor]
+
+### Bug 6: [Spontaneous Power-On When Charging]
+- **Issue**: The board powers on unexpectedly when a charger is connected, or when the board reaches high temperatures
+- **Root Cause**: Temperature-dependent reverse leakage current in diodes D3 and D4 (marked W1). As the board temperature increases, these diodes allow an increasing amount of reverse leakage current, which enables the power-on circuit. Charging exacerbates this by adding heat and maintaining battery at full voltage
+- **Fix**: Replace diodes D3 and D4 with BAV70 diodes (marked A4). The BAV70 has better temperature stability and lower reverse leakage. LCSC C2501 / BAV70,215 (~$0.02 per unit). This fix has been validated in testing at 100°C board temperature.
