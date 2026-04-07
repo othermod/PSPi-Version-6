@@ -2,17 +2,17 @@
 
 ![PSPi](https://othermod.com/wp-content/uploads/IMG_8727.jpg)
 
-This is my passion project that transforms the classic PSP 1000 into a modern handheld using a Raspberry Pi. This page documents the combination of hardware and software development.
+This is my passion project that transforms the classic PSP 1000 into a modern handheld using a Raspberry Pi. This repository contains the hardware designs, firmware, and software needed to build and use the PSPi 6.
 
-## 🎮 What is PSPi 6?
+## What is the PSPi 6?
 
-PSPi 6 is a custom circuit board that replaces the mainboard of a PSP 1000, allowing you to use a Raspberry Pi as its brain. This means you can:
+The PSPi 6 is a custom circuit board that replaces the mainboard of a PSP 1000, allowing you to use a Raspberry Pi as its brain. This means you can:
 
 - Play retro games and emulators
 - Run full Linux distributions and use it as a portable computer
 - Use most software that works on a Raspberry Pi
 
-## ✨ Key Features
+## Features
 
 - **Display**: High quality [800x480 LCD](https://othermod.com/product/4-3-800x480-lcd/) with adjustable brightness
 - **Power Management**: Efficient charging, real-time battery monitoring, and power-saving modes
@@ -26,16 +26,16 @@ PSPi 6 is a custom circuit board that replaces the mainboard of a PSP 1000, allo
 
 For a comprehensive list of features and technical details, please visit the [Features Wiki Page](https://github.com/othermod/PSPi-Version-6/wiki/1.-Features).
 
-## 🧩 Compatibility
+## Compatibility
 
 - **PSP Model**: Works exclusively with PSP 1000 series. Visit the [PSP Compatibility Wiki Page](https://github.com/othermod/PSPi-Version-6/wiki/2.-PSP-Compatibility) page for more details
 - **Raspberry Pi**:
   - Fits Raspberry Pi Zero, Zero 2W, and CM4 (with CM4 Carrier board)
   - Electrically compatible with all 40-pin Raspberry Pis, but only the Zero/Zero 2 fit into the shell
   - The [Raspberry Pi Compatibility Wiki Page](https://github.com/othermod/PSPi-Version-6/wiki/3.-Raspberry-Pi-Compatibility) will help you decide which Raspberry Pi model you want to use.
-- **Operating Systems**: RetroPie, Lakka, Ubuntu, Raspberry Pi OS, Batocera, Kali, and more!
+- **Operating Systems**: RetroPie, Lakka, Ubuntu, Raspberry Pi OS, Batocera, Kali, and more.
 
-## 🚀 Getting Started
+## Getting Started
 
 - **Gather Components**: Check the [Components Required Wiki Page](https://github.com/othermod/PSPi-Version-6/wiki/4.-Components-Required) for a full list.
 - **Assembly**: Follow the guides on the [Board Installation Wiki](https://github.com/othermod/PSPi-Version-6/wiki/5.-Board-Installation). Video tutorials are available, and a full guide is in the works.
@@ -43,13 +43,7 @@ For a comprehensive list of features and technical details, please visit the [Fe
 
 Having issues? Visit the [Troubleshooting Wiki Page](https://github.com/othermod/PSPi-Version-6/wiki/Troubleshooting).
 
-## 📁 Project Resources
-
-- **[Raspberry Pi Code](https://github.com/othermod/PSPi-Version-6/tree/main/drivers)**: Drivers and software for the Raspberry Pi.
-- **[Atmega Firmware](https://github.com/othermod/PSPi-Version-6/tree/main/atmega)**: Code for the Atmega8a microcontroller that manages power and inputs.
-- **[PCB and Schematics](https://github.com/othermod/PSPi-Version-6/tree/main/boards)**: Hardware design files for those who want to manufacture boards modify the design.
-
-## 🛒 How to Get a PSPi 6
+## How to Get a PSPi 6
 
 1. **Buy a Ready-Made Board**: Available now at [othermod.com](https://othermod.com/product/pspi-6-board/). Perfect for those who want more of a plug-and-play experience.
 
@@ -60,25 +54,34 @@ Having issues? Visit the [Troubleshooting Wiki Page](https://github.com/othermod
 
    Note: This option requires advanced skills in electronics and soldering.
 
-## 🚧 Project Status
+## Project Status
 
-PSPi 6 board development is complete and boards are shipping. I do sometimes make minor changes to the board, but nothing that affects the important features. I'm continually improving documentation and working on guides to help users get the most out of their PSPi 6.
+The PSPi 6 board development is complete and boards are shipping. I do sometimes make minor changes to the board, but nothing that affects the important features. I'm continually improving documentation and working on guides to help users get the most out of their PSPi 6.
 
-## 🤝 Community and Contributions
+## Community and Contributions
 
-While PSPi 6 is primarily my personal project, I welcome contributions from the community. Whether you're a coder, designer, or just have great ideas, your input can help make PSPi 6 even better. Here's how you can contribute:
+While the PSPi 6 is primarily my personal project, I welcome contributions from the community. Whether you're a coder, designer, or just have great ideas, your input can help make the PSPi 6 even better. Here's how you can contribute:
 
 - Report bugs or suggest features
-- Join the Discord and share your mods or help others with troubleshooting.
+- Join the Discord and share your mods or help others with troubleshooting
 - Help improve documentation and guides
-- Spread the word about the PSPi 6!
+- Spread the word about the PSPi 6
 
-## 📢 Stay Connected
+### Support the Project
 
-- [**Discord**](https://discord.gg/V96c3JC): Join the community for discussions, support, and sharing your builds.
-- [**YouTube**](https://youtube.com/othermod): Subscribe for video tutorials and project updates.
-- [**Contact**](https://linktr.ee/othermod): Reach me on various platforms.
+If you'd like to support the development of the PSPi 6, you can make a donation:
 
-## 📜 License
+- [Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=U42WDEGU34C94)
+- [Support on Patreon](https://www.patreon.com/othermod)
+
+Your support helps keep this project going and allows me to continue improving the hardware and software.
+
+## Stay Connected
+
+- [**Discord**](https://discord.gg/V96c3JC): Join the community for discussions, support, and sharing your builds
+- [**YouTube**](https://youtube.com/othermod): Subscribe for video tutorials and project updates
+- [**Contact**](https://linktr.ee/othermod): Reach me on various platforms
+
+## License
 
 The PSPi 6 hardware design is open-source under the Creative Commons (CC BY-SA) license. You're free to share and adapt the material, as long as you give appropriate credit.
