@@ -18,18 +18,6 @@ on:
         type: boolean
         default: false
 
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '.github/**'
-      - 'rpi/drivers/**'
-      - 'rpi/configs/**'
-      - 'rpi/services/**'
-      - 'rpi/scripts/**'
 
 jobs:
   run-gitversion:
