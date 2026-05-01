@@ -53,6 +53,7 @@ package: osd_64
 	@echo "Package ready in bin/64bit/"
 
 clean:
+	rm -rf bin
 	rm -f common/*.o
 	rm -f lib/*.a
 	$(MAKE) -C lib clean
