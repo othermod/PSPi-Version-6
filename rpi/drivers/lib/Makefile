@@ -12,10 +12,12 @@ OBJS=../common/backgroundLayer.o ../common/imageGraphics.o ../common/key.o \
 OBJSPNG=../common/spriteLayer.o ../common/loadpng.o ../common/savepng.o ../common/scrollingLayer.o
 
 CFLAGS+=-Wall -g -O3 -I../common $(shell libpng-config --cflags)
-LDFLAGS+=-L/opt/vc/lib/ -lbcm_host -lm
+LDFLAGS+=-L/home/user/github/PSPi-Version-6/rpi/libraries/batocera/ -lbcm_host -lm
 LDFLAGSPNG=${LDFLAGS} $(shell libpng-config --ldflags)
 
-INCLUDES+=-I/opt/vc/include/ -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux
+RPI_USERLAND = /tmp/rpi-userland
+RPI_BCM_HOST_INC = $(RPI_USERLAND)/host_applications/linux/libs/bcm_host/include
+INCLUDES+=-I$(RPI_BCM_HOST_INC) -I$(RPI_USERLAND) -I$(RPI_BCM_HOST_INC)/interface/vcos/pthreads -I$(RPI_BCM_HOST_INC)/interface/vmcs_host/linux
 
 all: $(LIB) $(LIBPNG)
 
