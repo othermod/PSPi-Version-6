@@ -2,6 +2,8 @@
 # Build static and shared libraries for raspidmx
 #
 
+ARCH_DIR ?= .
+
 LIB=raspidmx
 LIBPNG=raspidmxPng
 
@@ -26,12 +28,14 @@ all: $(LIB) $(LIBPNG)
 	$(CC) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
 
 $(LIB): $(OBJS)
-	$(AR) rcs lib$(LIB).a $(OBJS)
+	@mkdir -p $(ARCH_DIR)
+	$(AR) rcs $(ARCH_DIR)/lib$(LIB).a $(OBJS)
 
 $(LIBPNG): $(OBJSPNG)
-	$(AR) rcs lib$(LIBPNG).a $(OBJSPNG)
-
+	@mkdir -p $(ARCH_DIR)
+	$(AR) rcs $(ARCH_DIR)/lib$(LIBPNG).a $(OBJSPNG)
 
 clean:
 	@rm -f $(OBJS)
-	@rm -f lib$(LIB).a
+	@rm -f lib$(LIB).a lib$(LIBPNG).a
+	@find 32bit 64bit -name "*.a" -delete 2>/dev/null; true
