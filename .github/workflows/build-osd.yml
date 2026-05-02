@@ -1,0 +1,44 @@
+name: Build OSD Binary
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'rpi/osd/**'
+  pull_request:
+    paths:
+      - 'rpi/osd/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu libasound2-dev
+
+      - name: Clone Raspberry Pi userland
+        run: |
+          git clone --depth 1 https://github.com/raspberrypi/userland.git /tmp/rpi-userland
+
+      - name: Build 32-bit
+        run: |
+          cd rpi/osd
+          make 32
+
+      - name: Build 64-bit
+        run: |
+          cd rpi/osd
+          make 64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-osd-bin
+          path: rpi/osd/bin/
