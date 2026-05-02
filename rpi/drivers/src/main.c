@@ -47,7 +47,7 @@ uint8_t brightness;
 uint8_t joystick_count = 1;
 uint32_t dimming_timeout = 0;
 
-#include "../include/shared.h"
+#include "shared.h"
 
 // Global structs for controller state
 SharedData *shared_memory_data;
