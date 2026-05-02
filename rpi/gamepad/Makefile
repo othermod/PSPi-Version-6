@@ -13,8 +13,7 @@ CFLAGS_COMMON = -O3 -lrt
 	@echo "Building 32-bit..."
 	@mkdir -p bin/32bit
 	@rm -f src/*.o
-	$(CC_32) -o bin/32bit/main src/main.c $(CFLAGS_COMMON)
-	$(CC_32) -o bin/32bit/mouse src/mouse.c $(CFLAGS_COMMON)
+	$(CC_32) -o bin/32bit/gamepad src/gamepad.c $(CFLAGS_COMMON)
 	@echo "32-bit build complete."
 
 # Build for 64-bit architecture
@@ -22,8 +21,7 @@ CFLAGS_COMMON = -O3 -lrt
 	@echo "Building 64-bit..."
 	@mkdir -p bin/64bit
 	@rm -f src/*.o
-	$(CC_64) -o bin/64bit/main src/main.c $(CFLAGS_COMMON)
-	$(CC_64) -o bin/64bit/mouse src/mouse.c $(CFLAGS_COMMON)
+	$(CC_64) -o bin/64bit/gamepad src/gamepad.c $(CFLAGS_COMMON)
 	@echo "64-bit build complete."
 
 # Clean build artifacts
