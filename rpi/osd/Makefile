@@ -10,39 +10,35 @@ CFLAGS_COMMON = -O3 -lrt
 
 # Build for 32-bit architecture
 32:
-	@echo "Building 32-bit..."
+	@echo "Building 32-bit osd..."
 	@mkdir -p bin/32bit
 	@rm -f osd_toolkit/32bit/*.a
 	@rm -f src/*.o
 	@rm -f osd_toolkit/src/*.o
 	$(MAKE) -C osd_toolkit ARCH_DIR=32bit CC=$(CC_32) CFLAGS="$(CFLAGS_COMMON) -I$(RPI_BCM_HOST_INC) -I$(RPI_USERLAND) -Iinclude"
-	$(CC_32) -o bin/32bit/main src/main.c $(CFLAGS_COMMON)
-	$(CC_32) -o bin/32bit/mouse src/mouse.c $(CFLAGS_COMMON)
 	$(CC_32) -o bin/32bit/osd src/osd.c $(CFLAGS_COMMON) \
 		-I$(RPI_BCM_HOST_INC) -I$(RPI_USERLAND) -I$(RPI_USERLAND)/vcinclude -Iosd_toolkit \
 		-L./vendor/32bit \
 		-Wl,-rpath,'$$ORIGIN' \
 		-lbcm_host -lasound \
 		osd_toolkit/32bit/libraspidmx-32bit.a osd_toolkit/32bit/libraspidmxPng-32bit.a
-	@echo "32-bit build complete."
+	@echo "32-bit osd build complete."
 
 # Build for 64-bit architecture
 64:
-	@echo "Building 64-bit..."
+	@echo "Building 64-bit osd..."
 	@mkdir -p bin/64bit
 	@rm -f osd_toolkit/64bit/*.a
 	@rm -f src/*.o
 	@rm -f osd_toolkit/src/*.o
 	$(MAKE) -C osd_toolkit ARCH_DIR=64bit CC=$(CC_64) CFLAGS="$(CFLAGS_COMMON) -I$(RPI_BCM_HOST_INC) -I$(RPI_USERLAND) -Iinclude"
-	$(CC_64) -o bin/64bit/main src/main.c $(CFLAGS_COMMON)
-	$(CC_64) -o bin/64bit/mouse src/mouse.c $(CFLAGS_COMMON)
 	$(CC_64) -o bin/64bit/osd src/osd.c $(CFLAGS_COMMON) \
 		-I$(RPI_BCM_HOST_INC) -I$(RPI_USERLAND) -I$(RPI_USERLAND)/vcinclude -Iosd_toolkit \
 		-L./vendor/64bit \
 		-Wl,-rpath,'$$ORIGIN' \
 		-lbcm_host -lasound \
 		osd_toolkit/64bit/libraspidmx-64bit.a osd_toolkit/64bit/libraspidmxPng-64bit.a
-	@echo "64-bit build complete."
+	@echo "64-bit osd build complete."
 
 # Clean build artifacts
 clean:

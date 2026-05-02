@@ -23,7 +23,7 @@ all: $(LIB) $(LIBPNG)
 
 %.o: %.c
 	@rm -f $@ 
-	$(CC) $(CFLAGS) $(INCLUDES) -I/home/user/github/PSPi-Version-6/rpi/drivers/osd_toolkit/include -g -c $< -o $@ -Wno-deprecated-declarations
+	$(CC) $(CFLAGS) $(INCLUDES) -Iosd_toolkit/include -g -c $< -o $@ -Wno-deprecated-declarations
 
 $(LIB): $(OBJS)
 	@mkdir -p $(ARCH_DIR)
