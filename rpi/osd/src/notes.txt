@@ -1,0 +1,3 @@
+Combine main and mouse into a single gamepad.c file. can enable whatever is needed.
+Probably have the option of mouse, gamepad, or neither, but not both (gamepad + key presses would cause issues)
+Ensure mouse.c is efficient. seems to be doing unneeded sys calls. should only update changed bits with emits
