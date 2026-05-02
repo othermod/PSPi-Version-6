@@ -1,0 +1,35 @@
+name: Build LCD Overlays
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'rpi/lcd/**'
+  pull_request:
+    paths:
+      - 'rpi/lcd/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y device-tree-compiler gcc make git
+
+      - name: Build overlays
+        run: |
+          cd rpi/lcd
+          make
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-lcd-overlays
+          path: rpi/lcd/*.dtbo
