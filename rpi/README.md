@@ -90,7 +90,7 @@ dtoverlay=disable-pcie
 dtparam=ant2
 
 # Set up CM4 audio pin
-dtoverlay=audiocm4
+dtoverlay=pspi-audio-cm4-kernel6+
 
 arm_freq_min=300
 core_freq_min=200
@@ -118,7 +118,7 @@ dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 32000000 6
 
 # Zero-specific settings
 dtparam=act_led_gpio=20
-dtoverlay=audiozero
+dtoverlay=pspi-audio-zero-kernel6+
 dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
 dtparam=act_led_activelow=no
 

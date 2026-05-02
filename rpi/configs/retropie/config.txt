@@ -75,7 +75,7 @@ dtoverlay=vc4-fkms-v3d,cma-512
 include cm4.txt
 
 # Set up CM4 audio pin
-dtoverlay=oldaudiocm4
+dtoverlay=pspi-audio-cm4-kernel5-
 
 [pi0]
 # Enable the VC4 FKMS V3D overlay for graphics acceleration

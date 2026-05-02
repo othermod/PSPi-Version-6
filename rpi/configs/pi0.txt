@@ -22,7 +22,7 @@ dpi_timings=800 0 8 4 8 480 0 8 4 8 0 0 0 60 0 32000000 6
 dtparam=act_led_gpio=20
 
 # Enable audio
-dtoverlay=audiozero
+dtoverlay=pspi-audio-zero-kernel6+
 
 # Controls the behavior of the activity LED on the Raspberry Pi Zero.
 dtparam=act_led_activelow=no

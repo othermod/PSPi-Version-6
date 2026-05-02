@@ -27,7 +27,7 @@ dtoverlay=disable-pcie
 dtparam=ant2
 
 # Set up CM4 audio pin
-dtoverlay=audiocm4
+dtoverlay=pspi-audio-cm4-kernel6+
 
 # Set minimum ARM frequency to 300
 arm_freq_min=300
