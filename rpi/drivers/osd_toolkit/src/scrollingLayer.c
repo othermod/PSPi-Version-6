@@ -34,7 +34,7 @@
 #include "loadpng.h"
 #include "scrollingLayer.h"
 
-#include "bcm_host.h"
+#include <bcm_host.h>
 
 //-------------------------------------------------------------------------
 

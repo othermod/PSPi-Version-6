@@ -10,7 +10,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 
-#include "shared.h"
+#include "../include/shared.h"
 
 #define AXIS_CENTER 127
 #define AXIS_THRESHOLD_LOW 112

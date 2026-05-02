@@ -28,7 +28,7 @@
 #include <png.h>
 #include <stdlib.h>
 
-#include "bcm_host.h"
+#include <bcm_host.h>
 
 #include "loadpng.h"
 

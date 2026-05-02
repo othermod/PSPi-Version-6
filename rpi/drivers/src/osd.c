@@ -10,8 +10,8 @@
 #include <stdbool.h>
 #include <alsa/asoundlib.h>
 #include <assert.h>
-#include "imageGraphics.h"
-#include "imageLayer.h"
+#include "include/imageGraphics.h"
+#include "include/imageLayer.h"
 #include <math.h>
 #include "bcm_host.h"
 #include <sys/mman.h>
