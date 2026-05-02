@@ -13,6 +13,8 @@ CFLAGS_COMMON = -O3 -lrt
 	@echo "Building 32-bit..."
 	@mkdir -p bin/32bit
 	@rm -f osd_toolkit/32bit/*.a
+	@rm -f src/*.o
+	@rm -f osd_toolkit/src/*.o
 	$(MAKE) -C osd_toolkit ARCH_DIR=32bit CC=$(CC_32) CFLAGS="$(CFLAGS_COMMON) -I$(RPI_BCM_HOST_INC) -I$(RPI_USERLAND) -Iinclude"
 	$(CC_32) -o bin/32bit/main src/main.c $(CFLAGS_COMMON)
 	$(CC_32) -o bin/32bit/mouse src/mouse.c $(CFLAGS_COMMON)
@@ -29,6 +31,8 @@ CFLAGS_COMMON = -O3 -lrt
 	@echo "Building 64-bit..."
 	@mkdir -p bin/64bit
 	@rm -f osd_toolkit/64bit/*.a
+	@rm -f src/*.o
+	@rm -f osd_toolkit/src/*.o
 	$(MAKE) -C osd_toolkit ARCH_DIR=64bit CC=$(CC_64) CFLAGS="$(CFLAGS_COMMON) -I$(RPI_BCM_HOST_INC) -I$(RPI_USERLAND) -Iinclude"
 	$(CC_64) -o bin/64bit/main src/main.c $(CFLAGS_COMMON)
 	$(CC_64) -o bin/64bit/mouse src/mouse.c $(CFLAGS_COMMON)
