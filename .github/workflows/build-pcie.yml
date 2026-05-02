@@ -1,0 +1,35 @@
+name: Build PCIE Overlay
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'rpi/pcie/**'
+  pull_request:
+    paths:
+      - 'rpi/pcie/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y device-tree-compiler make
+
+      - name: Build overlay
+        run: |
+          cd rpi/pcie
+          make
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-pcie-overlay
+          path: rpi/pcie/*.dtbo
