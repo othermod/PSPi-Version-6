@@ -55,6 +55,7 @@ cleanup() {
     for dev in /dev/loop{0..7}; do
         losetup -d "$dev" 2>/dev/null || true
     done
+    rm -rf /tmp/pspi-upper /tmp/pspi-work /tmp/pspi-target
 }
 
 ###############################################################################
