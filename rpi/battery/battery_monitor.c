@@ -26,8 +26,8 @@
 typedef struct {
     uint8_t buttonA;
     uint8_t buttonB;
-    uint8_t SENSE_SYS;
-    uint8_t SENSE_BAT;
+    uint8_t adc_sys;   // raw 8-bit ADC reading, system side of sense resistor
+    uint8_t adc_bat;   // raw 8-bit ADC reading, battery side of sense resistor
     uint8_t STATUS;
     uint8_t JOY_LX;
     uint8_t JOY_LY;
@@ -38,47 +38,58 @@ typedef struct {
 // --- Battery state ----------------------------------------------------------
 
 typedef struct {
-    bool     isCharging;
-    uint16_t voltageSYSx16;
-    uint16_t voltageBATx16;
-    int      senseRVoltageDifference;
-    int      finalAmperage;
-    uint16_t rawVoltage;
-    uint16_t finalVoltage;
-    uint16_t indicatorVoltage;
-    uint8_t  chargeIndicator;
-    int      percent;
-} Battery_Structure;
+    uint16_t sys_mv_filtered;   // IIR-smoothed system voltage (x16 fixed-point, mV)
+    uint16_t bat_mv_filtered;   // IIR-smoothed battery voltage (x16 fixed-point, mV)
+    int      sense_drop_mv;     // voltage drop across sense resistor + divider correction (mV)
+    int      current_ma;        // estimated current: negative = discharging, positive = charging
+    uint16_t adjusted_sys_mv;   // system voltage minus sense resistor drop (mV)
+    uint16_t open_circuit_mv;   // estimated open-circuit battery voltage (mV)
+    uint16_t display_mv;        // slow-moving voltage used for percent calculation (mV)
+    uint8_t  charge_state;      // DISCHARGING, CHARGING, or CHARGED
+    int      percent;           // battery level 0-100
+} Battery;
 
-Battery_Structure battery;
-uint16_t readVoltageSYS;
-uint16_t readVoltageBAT;
+Battery battery;
+uint16_t sys_mv;   // converted system voltage for this iteration (mV)
+uint16_t bat_mv;   // converted battery voltage for this iteration (mV)
 
 void calculateAmperage() {
-    battery.voltageSYSx16 = battery.voltageSYSx16 - (battery.voltageSYSx16 / 8) + readVoltageSYS;
-    battery.voltageBATx16 = battery.voltageBATx16 - (battery.voltageBATx16 / 8) + readVoltageBAT;
-    battery.isCharging = (battery.voltageSYSx16 <= battery.voltageBATx16);
-    battery.senseRVoltageDifference = (battery.voltageBATx16 - battery.voltageSYSx16) / 16;
-    battery.senseRVoltageDifference = battery.senseRVoltageDifference * (RESISTOR_A_KOHM + RESISTOR_B_KOHM) / RESISTOR_A_KOHM;
-    battery.finalAmperage = battery.senseRVoltageDifference * (1000 / SENSE_RESISTOR_MILLIOHM);
+    // Update IIR low-pass filters (weight ~1/8 new sample)
+    battery.sys_mv_filtered = battery.sys_mv_filtered - (battery.sys_mv_filtered / 8) + sys_mv;
+    battery.bat_mv_filtered = battery.bat_mv_filtered - (battery.bat_mv_filtered / 8) + bat_mv;
+
+    // Derive current from voltage drop across the sense resistor,
+    // corrected for the voltage divider ratio
+    battery.sense_drop_mv = (battery.bat_mv_filtered - battery.sys_mv_filtered) / 16;
+    battery.sense_drop_mv = battery.sense_drop_mv * (RESISTOR_A_KOHM + RESISTOR_B_KOHM) / RESISTOR_A_KOHM;
+    battery.current_ma    = battery.sense_drop_mv * (1000 / SENSE_RESISTOR_MILLIOHM);
 }
 
 void calculateVoltage() {
-    battery.rawVoltage   = battery.voltageSYSx16 - battery.senseRVoltageDifference;
-    battery.finalVoltage = battery.rawVoltage - battery.finalAmperage * BATTERY_INTERNAL_RESISTANCE_MILLIOHM / 1000;
-    if      (battery.finalVoltage > battery.indicatorVoltage + 25) battery.indicatorVoltage++;
-    else if (battery.finalVoltage < battery.indicatorVoltage - 25) battery.indicatorVoltage--;
+    // Remove the sense resistor drop to get closer to true battery voltage
+    battery.adjusted_sys_mv = battery.sys_mv_filtered - battery.sense_drop_mv;
+
+    // Compensate for internal resistance sag under load
+    battery.open_circuit_mv = battery.adjusted_sys_mv
+    - battery.current_ma * BATTERY_INTERNAL_RESISTANCE_MILLIOHM / 1000;
+
+    // Nudge the display voltage one step toward open_circuit_mv,
+    // ignoring noise within a ±25mV hysteresis band
+    if      (battery.open_circuit_mv > battery.display_mv + 25) battery.display_mv++;
+    else if (battery.open_circuit_mv < battery.display_mv - 25) battery.display_mv--;
 }
 
 void calculateBatteryStatus() {
-    battery.percent = 100 - (4025 - battery.indicatorVoltage) / 7.5;
+    // Linear map: 3.025V = 0%, 4.025V = 100% (7.5mV per percent)
+    battery.percent = 100 - (4025 - battery.display_mv) / 7.5;
     if      (battery.percent < 0)   battery.percent = 0;
     else if (battery.percent > 100) battery.percent = 100;
 
-    if (battery.finalAmperage < -60)  battery.chargeIndicator = DISCHARGING;
-    if (battery.finalAmperage >= 0)   battery.chargeIndicator = CHARGING;
-    if ((battery.indicatorVoltage > 4050) && (battery.finalAmperage > -40))
-                                      battery.chargeIndicator = CHARGED;
+    // Determine charge state from current flow
+    if (battery.current_ma < -60)  battery.charge_state = DISCHARGING;
+    if (battery.current_ma >= 0)   battery.charge_state = CHARGING;
+    if (battery.display_mv > 4050 && battery.current_ma > -40)
+        battery.charge_state = CHARGED;
 }
 
 // --- sysfs helpers ----------------------------------------------------------
@@ -107,7 +118,6 @@ static int setup_sysfs() {
         fprintf(stderr, "Failed to create %s: %s\n", POWER_DIR, strerror(errno)); return -1;
     }
 
-    // Static attributes
     write_file(BAT_DIR "/type",          "Battery\n");
     write_file(BAT_DIR "/technology",    "Li-ion\n");
     write_file(BAT_DIR "/present",       "1\n");
@@ -120,21 +130,17 @@ static int setup_sysfs() {
 static void update_sysfs() {
     char buf[32];
 
-    const char *status = (battery.chargeIndicator == CHARGING ||
-                          battery.chargeIndicator == CHARGED)
-                         ? "Charging\n" : "Discharging\n";
-    const char *online = (battery.chargeIndicator == CHARGING ||
-                          battery.chargeIndicator == CHARGED)
-                         ? "1\n" : "0\n";
+    bool plugged_in = (battery.charge_state == CHARGING ||
+    battery.charge_state == CHARGED);
 
     snprintf(buf, sizeof(buf), "%d\n", battery.percent * 10000);
-    write_file(BAT_DIR "/charge_now", buf);
+    write_file(BAT_DIR "/charge_now",   buf);
 
     snprintf(buf, sizeof(buf), "%d\n", battery.percent);
-    write_file(BAT_DIR "/capacity", buf);
+    write_file(BAT_DIR "/capacity",     buf);
 
-    write_file(BAT_DIR "/status",        status);
-    write_file(BAT_DIR "/power/online",  online);
+    write_file(BAT_DIR "/status",       plugged_in ? "Charging\n"  : "Discharging\n");
+    write_file(BAT_DIR "/power/online", plugged_in ? "1\n"         : "0\n");
 }
 
 // --- Main -------------------------------------------------------------------
@@ -155,32 +161,33 @@ int main() {
         return 1;
     }
 
-    // Seed the smoothing filter
-    battery.voltageSYSx16    = shared_data->SENSE_SYS * 16;
-    battery.voltageBATx16    = shared_data->SENSE_SYS * 16;
-    battery.indicatorVoltage = 3800;
+    // Seed the smoothing filters with the current reading
+    battery.sys_mv_filtered = shared_data->adc_sys * 16;
+    battery.bat_mv_filtered = shared_data->adc_sys * 16;
+    battery.display_mv      = 3800;
 
-    uint8_t prev_chargeIndicator = 255; // force a write on first iteration
-    int     prev_percent         = -1;
+    uint8_t prev_charge_state = 255; // force a write on first iteration
+    int     prev_percent      = -1;
 
     while (1) {
-        readVoltageSYS = shared_data->SENSE_SYS * 3000 / 1024;
-        readVoltageBAT = shared_data->SENSE_BAT * 3000 / 1024;
+        // Convert raw ADC values to millivolts (8-bit ADC, 3.0V reference)
+        sys_mv = shared_data->adc_sys * 3000 / 1024;
+        bat_mv = shared_data->adc_bat * 3000 / 1024;
 
         calculateAmperage();
         calculateVoltage();
         calculateBatteryStatus();
 
-        if (battery.chargeIndicator != prev_chargeIndicator ||
-            battery.percent         != prev_percent) {
+        if (battery.charge_state != prev_charge_state ||
+            battery.percent       != prev_percent) {
 
             update_sysfs();
 
-            prev_chargeIndicator = battery.chargeIndicator;
-            prev_percent         = battery.percent;
-        }
+        prev_charge_state = battery.charge_state;
+        prev_percent      = battery.percent;
+            }
 
-        usleep(50000);
+            usleep(50000); // poll every 50ms
     }
 
     munmap(shared_data, sizeof(ControllerData));
