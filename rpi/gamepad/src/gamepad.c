@@ -319,44 +319,28 @@ void init_shared_memory(void) {
 // ---- Gamepad uinput ----
 
 int setup_uinput_gamepad(int uinput_fd) {
-    struct uinput_user_dev uidev;
-    memset(&uidev, 0, sizeof(uidev));
-    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PS3 Controller");
-    uidev.id.bustype = BUS_USB;
-    uidev.id.vendor = 0x054c;
-    uidev.id.product = 0x0268;
-    uidev.id.version = 0x0110;
-
-    // Left Joystick
-    uidev.absmin[ABS_X] = 40;
-    uidev.absmax[ABS_X] = 215;
-    uidev.absflat[ABS_X] = 20;
-    uidev.absfuzz[ABS_X] = 20;
-    uidev.absmin[ABS_Y] = 40;
-    uidev.absmax[ABS_Y] = 215;
-    uidev.absflat[ABS_Y] = 20;
-    uidev.absfuzz[ABS_Y] = 20;
-
-    // Right Joystick
-    uidev.absmin[ABS_RX] = 40;
-    uidev.absmax[ABS_RX] = 215;
-    uidev.absflat[ABS_RX] = 20;
-    uidev.absfuzz[ABS_RX] = 20;
-    uidev.absmin[ABS_RY] = 40;
-    uidev.absmax[ABS_RY] = 215;
-    uidev.absflat[ABS_RY] = 20;
-    uidev.absfuzz[ABS_RY] = 20;
-
-    ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
-    if (ret < 0) {
-        perror("Failed to write to uinput device in setup_uinput_gamepad");
-        return -1;
-    }
-
+    // UI_SET_* ioctls must come before the uinput_user_dev write.
     ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
-    for (int i = 0; i < 17; i++) {
-        ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TRIGGER_HAPPY1 + i);
-    }
+    // Register the exact keycodes the real PS3 hid-sony driver uses.
+    // RetroArch/Lakka scans these numerically to assign joydev button indices,
+    // so they must match what the PS3 autoconfig profile expects.
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_SOUTH);       // joydev 0  - cross
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_EAST);        // joydev 1  - circle
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_NORTH);       // joydev 2  - triangle
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_WEST);        // joydev 3  - square
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TL);          // joydev 4  - L1
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TR);          // joydev 5  - R1
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TL2);         // joydev 6  - L2
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_TR2);         // joydev 7  - R2
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_SELECT);      // joydev 8  - select
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_START);       // joydev 9  - start
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_MODE);        // joydev 10 - PS button
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_THUMBL);      // joydev 11 - L3
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_THUMBR);      // joydev 12 - R3
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_DPAD_UP);     // joydev 13 - d-pad up
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_DPAD_DOWN);   // joydev 14 - d-pad down
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_DPAD_LEFT);   // joydev 15 - d-pad left
+    ioctl(uinput_fd, UI_SET_KEYBIT, BTN_DPAD_RIGHT);  // joydev 16 - d-pad right
 
     ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
     ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
@@ -364,17 +348,47 @@ int setup_uinput_gamepad(int uinput_fd) {
     ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RX);
     ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RY);
 
+    struct uinput_user_dev uidev;
+    memset(&uidev, 0, sizeof(uidev));
+    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PS3 Controller");
+    uidev.id.bustype = BUS_USB;
+    uidev.id.vendor  = 0x054c;
+    uidev.id.product = 0x0268;
+    uidev.id.version = 0x0110;
+
+    // Left stick: full 8-bit hardware output, usable range 40-215, center ~127.
+    uidev.absmin[ABS_X]  = 40;  uidev.absmax[ABS_X]  = 215;
+    uidev.absflat[ABS_X] = 20;  uidev.absfuzz[ABS_X] = 20;
+    uidev.absmin[ABS_Y]  = 40;  uidev.absmax[ABS_Y]  = 215;
+    uidev.absflat[ABS_Y] = 20;  uidev.absfuzz[ABS_Y] = 20;
+
+    // Right stick: 7-bit position field, range 0-127, center ~63.
+    uidev.absmin[ABS_RX]  = 0;   uidev.absmax[ABS_RX]  = 127;
+    uidev.absflat[ABS_RX] = 10;  uidev.absfuzz[ABS_RX] = 10;
+    uidev.absmin[ABS_RY]  = 0;   uidev.absmax[ABS_RY]  = 127;
+    uidev.absflat[ABS_RY] = 10;  uidev.absfuzz[ABS_RY] = 10;
+
+    ssize_t ret = write(uinput_fd, &uidev, sizeof(uidev));
+    if (ret < 0) {
+        perror("Failed to write to uinput device in setup_uinput_gamepad");
+        return -1;
+    }
+
     if (ioctl(uinput_fd, UI_DEV_CREATE) < 0) {
         perror("Failed to create uinput device");
         return -1;
     }
 
-    // Initialize joysticks to center
+    // Initialize all axes to their center values before any real data arrives.
+    // Left stick center is 127 (midpoint of 40-215).
+    // Right stick center is 63 (midpoint of 0-127).
+    // Sending 127 for ABS_RX/ABS_RY was the previous bug: with absmax=127,
+    // that value means full deflection, causing RetroArch to scroll immediately.
     struct input_event events[5] = {
         {.type = EV_ABS, .code = ABS_X,  .value = 127},
         {.type = EV_ABS, .code = ABS_Y,  .value = 127},
-        {.type = EV_ABS, .code = ABS_RX, .value = 127},
-        {.type = EV_ABS, .code = ABS_RY, .value = 127},
+        {.type = EV_ABS, .code = ABS_RX, .value = 63},
+        {.type = EV_ABS, .code = ABS_RY, .value = 63},
         {.type = EV_SYN, .code = SYN_REPORT, .value = 0}
     };
     write(uinput_fd, events, sizeof(events));
@@ -435,24 +449,23 @@ void init_virtual_mouse(void) {
 
 // ---- Gamepad event emission ----
 
-static const uint16_t button_map[] = {
-    0x0002,  // select
-    0x0000,  // left_stick (stick mode) / unused (trigger mode)
-    0x0000,  // right_stick (stick mode) / unused (trigger mode)
-    0x0004,  // start
-    0x0400,  // dpad_up
-    0x1000,  // dpad_right
-    0x0800,  // dpad_down
-    0x0200,  // dpad_left
-    0x0000,  // left_stick (trigger mode) / unused (stick mode)
-    0x0000,  // right_stick (trigger mode) / unused (stick mode)
-    0x0100,  // lshoulder
-    0x0080,  // rshoulder
-    0x0020,  // y
-    0x0040,  // b
-    0x0008,  // a
-    0x0010,  // x
-    0x8000   // home
+typedef struct { uint16_t hw_mask; uint16_t keycode; } ButtonMap;
+static const ButtonMap button_map[] = {
+    { 0x0008, BTN_SOUTH       },  // a/cross       -> joydev 0
+    { 0x0040, BTN_EAST        },  // b/circle      -> joydev 1
+    { 0x0020, BTN_NORTH       },  // y/triangle    -> joydev 2
+    { 0x0010, BTN_WEST        },  // x/square      -> joydev 3
+    { 0x0100, BTN_TL          },  // lshoulder/L1  -> joydev 4
+    { 0x0080, BTN_TR          },  // rshoulder/R1  -> joydev 5
+    // BTN_TL2 / BTN_TR2 (joydev 6/7) come from extra_buttons path
+    { 0x0002, BTN_SELECT      },  // select/back   -> joydev 8
+    { 0x0004, BTN_START       },  // start         -> joydev 9
+    { 0x8000, BTN_MODE        },  // home/PS       -> joydev 10
+    // BTN_THUMBL / BTN_THUMBR (joydev 11/12) come from extra_buttons path
+    { 0x0400, BTN_DPAD_UP     },  // d-pad up      -> joydev 13
+    { 0x0800, BTN_DPAD_DOWN   },  // d-pad down    -> joydev 14
+    { 0x0200, BTN_DPAD_LEFT   },  // d-pad left    -> joydev 15
+    { 0x1000, BTN_DPAD_RIGHT  },  // d-pad right   -> joydev 16
 };
 
 void update_gamepad_events(int uinput_fd) {
@@ -462,10 +475,10 @@ void update_gamepad_events(int uinput_fd) {
     uint16_t changed_buttons = previous_controller_state.buttons.raw ^ current_controller_data.buttons.raw;
     if (changed_buttons) {
         for (size_t i = 0; i < sizeof(button_map) / sizeof(button_map[0]); i++) {
-            if (button_map[i] && (changed_buttons & button_map[i])) {
-                events[event_count].type = EV_KEY;
-                events[event_count].code = BTN_TRIGGER_HAPPY1 + i;
-                events[event_count].value = (current_controller_data.buttons.raw & button_map[i]) != 0;
+            if (changed_buttons & button_map[i].hw_mask) {
+                events[event_count].type  = EV_KEY;
+                events[event_count].code  = button_map[i].keycode;
+                events[event_count].value = (current_controller_data.buttons.raw & button_map[i].hw_mask) != 0;
                 event_count++;
             }
         }
@@ -473,14 +486,14 @@ void update_gamepad_events(int uinput_fd) {
 
     if (joystick_count >= 1) {
         if (previous_controller_state.left_stick_x != current_controller_data.left_stick_x) {
-            events[event_count].type = EV_ABS;
-            events[event_count].code = ABS_X;
+            events[event_count].type  = EV_ABS;
+            events[event_count].code  = ABS_X;
             events[event_count].value = current_controller_data.left_stick_x;
             event_count++;
         }
         if (previous_controller_state.left_stick_y != current_controller_data.left_stick_y) {
-            events[event_count].type = EV_ABS;
-            events[event_count].code = ABS_Y;
+            events[event_count].type  = EV_ABS;
+            events[event_count].code  = ABS_Y;
             events[event_count].value = current_controller_data.left_stick_y;
             event_count++;
         }
@@ -488,37 +501,40 @@ void update_gamepad_events(int uinput_fd) {
 
     if (joystick_count == 2) {
         if (previous_controller_state.right_stick_x.raw != current_controller_data.right_stick_x.raw) {
-            events[event_count].type = EV_ABS;
-            events[event_count].code = ABS_RX;
+            events[event_count].type  = EV_ABS;
+            events[event_count].code  = ABS_RX;
             events[event_count].value = current_controller_data.right_stick_x.bits.position;
             event_count++;
         }
         if (previous_controller_state.right_stick_y.raw != current_controller_data.right_stick_y.raw) {
-            events[event_count].type = EV_ABS;
-            events[event_count].code = ABS_RY;
+            events[event_count].type  = EV_ABS;
+            events[event_count].code  = ABS_RY;
             events[event_count].value = current_controller_data.right_stick_y.bits.position;
             event_count++;
         }
     }
 
     if (extra_buttons) {
-        if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button) {
-            events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_TRIGGER_HAPPY1 + extra_button_base_idx + 1;
-            events[event_count].value = current_controller_data.right_stick_x.bits.button;
+        uint16_t btn_y = (button_config == BUTTON_CONFIG_TRIGGER) ? BTN_TL2    : BTN_THUMBL;
+        uint16_t btn_x = (button_config == BUTTON_CONFIG_TRIGGER) ? BTN_TR2    : BTN_THUMBR;
+
+        if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button) {
+            events[event_count].type  = EV_KEY;
+            events[event_count].code  = btn_y;
+            events[event_count].value = current_controller_data.right_stick_y.bits.button;
             event_count++;
         }
-        if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button) {
-            events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_TRIGGER_HAPPY1 + extra_button_base_idx;
-            events[event_count].value = current_controller_data.right_stick_y.bits.button;
+        if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button) {
+            events[event_count].type  = EV_KEY;
+            events[event_count].code  = btn_x;
+            events[event_count].value = current_controller_data.right_stick_x.bits.button;
             event_count++;
         }
     }
 
     if (event_count > 0) {
-        events[event_count].type = EV_SYN;
-        events[event_count].code = SYN_REPORT;
+        events[event_count].type  = EV_SYN;
+        events[event_count].code  = SYN_REPORT;
         events[event_count].value = 0;
         event_count++;
         write(uinput_fd, events, sizeof(struct input_event) * event_count);
@@ -541,99 +557,99 @@ void update_mouse_events(int uinput_fd) {
         current_controller_data.left_stick_x > AXIS_THRESHOLD_HIGH ||
         current_controller_data.left_stick_x < AXIS_THRESHOLD_LOW) {
         events[event_count].type = EV_REL;
-        events[event_count].code = REL_X;
-        events[event_count].value = (current_controller_data.left_stick_x - AXIS_CENTER) / 16;
-        event_count++;
-        previous_mouse_data.left_stick_x = current_controller_data.left_stick_x;
-        changed = true;
-    }
+    events[event_count].code = REL_X;
+    events[event_count].value = (current_controller_data.left_stick_x - AXIS_CENTER) / 16;
+    event_count++;
+    previous_mouse_data.left_stick_x = current_controller_data.left_stick_x;
+    changed = true;
+        }
 
-    // Left stick -> REL_Y
-    if (previous_mouse_data.left_stick_y != current_controller_data.left_stick_y ||
-        current_controller_data.left_stick_y > AXIS_THRESHOLD_HIGH ||
-        current_controller_data.left_stick_y < AXIS_THRESHOLD_LOW) {
-        events[event_count].type = EV_REL;
+        // Left stick -> REL_Y
+        if (previous_mouse_data.left_stick_y != current_controller_data.left_stick_y ||
+            current_controller_data.left_stick_y > AXIS_THRESHOLD_HIGH ||
+            current_controller_data.left_stick_y < AXIS_THRESHOLD_LOW) {
+            events[event_count].type = EV_REL;
         events[event_count].code = REL_Y;
         events[event_count].value = (current_controller_data.left_stick_y - AXIS_CENTER) / 16;
         event_count++;
         previous_mouse_data.left_stick_y = current_controller_data.left_stick_y;
         changed = true;
-    }
+            }
 
-    // Buttons — only emit changed bits
-    uint16_t changed_buttons = previous_mouse_data.buttons.raw ^ current_controller_data.buttons.raw;
-    if (changed_buttons) {
-        if (changed_buttons & (1 << 2)) { // start -> KEY_ENTER
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_ENTER;
-            events[event_count].value = current_controller_data.buttons.bits.start;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 3)) { // a -> BTN_LEFT
-            events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_LEFT;
-            events[event_count].value = current_controller_data.buttons.bits.a;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 6)) { // b -> BTN_RIGHT
-            events[event_count].type = EV_KEY;
-            events[event_count].code = BTN_RIGHT;
-            events[event_count].value = current_controller_data.buttons.bits.b;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 7)) { // rshoulder -> KEY_FORWARD
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_FORWARD;
-            events[event_count].value = current_controller_data.buttons.bits.rshoulder;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 8)) { // lshoulder -> KEY_BACK
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_BACK;
-            events[event_count].value = current_controller_data.buttons.bits.lshoulder;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 9)) { // dpad_left -> KEY_LEFT
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_LEFT;
-            events[event_count].value = current_controller_data.buttons.bits.dpad_left;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 10)) { // dpad_up -> KEY_UP
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_UP;
-            events[event_count].value = current_controller_data.buttons.bits.dpad_up;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 11)) { // dpad_down -> KEY_DOWN
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_DOWN;
-            events[event_count].value = current_controller_data.buttons.bits.dpad_down;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 12)) { // dpad_right -> KEY_RIGHT
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_RIGHT;
-            events[event_count].value = current_controller_data.buttons.bits.dpad_right;
-            event_count++;
-        }
-        if (changed_buttons & (1 << 15)) { // home -> KEY_LEFTMETA
-            events[event_count].type = EV_KEY;
-            events[event_count].code = KEY_LEFTMETA;
-            events[event_count].value = current_controller_data.buttons.bits.home;
-            event_count++;
-        }
-        previous_mouse_data.buttons.raw = current_controller_data.buttons.raw;
-        changed = true;
-    }
+            // Buttons — only emit changed bits
+            uint16_t changed_buttons = previous_mouse_data.buttons.raw ^ current_controller_data.buttons.raw;
+            if (changed_buttons) {
+                if (changed_buttons & (1 << 2)) { // start -> KEY_ENTER
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_ENTER;
+                    events[event_count].value = current_controller_data.buttons.bits.start;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 3)) { // a -> BTN_LEFT
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = BTN_LEFT;
+                    events[event_count].value = current_controller_data.buttons.bits.a;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 6)) { // b -> BTN_RIGHT
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = BTN_RIGHT;
+                    events[event_count].value = current_controller_data.buttons.bits.b;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 7)) { // rshoulder -> KEY_FORWARD
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_FORWARD;
+                    events[event_count].value = current_controller_data.buttons.bits.rshoulder;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 8)) { // lshoulder -> KEY_BACK
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_BACK;
+                    events[event_count].value = current_controller_data.buttons.bits.lshoulder;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 9)) { // dpad_left -> KEY_LEFT
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_LEFT;
+                    events[event_count].value = current_controller_data.buttons.bits.dpad_left;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 10)) { // dpad_up -> KEY_UP
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_UP;
+                    events[event_count].value = current_controller_data.buttons.bits.dpad_up;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 11)) { // dpad_down -> KEY_DOWN
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_DOWN;
+                    events[event_count].value = current_controller_data.buttons.bits.dpad_down;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 12)) { // dpad_right -> KEY_RIGHT
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_RIGHT;
+                    events[event_count].value = current_controller_data.buttons.bits.dpad_right;
+                    event_count++;
+                }
+                if (changed_buttons & (1 << 15)) { // home -> KEY_LEFTMETA
+                    events[event_count].type = EV_KEY;
+                    events[event_count].code = KEY_LEFTMETA;
+                    events[event_count].value = current_controller_data.buttons.bits.home;
+                    event_count++;
+                }
+                previous_mouse_data.buttons.raw = current_controller_data.buttons.raw;
+                changed = true;
+            }
 
-    if (changed) {
-        events[event_count].type = EV_SYN;
-        events[event_count].code = SYN_REPORT;
-        events[event_count].value = 0;
-        event_count++;
-        write(uinput_fd, events, sizeof(struct input_event) * event_count);
-    }
+            if (changed) {
+                events[event_count].type = EV_SYN;
+                events[event_count].code = SYN_REPORT;
+                events[event_count].value = 0;
+                event_count++;
+                write(uinput_fd, events, sizeof(struct input_event) * event_count);
+            }
 }
 
 // ---- WiFi monitoring ----
@@ -688,8 +704,8 @@ void check_wifi_status(void) {
 
 void check_idle_state(int i2c_fd) {
     uint32_t status = (current_controller_data.buttons.raw << 18) |
-                      ((current_controller_data.left_stick_x & 0xF0) << 4) |
-                      (current_controller_data.left_stick_y >> 4);
+    ((current_controller_data.left_stick_x & 0xF0) << 4) |
+    (current_controller_data.left_stick_y >> 4);
 
     const time_t current_time = time(NULL);
 
@@ -773,9 +789,9 @@ int main(int argc, char *argv[]) {
                 if (previous_controller_state.buttons.raw != current_controller_data.buttons.raw ||
                     memcmp(&previous_controller_state.left_stick_x, &current_controller_data.left_stick_x, 4) != 0) {
                     update_gamepad_events(virtual_gamepad_fd);
-                    previous_controller_state = current_controller_data;
-                }
-                break;
+                previous_controller_state = current_controller_data;
+                    }
+                    break;
             case INPUT_MOUSE:
                 update_mouse_events(virtual_mouse_fd);
                 break;
