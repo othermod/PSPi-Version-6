@@ -330,6 +330,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 BTN_THUMBL, BTN_THUMBR,                       // 11-12 L3 R3
                 BTN_DPAD_UP, BTN_DPAD_DOWN,                   // 13-14
                 BTN_DPAD_LEFT, BTN_DPAD_RIGHT,                // 15-16
+                KEY_KPMINUS, KEY_KPPLUS,                 // 17-18 Vol- Vol+
             };
             for (size_t i = 0; i < sizeof(ps3_keys)/sizeof(ps3_keys[0]); i++)
                 ioctl(uinput_fd, UI_SET_KEYBIT, ps3_keys[i]);
@@ -400,6 +401,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 KEY_BACK, KEY_FORWARD, KEY_LEFTMETA,
                 BTN_LEFT, BTN_RIGHT,
                 KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER,
+                KEY_KPMINUS, KEY_KPPLUS,
             };
             ioctl(virtual_mouse_fd, UI_SET_EVBIT, EV_KEY);
             for (size_t i = 0; i < sizeof(mouse_keys)/sizeof(mouse_keys[0]); i++)
@@ -435,6 +437,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             { 0x0800, BTN_DPAD_DOWN   },  // d-pad down    -> joydev 14
             { 0x0200, BTN_DPAD_LEFT   },  // d-pad left    -> joydev 15
             { 0x1000, BTN_DPAD_RIGHT  },  // d-pad right   -> joydev 16
+            { 0x2000, KEY_KPMINUS  },  // vol-
+            { 0x4000, KEY_KPPLUS    },  // vol+
         };
 
         void update_gamepad_events(int uinput_fd) {
@@ -513,6 +517,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 { 1 << 10, KEY_UP       },  // dpad_up
                 { 1 << 11, KEY_DOWN     },  // dpad_down
                 { 1 << 12, KEY_RIGHT    },  // dpad_right
+                { 1 << 13, KEY_KPMINUS },  // vol-
+                { 1 << 14, KEY_KPPLUS   },  // vol+
                 { 1 << 15, KEY_LEFTMETA },  // home
             };
             uint16_t changed_buttons = previous_mouse_data.buttons.raw ^ current_controller_data.buttons.raw;
