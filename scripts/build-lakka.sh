@@ -124,6 +124,16 @@ build_drivers() {
         # Fix SONAME to match the filename so the dynamic linker resolves it
         patchelf --set-soname "$libname" "$DRIVERS_BIN_DIR/$libname" 2>/dev/null || true
     done
+    # Rename libbcm_host.so to libbcm_host.so.0 for 64-bit OSD
+    if [[ -f "$DRIVERS_BIN_DIR/libbcm_host.so" ]]; then
+        mv "$DRIVERS_BIN_DIR/libbcm_host.so" "$DRIVERS_BIN_DIR/libbcm_host.so.0"
+        patchelf --set-soname "libbcm_host.so.0" "$DRIVERS_BIN_DIR/libbcm_host.so.0" 2>/dev/null || true
+    fi
+    # Rename libasound.so to libasound.so.2 for 64-bit OSD
+    if [[ -f "$DRIVERS_BIN_DIR/libasound.so" ]]; then
+        mv "$DRIVERS_BIN_DIR/libasound.so" "$DRIVERS_BIN_DIR/libasound.so.2"
+        patchelf --set-soname "libasound.so.2" "$DRIVERS_BIN_DIR/libasound.so.2" 2>/dev/null || true
+    fi
     echo "  OSD: 32-bit and 64-bit built."
 
     # Build audio overlays
