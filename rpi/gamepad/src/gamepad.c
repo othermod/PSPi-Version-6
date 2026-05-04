@@ -437,8 +437,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             { 0x0800, BTN_DPAD_DOWN   },  // d-pad down    -> joydev 14
             { 0x0200, BTN_DPAD_LEFT   },  // d-pad left    -> joydev 15
             { 0x1000, BTN_DPAD_RIGHT  },  // d-pad right   -> joydev 16
-            { 0x2000, KEY_KPMINUS  },  // vol-
-            { 0x4000, KEY_KPPLUS   },  // vol+
+            { 0x2000, KEY_KPPLUS   },  // vol+ (bit 13 is actually vol+)
+            { 0x4000, KEY_KPMINUS  },  // vol- (bit 14 is actually vol-)
         };
 
         void update_gamepad_events(int uinput_fd) {
@@ -517,8 +517,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 { 1 << 10, KEY_UP       },  // dpad_up
                 { 1 << 11, KEY_DOWN     },  // dpad_down
                 { 1 << 12, KEY_RIGHT    },  // dpad_right
-                { 1 << 13, KEY_KPMINUS  },  // vol-
-                { 1 << 14, KEY_KPPLUS   },  // vol+
+                { 1 << 13, KEY_KPPLUS   },  // vol+ (bit 13 is actually vol+)
+                { 1 << 14, KEY_KPMINUS  },  // vol- (bit 14 is actually vol-)
                 { 1 << 15, KEY_LEFTMETA },  // home
             };
             uint16_t changed_buttons = previous_mouse_data.buttons.raw ^ current_controller_data.buttons.raw;
