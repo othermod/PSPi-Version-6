@@ -1,0 +1,36 @@
+name: Build Battery Monitor Binary
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'rpi/battery/**'
+  pull_request:
+    paths:
+      - 'rpi/battery/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu make
+
+      - name: Build
+        run: |
+          cd rpi/battery
+          make 32
+          make 64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-battery-bin
+          path: rpi/battery/bin/
