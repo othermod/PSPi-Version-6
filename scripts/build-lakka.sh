@@ -355,6 +355,8 @@ SVCEOF
     mkdir -p /tmp/pspi-target/usr/lib/systemd/system/multi-user.target.wants
     ln -sf ../system/pspi.service /tmp/pspi-target/usr/lib/systemd/system/multi-user.target.wants/pspi.service
 
+    echo "    Patching retroarch.cfg..."
+    sed -i 's/menu_swap_ok_cancel_buttons = "false"/menu_swap_ok_cancel_buttons = "true"/' /tmp/pspi-target/etc/retroarch.cfg
     echo "    Repacking squashfs..."
     mksquashfs /tmp/pspi-target "$work_dir/filesystem.squashfs" -noappend -quiet
 
