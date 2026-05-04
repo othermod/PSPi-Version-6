@@ -70,8 +70,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 uint16_t dpad_up:1;      // bit 10 - D-Pad Up
                 uint16_t dpad_down:1;    // bit 11 - D-Pad Down
                 uint16_t dpad_right:1;   // bit 12 - D-Pad Right
-                uint16_t vol_minus:1;    // bit 13 - Unused (Vol-)
-                uint16_t vol_plus:1;     // bit 14 - Unused (Vol+)
+                uint16_t vol_plus:1;     // bit 13 - Unused (Vol+)
+                uint16_t vol_minus:1;    // bit 14 - Unused (Vol-)
                 uint16_t home:1;         // bit 15 - Guide (Home)
             } bits;
             uint16_t raw;
@@ -438,7 +438,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             { 0x0200, BTN_DPAD_LEFT   },  // d-pad left    -> joydev 15
             { 0x1000, BTN_DPAD_RIGHT  },  // d-pad right   -> joydev 16
             { 0x2000, KEY_KPMINUS  },  // vol-
-            { 0x4000, KEY_KPPLUS    },  // vol+
+            { 0x4000, KEY_KPPLUS   },  // vol+
         };
 
         void update_gamepad_events(int uinput_fd) {
@@ -517,7 +517,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 { 1 << 10, KEY_UP       },  // dpad_up
                 { 1 << 11, KEY_DOWN     },  // dpad_down
                 { 1 << 12, KEY_RIGHT    },  // dpad_right
-                { 1 << 13, KEY_KPMINUS },  // vol-
+                { 1 << 13, KEY_KPMINUS  },  // vol-
                 { 1 << 14, KEY_KPPLUS   },  // vol+
                 { 1 << 15, KEY_LEFTMETA },  // home
             };
