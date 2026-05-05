@@ -374,15 +374,10 @@ SVCEOF
     echo "    Repacking squashfs..."
     mksquashfs /tmp/pspi-target "$work_dir/filesystem.squashfs" -noappend -quiet
 
-    umount --type overlay /tmp/pspi-target
-    umount --type squashfs /mnt/pspi-squashfs
-
-
     echo "    Copying new squashfs back..."
     cp "$work_dir/filesystem.squashfs" /mnt/pspi-boot/SYSTEM
     md5sum /mnt/pspi-boot/SYSTEM > /mnt/pspi-boot/SYSTEM.md5
 
-    umount /mnt/pspi-boot
 }
 
 ###############################################################################
@@ -412,7 +407,7 @@ build_image() {
 
     download_image "$label" "$url" "$sha256" "$compressed"
 
-    echo "[2/6] Decompressing..."
+    echo "[2/5] Decompressing..."
     cd "$CACHE_DIR"
     local img_file="${compressed%.gz}"
     echo "  Removing stale .img if present..."
@@ -424,13 +419,13 @@ build_image() {
     fi
     echo "  Uncompressed: $img_file ($(du -h "$img_file" | cut -f1))"
 
-    echo "[3/6] Patching image..."
+    echo "[3/5] Patching image..."
     patch_lakka_image "$CACHE_DIR/$img_file" "$work_dir" "$label"
     cp -f "$CACHE_DIR/$img_file" "$OUTPUT_DIR/${pspi_name%.gz}"
     echo "  Patched: $pspi_name"
 
     echo "  Raw image size: $(du -m "$OUTPUT_DIR/${pspi_name%.gz}" | cut -f1)M"
-    echo "[4/6] Compressing..."
+    echo "[4/5] Compressing..."
     cd "$OUTPUT_DIR"
     gzip -9f "${pspi_name%.gz}"
     echo "  Compressed: $pspi_name ($(du -h "$pspi_name" | cut -f1))"
@@ -443,7 +438,7 @@ build_image() {
         rm -f "$OUTPUT_DIR/$pspi_name"
     fi
 
-    echo "[5/6] Generating SHA256..."
+    echo "[5/5] Generating SHA256..."
     shopt -s nullglob
     for f in "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.7z.*; do
         sha256sum "$f" | awk '{print $1}' > "${f}.sha256"
@@ -451,13 +446,6 @@ build_image() {
     shopt -u nullglob
     echo "  Output:"
     ls -lh "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.sha256 "$OUTPUT_DIR"/*.7z.* 2>/dev/null || true
-
-    # Copy built overlays to output for convenience
-    echo "[6/6] Copying overlays to output..."
-    mkdir -p "$OUTPUT_DIR/audio_overlays" "$OUTPUT_DIR/lcd_overlays" "$OUTPUT_DIR/pcie_overlays"
-    cp "$PROJECT_DIR/rpi/audio/"*.dtbo "$OUTPUT_DIR/audio_overlays/" 2>/dev/null || true
-    cp "$PROJECT_DIR/rpi/lcd/"*.dtbo "$OUTPUT_DIR/lcd_overlays/" 2>/dev/null || true
-    cp "$PROJECT_DIR/rpi/pcie/"*.dtbo "$OUTPUT_DIR/pcie_overlays/" 2>/dev/null || true
 
     cd /
     rm -rf "$work_dir"
@@ -501,4 +489,3 @@ fi
 echo ""
 echo "Done. Artifacts in: $OUTPUT_DIR"
 
-cleanup
