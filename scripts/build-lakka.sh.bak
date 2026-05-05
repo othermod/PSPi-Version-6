@@ -84,20 +84,58 @@ build_drivers() {
     cp "$gamepad_dir/bin/64bit/gamepad" "$DRIVERS_BIN_DIR/gamepad_64"
     echo "  Gamepad: 32-bit and 64-bit built."
 
-    # Build battery monitor binary (32-bit + 64-bit)
-    echo "[2/5] Building battery monitor..."
-    local battery_dir="$PROJECT_DIR/rpi/battery"
-    if [[ ! -d "$battery_dir" ]]; then
-        die "Battery monitor source not found at $battery_dir"
+    # Build OSD binary (32-bit + 64-bit) — requires rpi-userland
+    echo "[2/5] Building OSD binary..."
+    local osd_dir="$PROJECT_DIR/rpi/osd"
+    if [[ ! -d "$osd_dir" ]]; then
+        die "OSD source not found at $osd_dir"
+    fi
+    local userland_dir="/tmp/rpi-userland"
+    if [[ ! -d "$userland_dir" ]]; then
+        echo "  Cloning rpi-userland..."
+        git clone --depth 1 https://github.com/raspberrypi/userland.git "$userland_dir"
     fi
     (
-        cd "$battery_dir"
-        make 32 || die "Failed to build 32-bit battery monitor"
-        make 64 || die "Failed to build 64-bit battery monitor"
+        cd "$osd_dir"
+        make 32 || die "Failed to build 32-bit OSD"
+        make 64 || die "Failed to build 64-bit OSD"
     )
-    cp "$battery_dir/bin/32bit/battery_monitor" "$DRIVERS_BIN_DIR/battery_monitor_32"
-    cp "$battery_dir/bin/64bit/battery_monitor" "$DRIVERS_BIN_DIR/battery_monitor_64"
-    echo "  Battery monitor: 32-bit and 64-bit built."
+    cp "$osd_dir/bin/32bit/osd" "$DRIVERS_BIN_DIR/osd_32"
+    cp "$osd_dir/bin/64bit/osd" "$DRIVERS_BIN_DIR/osd_64"
+    # Copy 32-bit vendor libraries for OSD
+    local osd_vendor_32="$osd_dir/vendor/32bit"
+    for lib in "$osd_vendor_32"/*; do
+        local libname
+        libname="$(basename "$lib")"
+        cp "$lib" "$DRIVERS_BIN_DIR/$libname"
+        # Fix SONAME to match the filename so the dynamic linker resolves it
+        patchelf --set-soname "$libname" "$DRIVERS_BIN_DIR/$libname" 2>/dev/null || true
+    done
+    # Rename libasound.so to libasound.so.2 for 32-bit OSD
+    if [[ -f "$DRIVERS_BIN_DIR/libasound.so" ]]; then
+        mv "$DRIVERS_BIN_DIR/libasound.so" "$DRIVERS_BIN_DIR/libasound.so.2"
+        patchelf --set-soname "libasound.so.2" "$DRIVERS_BIN_DIR/libasound.so.2" 2>/dev/null || true
+    fi
+    # Copy 64-bit vendor libraries for OSD
+    local osd_vendor_64="$osd_dir/vendor/64bit"
+    for lib in "$osd_vendor_64"/*; do
+        local libname
+        libname="$(basename "$lib")"
+        cp "$lib" "$DRIVERS_BIN_DIR/$libname"
+        # Fix SONAME to match the filename so the dynamic linker resolves it
+        patchelf --set-soname "$libname" "$DRIVERS_BIN_DIR/$libname" 2>/dev/null || true
+    done
+    # Rename libbcm_host.so to libbcm_host.so.0 for 64-bit OSD
+    if [[ -f "$DRIVERS_BIN_DIR/libbcm_host.so" ]]; then
+        mv "$DRIVERS_BIN_DIR/libbcm_host.so" "$DRIVERS_BIN_DIR/libbcm_host.so.0"
+        patchelf --set-soname "libbcm_host.so.0" "$DRIVERS_BIN_DIR/libbcm_host.so.0" 2>/dev/null || true
+    fi
+    # Rename libasound.so to libasound.so.2 for 64-bit OSD
+    if [[ -f "$DRIVERS_BIN_DIR/libasound.so" ]]; then
+        mv "$DRIVERS_BIN_DIR/libasound.so" "$DRIVERS_BIN_DIR/libasound.so.2"
+        patchelf --set-soname "libasound.so.2" "$DRIVERS_BIN_DIR/libasound.so.2" 2>/dev/null || true
+    fi
+    echo "  OSD: 32-bit and 64-bit built."
 
     # Build audio overlays
     echo "[3/5] Building audio overlays..."
@@ -223,7 +261,8 @@ disable_crc=false
 input_type=gamepad
 # Set number of joysticks, where <num> is between 0 and 2
 joysticks=1
-
+# Disable On Screen Display (Battery & Volume Display overlay)
+enable_osd=true
 EOF
 
     echo "    Creating boot.sh..."
@@ -237,6 +276,8 @@ fast_mode=false
 disable_crc=false
 input_type=gamepad
 joysticks=1
+enable_osd=true
+
 while IFS="=" read -r key value; do
     [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
     key=$(echo "$key" | xargs)
@@ -248,6 +289,7 @@ while IFS="=" read -r key value; do
         disable_crc) disable_crc="$value" ;;
         input_type) input_type="$value" ;;
         joysticks) joysticks="$value" ;;
+        enable_osd) enable_osd="$value" ;;
     esac
 done < "$CONF"
 
@@ -259,7 +301,7 @@ GAMEPAD_ARGS=""
 [[ "$joysticks" != "1" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --joysticks $joysticks"
 
 /flash/drivers/bin/gamepad_64 $GAMEPAD_ARGS &
-/flash/drivers/bin/battery_monitor_64 &
+[[ "$enable_osd" == "true" ]] && /flash/drivers/bin/osd_64
 wait
 BOOTEOF
     chmod +x /mnt/pspi-boot/boot.sh
@@ -270,6 +312,17 @@ BOOTEOF
     cp "$PROJECT_DIR/rpi/audio/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
     cp "$PROJECT_DIR/rpi/lcd/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
     cp "$PROJECT_DIR/rpi/pcie/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+
+    # Fix RUNPATH on OSD binaries and all vendor libs so transitive dependencies
+    # (e.g. libvchiq_arm.so.0, libvcos.so.0 pulled in by libbcm_host.so.0) are
+    # resolved from /flash/drivers/bin rather than the system library paths.
+    echo "  Fixing OSD RUNPATH..."
+    local rpath_dir="${DRIVER_BINARIES_DIR:-$DRIVERS_BIN_DIR}"
+    for bin in "$rpath_dir"/osd_32 "$rpath_dir"/osd_64 "$rpath_dir"/lib*.so*; do
+        if [[ -f "$bin" ]]; then
+            patchelf --set-rpath '/flash/drivers/bin' "$bin" || echo "patchelf failed on $bin"
+        fi
+    done
 
     echo "    Copying driver binaries..."
     mkdir -p /mnt/pspi-boot/drivers/bin
@@ -288,7 +341,7 @@ BOOTEOF
     echo "    Creating pspi service..."
     cat << 'SVCEOF' > /tmp/pspi-target/usr/lib/systemd/system/pspi.service
 [Unit]
-Description=PSPi gamepad and battery monitor
+Description=PSPi gamepad and OSD
 After=network-online.target
 
 [Service]
