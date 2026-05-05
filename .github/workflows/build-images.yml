@@ -1,4 +1,4 @@
-name: Build PSPi Images
+name: Release Lakka
 
 on:
   push:
@@ -39,7 +39,6 @@ jobs:
           pattern: '*'
           path: artifacts
 
-
       - name: Flatten structure
         run: |
           mkdir -p drivers-bin
@@ -49,6 +48,7 @@ jobs:
           mv artifacts/pspi-gamepad-bin/64bit/gamepad drivers-bin/gamepad_64
           
           # Battery
+          mkdir -p drivers-bin/battery
           mv artifacts/pspi-battery-bin/32bit/battery_monitor drivers-bin/battery_monitor_32
           mv artifacts/pspi-battery-bin/64bit/battery_monitor drivers-bin/battery_monitor_64
           
@@ -89,7 +89,7 @@ jobs:
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
           else
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
@@ -123,19 +123,27 @@ jobs:
   release:
     needs: build-images
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: pspi-images-${{ needs.build-images.outputs.version }}
+          name: pspi-images-${{ steps.version.outputs.version }}
           path: completed_images/
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.version.outputs.version }}"
           cd completed_images
           shopt -s nullglob
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
