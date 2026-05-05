@@ -39,6 +39,9 @@ jobs:
           pattern: '*'
           path: artifacts
 
+      - name: Debug artifact structure
+        run: find artifacts/
+
       - name: Flatten structure
         run: |
           mkdir -p drivers-bin
