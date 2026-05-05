@@ -1,8 +1,8 @@
 # Cross-compilers
-CC_32 = arm-linux-gnueabihf-gcc
+CC_32 = arm-linux-gnueabi-gcc -march=armv6zk -mfloat-abi=softfp
 CC_64 = aarch64-linux-gnu-gcc
 
-CFLAGS_COMMON = -O3 -lrt
+CFLAGS_COMMON = -O3 -lrt -static
 
 # Build for 32-bit architecture
 32:

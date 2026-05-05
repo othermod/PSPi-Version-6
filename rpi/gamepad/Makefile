@@ -1,12 +1,12 @@
 # Cross-compilers
-CC_32 = arm-linux-gnueabihf-gcc
+CC_32 = arm-linux-gnueabi-gcc -march=armv6zk -mfloat-abi=softfp
 CC_64 = aarch64-linux-gnu-gcc
 
 # Paths
 RPI_USERLAND = /tmp/rpi-userland
 RPI_BCM_HOST_INC = $(RPI_USERLAND)/host_applications/linux/libs/bcm_host/include
 
-CFLAGS_COMMON = -O3 -lrt
+CFLAGS_COMMON = -O3 -lrt -static
 
 # Build for 32-bit architecture
 32:

@@ -25,6 +25,8 @@ LAKKA_CM4_URL="https://github.com/libretro/Lakka-LibreELEC/releases/download/v6.
 LAKKA_ZERO_URL="https://github.com/libretro/Lakka-LibreELEC/releases/download/v6.1/Lakka-RPi3.aarch64-6.1.img.gz"
 LAKKA_CM4_SHA256="9e541bd8d092c63a65c5b7c66295ff9d3c3fc073d6bb6229560526c1c505ca11"
 LAKKA_ZERO_SHA256="e72cf352cbaaf0366fc7f46650b0e5335786b6119cdcaf086a0ecee2355ac742"
+	LAKKA_ARM_URL="https://github.com/libretro/Lakka-LibreELEC/releases/download/v6.1/Lakka-RPi.arm-6.1.img.gz"
+	LAKKA_ARM_SHA256="c331c30d4dc52fbae168d16b844c18833a1e7e790039ceb5f2d2acc6c9b09414"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -242,7 +244,7 @@ core_freq_min=200
 dtoverlay=pspi-lcd-compute
 EOF
             ;;
-        lakka_zero)
+        lakka_zero|lakka_arm)
             cat >> /mnt/pspi-boot/config.txt << 'EOF'
 # Disable HDMI audio
 hdmi_ignore_edid_audio=1
@@ -324,8 +326,15 @@ GAMEPAD_ARGS=""
 [[ "$input_type" != "gamepad" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --input $input_type"
 [[ "$joysticks" != "1" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --joysticks $joysticks"
 
-/flash/drivers/bin/gamepad_64 $GAMEPAD_ARGS &
-/flash/drivers/bin/battery_monitor_64 &
+
+# Auto-detect architecture for correct binaries
+case $(uname -m) in
+    aarch64) BIN=64 ;;
+    *)       BIN=32 ;;
+esac
+
+/flash/drivers/bin/gamepad_$BIN $GAMEPAD_ARGS &
+/flash/drivers/bin/battery_monitor_$BIN &
 wait
 BOOTEOF
     chmod +x /mnt/pspi-boot/boot.sh
@@ -392,6 +401,10 @@ build_image() {
             url="$LAKKA_ZERO_URL" sha256="$LAKKA_ZERO_SHA256"
             compressed="Lakka-RPi3.aarch64-6.1.img.gz"
             pspi_name="Lakka6.1-Zero2-PSPi6-v${VERSION}.img.gz" ;;
+        lakka_arm)
+            url="$LAKKA_ARM_URL" sha256="$LAKKA_ARM_SHA256"
+            compressed="Lakka-RPi.arm-6.1.img.gz"
+            pspi_name="Lakka6.1-PiZero1-PSPi6-v${VERSION}.img.gz" ;;
     esac
 
     echo ""
@@ -467,6 +480,8 @@ fi
 
 build_image lakka_cm4
 build_image lakka_zero
+build_image lakka_arm
+
 
 # Clean up staging dir
 rm -rf "$DRIVERS_BIN_DIR"
