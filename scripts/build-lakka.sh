@@ -15,6 +15,7 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 VERSION=""
 DRIVER_BINARIES_DIR=""
+TARGET=""
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT_DIR="$PROJECT_DIR/completed_images"
 CACHE_DIR="$PROJECT_DIR/cache"
@@ -32,6 +33,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --version) VERSION="$2"; shift 2 ;;
         --driver-binaries) DRIVER_BINARIES_DIR="$2"; shift 2 ;;
+        --target) TARGET="$2"; shift 2 ;;
         --help|-h) sed -n '/^# Usage:/,/^#$/p' "$0" | head -8; exit 0 ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
     esac
@@ -341,9 +343,15 @@ BOOTEOF
 
     echo "    Copying overlays..."
     mkdir -p /mnt/pspi-boot/overlays
-    cp "$PROJECT_DIR/rpi/audio/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
-    cp "$PROJECT_DIR/rpi/lcd/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
-    cp "$PROJECT_DIR/rpi/pcie/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+    if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
+        cp "$DRIVER_BINARIES_DIR/audio_overlays/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+        cp "$DRIVER_BINARIES_DIR/lcd_overlays/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+        cp "$DRIVER_BINARIES_DIR/pcie_overlays/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+    else
+        cp "$PROJECT_DIR/rpi/audio/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+        cp "$PROJECT_DIR/rpi/lcd/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+        cp "$PROJECT_DIR/rpi/pcie/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
+    fi
 
     echo "    Copying driver binaries..."
     mkdir -p /mnt/pspi-boot/drivers/bin
@@ -479,9 +487,18 @@ if [[ -z "$DRIVER_BINARIES_DIR" ]]; then
     build_drivers
 fi
 
-build_image lakka_cm4
-build_image lakka_zero
-build_image lakka_arm
+if [[ -z "$TARGET" ]]; then
+    build_image lakka_cm4
+    build_image lakka_zero
+    build_image lakka_arm
+else
+    case "$TARGET" in
+        cm4)   build_image lakka_cm4 ;;
+        zero)  build_image lakka_zero ;;
+        arm)   build_image lakka_arm ;;
+        *)     die "Unknown target: $TARGET (use cm4, zero, or arm)" ;;
+    esac
+fi
 
 
 # Clean up staging dir

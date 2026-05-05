@@ -10,30 +10,92 @@ on:
         description: 'Version string (e.g. 1.0.0)'
         required: true
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  build-gamepad:
+    uses: ./.github/workflows/build-gamepad.yml
+
+  build-battery:
+    uses: ./.github/workflows/build-battery.yml
+
+  build-audio:
+    uses: ./.github/workflows/build-audio.yml
+
+  build-lcd:
+    uses: ./.github/workflows/build-lcd.yml
+
+  build-pcie:
+    uses: ./.github/workflows/build-pcie.yml
+
+  collect-artifacts:
+    needs: [build-gamepad, build-battery, build-audio, build-lcd, build-pcie]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download gamepad binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-gamepad-bin
+          path: drivers-bin/gamepad
+
+      - name: Download battery binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-battery-bin
+          path: drivers-bin/battery
+
+      - name: Rename gamepad binaries
+        run: |
+          mv drivers-bin/gamepad/bin/32bit/gamepad drivers-bin/gamepad_32
+          mv drivers-bin/gamepad/bin/64bit/gamepad drivers-bin/gamepad_64
+          rm -rf drivers-bin/gamepad
+
+      - name: Rename battery binaries
+        run: |
+          mv drivers-bin/battery/bin/32bit/battery_monitor drivers-bin/battery_monitor_32
+          mv drivers-bin/battery/bin/64bit/battery_monitor drivers-bin/battery_monitor_64
+          rm -rf drivers-bin/battery
+
+      - name: Prepare overlay dirs
+        run: |
+          mkdir -p drivers-bin/audio_overlays drivers-bin/lcd_overlays drivers-bin/pcie_overlays
+
+      - name: Move audio overlays
+        run: |
+          mv pspi-audio-overlays/*.dtbo drivers-bin/audio_overlays/
+          rm -rf pspi-audio-overlays
+
+      - name: Move LCD overlays
+        run: |
+          mv pspi-lcd-overlays/*.dtbo drivers-bin/lcd_overlays/
+          rm -rf pspi-lcd-overlays
+
+      - name: Move PCIe overlay
+        run: |
+          mv pspi-pcie-overlay/*.dtbo drivers-bin/pcie_overlays/
+          rm -rf pspi-pcie-overlay
+
+      - name: Upload combined artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-driver-binaries
+          path: drivers-bin/
+
+  build-images:
+    needs: collect-artifacts
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-    # Sudo is required for loop device manipulation and overlay mounts
-    # in patch_lakka_image(). This works on hosted runners out of the box.
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            squashfs-tools \
-            p7zip-full \
-            gcc-arm-linux-gnueabi \
-            gcc-aarch64-linux-gnu \
-            device-tree-compiler \
-            git \
-            wget \
-            util-linux
+      - name: Download driver binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-driver-binaries
+          path: drivers-bin/
 
       - name: Determine version
         id: version
@@ -44,15 +106,22 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Restore Lakka image cache
-        uses: actions/cache@v4
-        with:
-          path: cache/
-          key: lakka-images-v6.1
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            squashfs-tools \
+            p7zip-full \
+            device-tree-compiler \
+            git \
+            wget \
+            util-linux
 
       - name: Build images
         run: |
-          sudo ./scripts/build-lakka.sh --version "${{ steps.version.outputs.version }}"
+          sudo ./scripts/build-lakka.sh \
+            --version "${{ steps.version.outputs.version }}" \
+            --driver-binaries "$(pwd)/drivers-bin"
 
       - name: Upload build artifacts
         if: ${{ !cancelled() }}
@@ -63,17 +132,14 @@ jobs:
           retention-days: 14
 
   release:
-    needs: build
+    needs: build-images
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: pspi-images-${{ needs.build.outputs.version }}
+          name: pspi-images-${{ needs.build-images.outputs.version }}
           path: completed_images/
 
       - name: Create GitHub Release
