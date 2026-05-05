@@ -120,6 +120,7 @@ jobs:
       - name: Build images
         run: |
           sudo ./scripts/build-lakka.sh \
+            --target arm \
             --version "${{ steps.version.outputs.version }}" \
             --driver-binaries "$(pwd)/drivers-bin"
 
