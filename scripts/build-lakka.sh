@@ -356,13 +356,12 @@ BOOTEOF
     cat << 'SVCEOF' > /tmp/pspi-target/usr/lib/systemd/system/pspi.service
 [Unit]
 Description=PSPi gamepad and battery monitor
-After=network-online.target
-
+After=sys-subsystem-net-devices-wlan0.device
+Wants=sys-subsystem-net-devices-wlan0.device
 [Service]
 Type=simple
 ExecStart=/flash/boot.sh
 RemainAfterExit=yes
-
 [Install]
 WantedBy=multi-user.target
 SVCEOF
