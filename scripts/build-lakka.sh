@@ -8,13 +8,12 @@ set -euo pipefail
 # Builds patched Lakka images for PSPi hardware (CM4 and Zero2).
 #
 # Usage:
-#   ./scripts/build-images.sh [--version X.Y.Z] [--release] [--driver-binaries PATH]
+#   ./scripts/build-images.sh [--version X.Y.Z] [--driver-binaries PATH]
 ###############################################################################
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 VERSION=""
-CREATE_RELEASE=false
 DRIVER_BINARIES_DIR=""
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT_DIR="$PROJECT_DIR/completed_images"
@@ -30,7 +29,6 @@ LAKKA_ZERO_SHA256="e72cf352cbaaf0366fc7f46650b0e5335786b6119cdcaf086a0ecee2355ac
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --version) VERSION="$2"; shift 2 ;;
-        --release) CREATE_RELEASE=true; shift ;;
         --driver-binaries) DRIVER_BINARIES_DIR="$2"; shift 2 ;;
         --help|-h) sed -n '/^# Usage:/,/^#$/p' "$0" | head -8; exit 0 ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -473,17 +471,6 @@ build_image lakka_zero
 # Clean up staging dir
 rm -rf "$DRIVERS_BIN_DIR"
 
-if [[ "$CREATE_RELEASE" == true ]]; then
-    if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-        echo "GITHUB_TOKEN not set. Skipping release creation."
-    else
-        echo "Creating GitHub release..."
-        cd "$OUTPUT_DIR"
-        gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            *.img.gz *.img.gz.sha256 *.7z.* 2>/dev/null || \
-            echo "Release creation failed (check gh CLI and token)."
-    fi
-fi
 
 echo ""
 echo "Done. Artifacts in: $OUTPUT_DIR"

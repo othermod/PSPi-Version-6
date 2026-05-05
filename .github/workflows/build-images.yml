@@ -1,0 +1,88 @@
+name: Build PSPi Images
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version string (e.g. 1.0.0)'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    # Sudo is required for loop device manipulation and overlay mounts
+    # in patch_lakka_image(). This works on hosted runners out of the box.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            squashfs-tools \
+            p7zip-full \
+            gcc-arm-linux-gnueabihf \
+            gcc-aarch64-linux-gnu \
+            device-tree-compiler \
+            git \
+            wget \
+            util-linux
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore Lakka image cache
+        uses: actions/cache@v4
+        with:
+          path: cache/
+          key: lakka-images-v6.1
+
+      - name: Build images
+        run: |
+          sudo ./scripts/build-lakka.sh --version "${{ steps.version.outputs.version }}"
+
+      - name: Upload build artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-images-${{ steps.version.outputs.version }}
+          path: completed_images/
+          retention-days: 14
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-images-${{ needs.build.outputs.version }}
+          path: completed_images/
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd completed_images
+          shopt -s nullglob
+          gh release create "v${VERSION}" --draft --title "v${VERSION}" \
+            *.img.gz *.img.gz.sha256 *.7z.*
+          shopt -u nullglob
