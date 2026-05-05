@@ -39,7 +39,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     uint32_t previous_status;
     bool wifi_enabled = false;
     bool wifi_connected = false;
-    uint8_t wifi_check_trigger = 0;
     uint32_t time_at_last_change;
     bool has_wifi = true;
     uint8_t brightness;
@@ -124,11 +123,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     int wifi_monitor_fd;
     int shared_memory_fd;
 
-    // Global netlink request structure
-    struct {
-        struct nlmsghdr nlh;
-        struct ifinfomsg ifi;
-    } wifi_status_request;
+    // Cached interface index for wlan0
+    int wlan0_ifindex = 0;
 
     #define BUTTON_CONFIG_STICK 0
     #define BUTTON_CONFIG_TRIGGER 1
@@ -546,12 +542,12 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 return;
             }
 
-            // Bind so the kernel knows our nl_pid and can route responses back to us.
-            // Without this, recv() blocks forever waiting for a reply that never arrives.
+            // Subscribe to RTMGRP_LINK so the kernel pushes RTM_NEWLINK messages
+            // to us whenever any interface changes state - no polling required.
             struct sockaddr_nl local = {
                 .nl_family = AF_NETLINK,
                 .nl_pid    = getpid(),
-                .nl_groups = 0,
+                .nl_groups = RTMGRP_LINK,
             };
             if (bind(wifi_monitor_fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
                 perror("Error binding netlink socket");
@@ -561,8 +557,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 return;
             }
 
-            int ifindex = if_nametoindex(INTERFACE_NAME);
-            if (ifindex == 0) {
+            wlan0_ifindex = if_nametoindex(INTERFACE_NAME);
+            if (wlan0_ifindex == 0) {
                 perror("Error getting interface index");
                 has_wifi = false;
                 close(wifi_monitor_fd);
@@ -570,41 +566,72 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 return;
             }
 
-            memset(&wifi_status_request, 0, sizeof(wifi_status_request));
-            wifi_status_request.nlh.nlmsg_len   = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-            wifi_status_request.nlh.nlmsg_flags = NLM_F_REQUEST;
-            wifi_status_request.nlh.nlmsg_type  = RTM_GETLINK;
-            wifi_status_request.nlh.nlmsg_seq   = 1;
-            wifi_status_request.ifi.ifi_family  = AF_UNSPEC;
-            wifi_status_request.ifi.ifi_index   = ifindex;
+            // Bootstrap: do a one-shot RTM_GETLINK query to get the current state
+            // before any change events arrive. Without this, wifi_connected stays
+            // false until the next state change, even if we're already connected.
+            struct {
+                struct nlmsghdr nlh;
+                struct ifinfomsg ifi;
+            } req;
+            memset(&req, 0, sizeof(req));
+            req.nlh.nlmsg_len   = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+            req.nlh.nlmsg_flags = NLM_F_REQUEST;
+            req.nlh.nlmsg_type  = RTM_GETLINK;
+            req.nlh.nlmsg_seq   = 1;
+            req.ifi.ifi_family  = AF_UNSPEC;
+            req.ifi.ifi_index   = wlan0_ifindex;
+
+            struct sockaddr_nl kernel = { .nl_family = AF_NETLINK, .nl_pid = 0, .nl_groups = 0 };
+            if (sendto(wifi_monitor_fd, &req, req.nlh.nlmsg_len, 0,
+                (struct sockaddr *)&kernel, sizeof(kernel)) < 0) {
+                perror("Error sending initial netlink request");
+            return;
+                }
+
+                char buf[4096];
+                int len = recv(wifi_monitor_fd, buf, sizeof(buf), 0);
+                if (len < 0) {
+                    perror("Error receiving initial netlink response");
+                    return;
+                }
+                struct nlmsghdr *nh = (struct nlmsghdr *)buf;
+                if (NLMSG_OK(nh, len) && nh->nlmsg_type == RTM_NEWLINK) {
+                    struct ifinfomsg *ifi = NLMSG_DATA(nh);
+                    wifi_enabled   = ifi->ifi_flags & IFF_UP;
+                    wifi_connected = ifi->ifi_flags & IFF_RUNNING;
+                    write(controller_board_fd, (uint8_t[]){0x20, wifi_connected, 0, 0}, 4);
+                }
         }
 
         void check_wifi_status(void) {
-            char wifi_status_buffer[4096];
-            // send() requires a connected socket; use sendto() with the kernel
-            // netlink address (nl_pid=0) so the request actually reaches the kernel.
-            struct sockaddr_nl kernel = { .nl_family = AF_NETLINK, .nl_pid = 0, .nl_groups = 0 };
-            if (sendto(wifi_monitor_fd, &wifi_status_request, wifi_status_request.nlh.nlmsg_len,
-                0, (struct sockaddr *)&kernel, sizeof(kernel)) < 0) {
-                perror("Error sending netlink request");
-            return;
-                }
-                if (recv(wifi_monitor_fd, wifi_status_buffer, sizeof(wifi_status_buffer), 0) < 0) {
-                    perror("Error receiving netlink response");
-                    return;
-                }
-                struct nlmsghdr *nh = (struct nlmsghdr *)wifi_status_buffer;
+            char buf[4096];
+            int len;
 
-                if (nh->nlmsg_type == RTM_NEWLINK) {
-                    struct ifinfomsg *ifi = NLMSG_DATA(nh);
-                    wifi_enabled = ifi->ifi_flags & IFF_UP;
-                    bool check_connection = ifi->ifi_flags & IFF_RUNNING;
+            // MSG_DONTWAIT returns immediately if nothing is pending - no blocking.
+            // The while loop handles multiple batched messages in one recv buffer.
+            while ((len = recv(wifi_monitor_fd, buf, sizeof(buf), MSG_DONTWAIT)) > 0) {
+                for (struct nlmsghdr *nh = (struct nlmsghdr *)buf;
+                     NLMSG_OK(nh, len);
+                nh = NLMSG_NEXT(nh, len))
+                     {
+                         if (nh->nlmsg_type != RTM_NEWLINK)
+                             continue;
 
-                    if (check_connection != wifi_connected) {
-                        wifi_connected = check_connection;
-                        write(controller_board_fd, (uint8_t[]){0x20, wifi_connected, 0, 0}, 4);
-                    }
-                }
+                         struct ifinfomsg *ifi = NLMSG_DATA(nh);
+
+                         // Ignore events for interfaces other than wlan0
+                         if (ifi->ifi_index != wlan0_ifindex)
+                             continue;
+
+                         wifi_enabled = ifi->ifi_flags & IFF_UP;
+                         bool check_connection = ifi->ifi_flags & IFF_RUNNING;
+
+                         if (check_connection != wifi_connected) {
+                             wifi_connected = check_connection;
+                             write(controller_board_fd, (uint8_t[]){0x20, wifi_connected, 0, 0}, 4);
+                         }
+                     }
+            }
         }
 
         // ---- Idle / dimming ----
@@ -683,7 +710,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
                 check_for_shutdown_condition();
 
-                if (has_wifi && wifi_check_trigger == 0) {
+                if (has_wifi) {
                     check_wifi_status();
                 }
 
@@ -705,8 +732,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                     case INPUT_NONE:
                         break;
                 }
-
-                wifi_check_trigger++;
 
                 if (current_controller_data.status_flags.bits.sleeping) {
                     usleep(100000);
