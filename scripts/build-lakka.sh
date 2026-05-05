@@ -180,7 +180,7 @@ download_image() {
 # Patch a Lakka image
 ###############################################################################
 patch_lakka_image() {
-    local img_path="$1" work_dir="$2"
+    local img_path="$1" work_dir="$2" device_type="$3"
 
     # Detach any loop devices already associated with this image from a previous
     # incomplete run so we don't hit "overlapping loop device" errors.
@@ -206,10 +206,78 @@ patch_lakka_image() {
     echo "    Mounting boot partition (offset 4194304)..."
     mount "$device_path" /mnt/pspi-boot || die "Failed to mount boot partition"
 
-    echo "    Copying config files to /boot..."
-    cp "$PROJECT_DIR/rpi/configs/lakka/config.txt" /mnt/pspi-boot/config.txt
-    cp "$PROJECT_DIR/rpi/configs/cm4.txt" /mnt/pspi-boot/cm4.txt
-    cp "$PROJECT_DIR/rpi/configs/pi0.txt" /mnt/pspi-boot/pi0.txt
+    echo "    Appending device-specific config to /boot/config.txt..."
+    case "$device_type" in
+        lakka_cm4)
+            cat >> /mnt/pspi-boot/config.txt << 'EOF'
+# Disable HDMI audio
+hdmi_ignore_edid_audio=1
+
+# Set framebuffer width and height for the LCD display
+framebuffer_width=800
+framebuffer_height=480
+
+# Power off the Raspberry Pi when GPIO pin 44 is triggered
+dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes
+
+# Enable the PCF8563 Real Time Clock module
+dtoverlay=i2c-rtc,pcf8563
+
+# Enable USB
+dtoverlay=dwc2,dr_mode=host
+
+# Disables pci-e link to prevent warning at boot
+dtoverlay=disable-pcie
+
+# Enable antenna
+dtparam=ant2
+
+# Set up CM4 audio pin
+dtoverlay=pspi-audio-cm4-kernel6+
+
+# Set minimum ARM frequency to 300
+arm_freq_min=300
+
+# Set minimum core frequency to 200
+core_freq_min=200
+
+dtoverlay=pspi-lcd-compute
+EOF
+            ;;
+        lakka_zero)
+            cat >> /mnt/pspi-boot/config.txt << 'EOF'
+# Disable HDMI audio
+hdmi_ignore_edid_audio=1
+
+# Set framebuffer width and height for the LCD display
+framebuffer_width=800
+framebuffer_height=480
+
+# Power off the Raspberry Pi when GPIO pin 4 is triggered
+dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
+
+# Enable the PCF8563 Real Time Clock module
+dtoverlay=i2c-rtc,pcf8563
+
+# Set activity LED GPIO pin to 20
+dtparam=act_led_gpio=20
+
+# Enable audio
+dtoverlay=pspi-audio-zero-kernel6+
+
+# Controls the behavior of the activity LED on the Raspberry Pi Zero.
+dtparam=act_led_activelow=no
+
+# Set minimum ARM frequency to 500 MHz
+arm_freq_min=500
+
+# Set minimum core frequency to 200 MHz
+core_freq_min=200
+
+dtoverlay=pspi-lcd-zero
+EOF
+            ;;
+    esac
     echo "    Creating pspi.conf..."
     cat << 'EOF' > /mnt/pspi-boot/pspi.conf
 # Enable dimming after <seconds>, between 1 and 3600
@@ -263,7 +331,6 @@ GAMEPAD_ARGS=""
 wait
 BOOTEOF
     chmod +x /mnt/pspi-boot/boot.sh
-    cp "$PROJECT_DIR/rpi/configs/lakka/distroconfig.txt" /mnt/pspi-boot/distroconfig.txt
 
     echo "    Copying overlays..."
     mkdir -p /mnt/pspi-boot/overlays
@@ -358,7 +425,7 @@ build_image() {
     echo "  Uncompressed: $img_file ($(du -h "$img_file" | cut -f1))"
 
     echo "[3/6] Patching image..."
-    patch_lakka_image "$CACHE_DIR/$img_file" "$work_dir"
+    patch_lakka_image "$CACHE_DIR/$img_file" "$work_dir" "$label"
     cp -f "$CACHE_DIR/$img_file" "$OUTPUT_DIR/${pspi_name%.gz}"
     echo "  Patched: $pspi_name"
 
