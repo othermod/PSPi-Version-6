@@ -356,7 +356,9 @@ BOOTEOF
     echo "    Copying driver binaries..."
     mkdir -p /mnt/pspi-boot/drivers/bin
     if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
-        cp "$DRIVER_BINARIES_DIR"/* /mnt/pspi-boot/drivers/bin/
+        for f in "$DRIVER_BINARIES_DIR"/*; do
+            [[ -f "$f" ]] && cp "$f" /mnt/pspi-boot/drivers/bin/
+        done
     else
         cp "$DRIVERS_BIN_DIR"/* /mnt/pspi-boot/drivers/bin/
     fi
