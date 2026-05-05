@@ -281,8 +281,8 @@ EOF
     echo "    Creating pspi.conf..."
     cat << 'EOF' > /mnt/pspi-boot/pspi.conf
 # Enable dimming after <seconds>, between 1 and 3600
-enable_dim=false
-dim_seconds=120
+enable_dim=true
+dim_seconds=300
 # Enable fast mode (double input polling rate on atmega)
 fast_mode=false
 # Disable CRC checks
@@ -377,6 +377,7 @@ SVCEOF
 
     echo "    Patching retroarch.cfg..."
     sed -i 's/menu_swap_ok_cancel_buttons = "false"/menu_swap_ok_cancel_buttons = "true"/' /tmp/pspi-target/etc/retroarch.cfg
+    sed -i '2927s/.*/menu_scale_factor = "1.200000"/' /tmp/pspi-target/etc/retroarch.cfg
     echo "    Repacking squashfs..."
     mksquashfs /tmp/pspi-target "$work_dir/filesystem.squashfs" -noappend -quiet
 
