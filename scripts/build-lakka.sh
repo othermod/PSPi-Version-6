@@ -453,7 +453,7 @@ build_image() {
         lakka_arm)
             url="$LAKKA_ARM_URL" sha256="$LAKKA_ARM_SHA256"
             compressed="Lakka-RPi.arm-6.1.img.gz"
-            pspi_name="Lakka6.1-PiZero1-PSPi6-v${VERSION}.img.gz" ;;
+            pspi_name="Lakka6.1-Zero1-PSPi6-v${VERSION}.img.gz" ;;
         lakka_cm5)
             url="$LAKKA_CM5_URL" sha256="$LAKKA_CM5_SHA256"
             compressed="Lakka-RPi5.aarch64-6.1.img.gz"
