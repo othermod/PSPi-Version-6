@@ -1,6 +1,10 @@
+#include <Arduino.h>
 #include <Wire.h>
 #include <EEPROM.h>
-#include "defines.h"
+#include "config.h"
+
+void writeBrightnessToEEPROM();
+void writeMuteStatusToEEPROM();
 
 struct SystemState {
   uint8_t debounceCount[16];
