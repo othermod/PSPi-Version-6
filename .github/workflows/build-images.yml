@@ -1,9 +1,6 @@
 name: Release Lakka
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:
