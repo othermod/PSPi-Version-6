@@ -28,6 +28,8 @@ LAKKA_CM4_SHA256="9e541bd8d092c63a65c5b7c66295ff9d3c3fc073d6bb6229560526c1c505ca
 LAKKA_ZERO_SHA256="e72cf352cbaaf0366fc7f46650b0e5335786b6119cdcaf086a0ecee2355ac742"
 	LAKKA_ARM_URL="https://github.com/libretro/Lakka-LibreELEC/releases/download/v6.1/Lakka-RPi.arm-6.1.img.gz"
 	LAKKA_ARM_SHA256="c331c30d4dc52fbae168d16b844c18833a1e7e790039ceb5f2d2acc6c9b09414"
+	LAKKA_CM5_URL="https://github.com/libretro/Lakka-LibreELEC/releases/download/v6.1/Lakka-RPi5.aarch64-6.1.img.gz"
+	LAKKA_CM5_SHA256="b2fd310742c612b6f7f221540518f03845a75f8e5d0b55c0c2abeb81da8c5bb3"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -246,6 +248,42 @@ core_freq_min=200
 dtoverlay=pspi-lcd-compute
 EOF
             ;;
+        lakka_cm5)
+            cat >> /mnt/pspi-boot/config.txt << 'EOF'
+# Disable HDMI audio
+hdmi_ignore_edid_audio=1
+
+# Set framebuffer width and height for the LCD display
+framebuffer_width=800
+framebuffer_height=480
+
+# Power off the Raspberry Pi when GPIO pin 44 is triggered
+dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes
+
+# Enable the PCF8563 Real Time Clock module
+dtoverlay=i2c-rtc,pcf8563
+
+# Enable USB
+dtoverlay=dwc2,dr_mode=host
+
+# Disables pci-e link to prevent warning at boot
+dtoverlay=disable-pcie
+
+# Enable antenna
+dtparam=ant2
+
+# Set up CM4 audio pin
+dtoverlay=pspi-audio-cm4-kernel6+
+
+# Set minimum ARM frequency to 300
+arm_freq_min=300
+
+# Set minimum core frequency to 200
+core_freq_min=200
+
+dtoverlay=pspi-lcd-compute
+EOF
+            ;;
         lakka_zero|lakka_arm)
             cat >> /mnt/pspi-boot/config.txt << 'EOF'
 # Disable HDMI audio
@@ -416,6 +454,10 @@ build_image() {
             url="$LAKKA_ARM_URL" sha256="$LAKKA_ARM_SHA256"
             compressed="Lakka-RPi.arm-6.1.img.gz"
             pspi_name="Lakka6.1-PiZero1-PSPi6-v${VERSION}.img.gz" ;;
+        lakka_cm5)
+            url="$LAKKA_CM5_URL" sha256="$LAKKA_CM5_SHA256"
+            compressed="Lakka-RPi5.aarch64-6.1.img.gz"
+            pspi_name="Lakka6.1-CM5-PSPi6-v${VERSION}.img.gz" ;;
     esac
 
     echo ""
@@ -491,14 +533,16 @@ fi
 
 if [[ -z "$TARGET" ]]; then
     build_image lakka_cm4
+    build_image lakka_cm5
     build_image lakka_zero
     build_image lakka_arm
 else
     case "$TARGET" in
         cm4)   build_image lakka_cm4 ;;
+        cm5)   build_image lakka_cm5 ;;
         zero)  build_image lakka_zero ;;
         arm)   build_image lakka_arm ;;
-        *)     die "Unknown target: $TARGET (use cm4, zero, or arm)" ;;
+        *)     die "Unknown target: $TARGET (use cm4, cm5, zero, or arm)" ;;
     esac
 fi
 
