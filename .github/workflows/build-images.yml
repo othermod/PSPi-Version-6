@@ -133,6 +133,9 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -146,5 +149,6 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           shopt -s nullglob
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            completed_images/*.img.gz completed_images/*.img.gz.sha256 completed_images/*.7z.*
+            completed_images/*.img.gz completed_images/*.img.gz.sha256 completed_images/*.7z.* \
+            --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
