@@ -1,0 +1,35 @@
+name: Build Firmware Tool
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'rpi/firmware/**'
+  pull_request:
+    paths:
+      - 'rpi/firmware/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make arm-linux-gnueabihf-gcc aarch64-linux-gnu-gcc
+
+      - name: Build cross-compiled binaries
+        run: |
+          cd rpi/firmware
+          make cross
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-firmware-tool
+          path: rpi/firmware/bin/
