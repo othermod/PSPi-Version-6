@@ -144,8 +144,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          cd completed_images
           shopt -s nullglob
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            *.img.gz *.img.gz.sha256 *.7z.*
+            completed_images/*.img.gz completed_images/*.img.gz.sha256 completed_images/*.7z.*
           shopt -u nullglob
