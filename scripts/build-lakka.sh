@@ -246,6 +246,8 @@ arm_freq_min=300
 core_freq_min=200
 
 dtoverlay=pspi-lcd-compute
+
+dtoverlay=vc4-kms-v3d,noaudio
 EOF
             ;;
         lakka_cm5)
@@ -282,6 +284,8 @@ arm_freq_min=300
 core_freq_min=200
 
 dtoverlay=pspi-lcd-compute
+
+dtoverlay=vc4-kms-v3d,noaudio
 EOF
             ;;
         lakka_zero|lakka_arm)
@@ -315,6 +319,8 @@ arm_freq_min=500
 core_freq_min=200
 
 dtoverlay=pspi-lcd-zero
+
+dtoverlay=vc4-kms-v3d,noaudio
 EOF
             ;;
     esac
@@ -500,15 +506,9 @@ build_image() {
         7z a "${pspi_name}.7z" "$pspi_name" -v1500M 2>/dev/null || true
         rm -f "$OUTPUT_DIR/$pspi_name"
     fi
-
-    echo "[5/5] Generating SHA256..."
-    shopt -s nullglob
-    for f in "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.7z.*; do
-        sha256sum "$f" | awk '{print $1}' > "${f}.sha256"
-    done
-    shopt -u nullglob
     echo "  Output:"
-    ls -lh "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.sha256 "$OUTPUT_DIR"/*.7z.* 2>/dev/null || true
+
+    ls -lh "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.7z.* 2>/dev/null || true
 
     cd /
     rm -rf "$work_dir"

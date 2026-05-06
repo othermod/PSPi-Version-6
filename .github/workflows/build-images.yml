@@ -149,6 +149,6 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           shopt -s nullglob
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            completed_images/*.img.gz completed_images/*.img.gz.sha256 completed_images/*.7z.* \
+            completed_images/*.img.gz completed_images/*.7z.* \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
