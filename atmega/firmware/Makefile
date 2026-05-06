@@ -66,7 +66,7 @@ all: $(TARGET).hex
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TARGET).o: firmwmare.ino config.h
+$(TARGET).o: firmware.ino config.h
 	$(CXX) $(CXXFLAGS) -x c++ -c -o $@ $<
 
 libcore.a: $(CORE_OBJS)

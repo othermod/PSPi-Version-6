@@ -1,3 +1,0 @@
-This updates the firmware using the i2c bootloader.
-Port the topper software over, but remove the ability to switch from application to bootloader.
-Bootloader mode must be entered at poweron by holding the display button (will give some sort of feedback to the user, possibly on the wifi led)
