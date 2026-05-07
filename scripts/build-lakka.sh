@@ -248,6 +248,9 @@ core_freq_min=100
 dtoverlay=pspi-lcd-compute
 
 over_voltage_min=-8
+
+arm_boost=0
+
 EOF
             ;;
         lakka_cm5)
@@ -439,6 +442,8 @@ SVCEOF
     echo "    Patching retroarch.cfg..."
     sed -i 's/menu_swap_ok_cancel_buttons = "false"/menu_swap_ok_cancel_buttons = "true"/' /tmp/pspi-target/etc/retroarch.cfg
     sed -i 's/xmb_layout = "0"/xmb_layout = "2"/' /tmp/pspi-target/etc/retroarch.cfg
+    sed -i 's/xmb_menu_color_theme = .*/xmb_menu_color_theme = "2"/' /tmp/pspi-target/etc/retroarch.cfg
+    sed -i 's/menu_shader_pipeline = .*/menu_shader_pipeline = "0"/' /tmp/pspi-target/etc/retroarch.cfg
     echo "    Repacking squashfs..."
     mksquashfs /tmp/pspi-target "$work_dir/filesystem.squashfs" -noappend -quiet
 
