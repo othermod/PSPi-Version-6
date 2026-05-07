@@ -10,7 +10,6 @@
 #include <linux/i2c.h>
 
 #define BL_ADDR                 0x29
-#define FW_ADDR                 0x30
 
 #define CMD_ABORT_TIMEOUT       0x00
 #define CMD_READ_INFO           0x01
@@ -32,14 +31,7 @@
 
 /* ATmega8 datasheet: max flash write time 4.5ms. 25ms gives ample margin. */
 #define FLASH_WRITE_WAIT_US     25000
-
-#define PROBE_INTERVAL_US       100000   /* 100ms between probes */
-#define PROBE_TIMEOUT_S         5
-#define PROBE_MAX_RETRIES       (PROBE_TIMEOUT_S * (1000000 / PROBE_INTERVAL_US))
-
-#define DEFAULT_RESET_CMD       { 0x50, 0x00 }
-#define DEFAULT_RESET_CMD_LEN   2
-#define MAX_RESET_CMD_LEN       16
+#define FLASH_WRITE_MAX_RETRIES 3
 
 typedef struct {
     uint8_t  data[FLASH_SIZE];
@@ -61,21 +53,17 @@ static int i2c_open(const char *device)
 
 static int i2c_write(uint8_t addr, const uint8_t *buf, size_t len)
 {
-    if (ioctl(i2c_fd, I2C_SLAVE, addr) < 0) {
-        fprintf(stderr, "i2c_write: ioctl I2C_SLAVE 0x%02X failed: %s\n", addr, strerror(errno));
+    if (ioctl(i2c_fd, I2C_SLAVE, addr) < 0)
         return -1;
-    }
-    if (write(i2c_fd, buf, len) != (ssize_t)len) {
-        fprintf(stderr, "i2c_write: write to 0x%02X failed: %s\n", addr, strerror(errno));
+    if (write(i2c_fd, buf, len) != (ssize_t)len)
         return -1;
-    }
     return 0;
 }
 
 /* Uses I2C_RDWR to guarantee a repeated START between write and read phases. */
 static int i2c_write_then_read(uint8_t addr,
-                                const uint8_t *wbuf, size_t wlen,
-                                uint8_t *rbuf,        size_t rlen)
+                               const uint8_t *wbuf, size_t wlen,
+                               uint8_t *rbuf,        size_t rlen)
 {
     struct i2c_msg msgs[2] = {
         { .addr = addr, .flags = 0,        .len = (__u16)wlen, .buf = (uint8_t *)wbuf },
@@ -83,11 +71,8 @@ static int i2c_write_then_read(uint8_t addr,
     };
     struct i2c_rdwr_ioctl_data data = { .msgs = msgs, .nmsgs = 2 };
 
-    if (ioctl(i2c_fd, I2C_RDWR, &data) < 0) {
-        fprintf(stderr, "i2c_write_then_read: I2C_RDWR to 0x%02X failed: %s\n",
-                addr, strerror(errno));
+    if (ioctl(i2c_fd, I2C_RDWR, &data) < 0)
         return -1;
-    }
     return 0;
 }
 
@@ -149,39 +134,18 @@ static int bl_finalize(void)
     return i2c_write(BL_ADDR, &cmd, 1);
 }
 
-static int enter_bootloader(const uint8_t *reset_cmd, size_t reset_cmd_len)
+static int enter_bootloader(void)
 {
-    int i;
-
     if (i2c_probe(BL_ADDR) == 0) {
-        printf("Bootloader already running at 0x%02X.\n", BL_ADDR);
+        printf("Bootloader detected at 0x%02X.\n", BL_ADDR);
         return 0;
     }
 
-    if (i2c_probe(FW_ADDR) == 0) {
-        printf("Firmware running at 0x%02X. Sending reset command...\n", FW_ADDR);
-        if (i2c_write(FW_ADDR, reset_cmd, reset_cmd_len) < 0) {
-            fprintf(stderr, "Failed to send reset command to firmware.\n");
-            return -1;
-        }
-    } else {
-        printf("No device found at 0x%02X or 0x%02X.\n", BL_ADDR, FW_ADDR);
-    }
-
-    printf("Waiting for bootloader");
-    fflush(stdout);
-    for (i = 0; i < PROBE_MAX_RETRIES; i++) {
-        if (i2c_probe(BL_ADDR) == 0) {
-            printf("\nBootloader detected at 0x%02X.\n", BL_ADDR);
-            return 0;
-        }
-        usleep(PROBE_INTERVAL_US);
-        printf(".");
-        fflush(stdout);
-    }
-
-    printf("\n");
-    fprintf(stderr, "Timed out waiting for bootloader at 0x%02X.\n", BL_ADDR);
+    fprintf(stderr,
+            "Bootloader not found at 0x%02X.\n"
+            "To enter bootloader mode: fully shut down the device, then\n"
+            "hold the power button at power-on. Then re-run this tool.\n",
+            BL_ADDR);
     return -1;
 }
 
@@ -259,7 +223,7 @@ static int parse_hex_file(const char *path, flash_image_t *image)
 
     ret = 0;
 
-fail:
+    fail:
     fclose(f);
     return ret;
 }
@@ -296,9 +260,9 @@ static int backup_firmware(const char *path, uint8_t fw_pages)
 
         /* Intel HEX data record: :LLAAAATT[DD...]CC */
         checksum = SPM_PAGESIZE
-                 + ((addr >> 8) & 0xFF)
-                 + (addr & 0xFF)
-                 + 0x00; /* record type */
+        + ((addr >> 8) & 0xFF)
+        + (addr & 0xFF)
+        + 0x00; /* record type */
         for (i = 0; i < SPM_PAGESIZE; i++)
             checksum += buf[i];
         checksum = (~checksum + 1) & 0xFF;
@@ -326,15 +290,28 @@ static int flash_image(const flash_image_t *image)
     printf("Flashing %u page(s)...\n", image->num_pages);
 
     for (page = 0; page < NUM_PAGES; page++) {
+        int attempt, ok = 0;
+
         if (!image->page_has_data[page])
             continue;
 
-        if (bl_set_page((uint8_t)page) < 0) {
-            fprintf(stderr, "Failed to set address for page %d.\n", page);
-            return -1;
+        for (attempt = 0; attempt < FLASH_WRITE_MAX_RETRIES; attempt++) {
+            if (attempt > 0) {
+                fprintf(stderr, "\n  page %d: I2C error, retrying (%d/%d)...\n",
+                        page, attempt, FLASH_WRITE_MAX_RETRIES - 1);
+                usleep(FLASH_WRITE_WAIT_US);
+            }
+            if (bl_set_page((uint8_t)page) < 0)
+                continue;
+            if (bl_write_page(image->data + page * SPM_PAGESIZE) < 0)
+                continue;
+            ok = 1;
+            break;
         }
-        if (bl_write_page(image->data + page * SPM_PAGESIZE) < 0) {
-            fprintf(stderr, "Failed to write page %d.\n", page);
+
+        if (!ok) {
+            fprintf(stderr, "Failed to write page %d after %d attempts.\n",
+                    page, FLASH_WRITE_MAX_RETRIES);
             return -1;
         }
 
@@ -354,18 +331,30 @@ static int verify_image(const flash_image_t *image)
 
     for (page = 0; page < NUM_PAGES; page++) {
         uint8_t actual[SPM_PAGESIZE];
+        int     attempt, ok = 0;
         int     page_errs = 0;
         int     i;
 
         if (!image->page_has_data[page])
             continue;
 
-        if (bl_set_page((uint8_t)page) < 0) {
-            fprintf(stderr, "Failed to set address for page %d.\n", page);
-            return -1;
+        for (attempt = 0; attempt < FLASH_WRITE_MAX_RETRIES; attempt++) {
+            if (attempt > 0) {
+                fprintf(stderr, "\n  page %d: I2C error, retrying (%d/%d)...\n",
+                        page, attempt, FLASH_WRITE_MAX_RETRIES - 1);
+                usleep(FLASH_WRITE_WAIT_US);
+            }
+            if (bl_set_page((uint8_t)page) < 0)
+                continue;
+            if (bl_read_page(actual, SPM_PAGESIZE) < 0)
+                continue;
+            ok = 1;
+            break;
         }
-        if (bl_read_page(actual, SPM_PAGESIZE) < 0) {
-            fprintf(stderr, "Failed to read page %d.\n", page);
+
+        if (!ok) {
+            fprintf(stderr, "\n  page %d: I2C error after %d attempts, aborting.\n",
+                    page, FLASH_WRITE_MAX_RETRIES);
             return -1;
         }
 
@@ -385,7 +374,7 @@ static int verify_image(const flash_image_t *image)
 
     if (total_errs > 0) {
         fprintf(stderr, "\nVerification failed: %d byte(s) mismatched.\n"
-                        "Device remains in bootloader. Re-run to retry.\n", total_errs);
+        "Device remains in bootloader. Re-run to retry.\n", total_errs);
         return -1;
     }
 
@@ -396,42 +385,18 @@ static int verify_image(const flash_image_t *image)
 static void usage(const char *prog)
 {
     fprintf(stderr,
-        "Usage: %s [options] <firmware.hex>\n"
-        "\n"
-        "Options:\n"
-        "  -d <device>    I2C device node     (default: /dev/i2c-1)\n"
-        "  -r <hexbytes>  Firmware reset command   (default: 5000)\n"
-        "  -b <file>      Backup current firmware to HEX file before flashing\n"
-        "  -n             Skip verify and finalize\n"
-        "  -h             Show this help\n"
-        "\n"
-        "The -r value is a run of hex byte pairs, e.g. -r 5000 sends [0x50, 0x00].\n",
-        prog);
-}
-
-static int parse_reset_cmd(const char *arg, uint8_t *out, size_t *out_len)
-{
-    size_t slen = strlen(arg);
-
-    if (slen == 0 || slen % 2 != 0) {
-        fprintf(stderr, "Reset command must be a non-empty even number of hex digits.\n");
-        return -1;
-    }
-    if (slen / 2 > MAX_RESET_CMD_LEN) {
-        fprintf(stderr, "Reset command too long (max %d bytes).\n", MAX_RESET_CMD_LEN);
-        return -1;
-    }
-
-    *out_len = slen / 2;
-    for (size_t i = 0; i < *out_len; i++) {
-        unsigned int byte_val;
-        if (sscanf(arg + i * 2, "%02X", &byte_val) != 1) {
-            fprintf(stderr, "Invalid hex in reset command.\n");
-            return -1;
-        }
-        out[i] = (uint8_t)byte_val;
-    }
-    return 0;
+            "Usage: %s [options] <firmware.hex>\n"
+            "\n"
+            "Options:\n"
+            "  -d <device>    I2C device node (default: /dev/i2c-1)\n"
+            "  -b <file>      Backup current firmware to HEX file before flashing\n"
+            "  -n             Skip verify and finalize\n"
+            "  -h             Show this help\n"
+            "\n"
+            "The device must be in bootloader mode before running this tool.\n"
+            "To enter bootloader mode: fully shut down the device, then hold\n"
+            "the power button at power-on.\n",
+            prog);
 }
 
 int main(int argc, char *argv[])
@@ -442,16 +407,13 @@ int main(int argc, char *argv[])
     int           skip_verify = 0;
     int           opt, ret    = 0;
     uint8_t       sig0, sig1, sig2, version, fw_pages;
-    uint8_t       reset_cmd[MAX_RESET_CMD_LEN] = DEFAULT_RESET_CMD;
-    size_t        reset_cmd_len                = DEFAULT_RESET_CMD_LEN;
     flash_image_t image;
 
-    while ((opt = getopt(argc, argv, "d:r:b:nh")) != -1) {
+    while ((opt = getopt(argc, argv, "d:b:nh")) != -1) {
         switch (opt) {
-            case 'd': device = optarg;                                                       break;
-            case 'r': if (parse_reset_cmd(optarg, reset_cmd, &reset_cmd_len) < 0) return 1; break;
-            case 'b': backup_file = optarg;                                                  break;
-            case 'n': skip_verify = 1;                                                       break;
+            case 'd': device = optarg;  break;
+            case 'b': backup_file = optarg; break;
+            case 'n': skip_verify = 1;  break;
             case 'h': usage(argv[0]); return 0;
             default:  usage(argv[0]); return 1;
         }
@@ -473,7 +435,7 @@ int main(int argc, char *argv[])
         return 1;
 
     printf("--- Enter Bootloader ---\n");
-    if (enter_bootloader(reset_cmd, reset_cmd_len) < 0) { ret = 1; goto done; }
+    if (enter_bootloader() < 0) { ret = 1; goto done; }
 
     if (bl_abort_timeout() < 0) {
         fprintf(stderr, "Failed to abort boot timeout.\n");
@@ -497,14 +459,14 @@ int main(int argc, char *argv[])
     printf("Bootloader version: 0x%02X\n", version);
     if (version != EXPECTED_BL_VERSION)
         fprintf(stderr, "Warning: unexpected bootloader version 0x%02X (expected 0x%02X). "
-                        "Proceeding anyway.\n", version, EXPECTED_BL_VERSION);
+        "Proceeding anyway.\n", version, EXPECTED_BL_VERSION);
     printf("Firmware flash: %d pages available\n", fw_pages);
     printf("Preparing to flash %u pages with data.\n\n", image.num_pages);
 
     for (int i = fw_pages; i < NUM_PAGES; i++) {
         if (image.page_has_data[i]) {
             fprintf(stderr, "Error: firmware image exceeds available flash "
-                            "(data in page %d, max page is %d).\n", i, fw_pages - 1);
+            "(data in page %d, max page is %d).\n", i, fw_pages - 1);
             ret = 1;
             goto done;
         }
@@ -521,8 +483,8 @@ int main(int argc, char *argv[])
 
     if (skip_verify) {
         printf("Skipping verification and finalize (-n).\n"
-               "Device remains in bootloader. Firmware will not boot until\n"
-               "a verified flash is completed and finalized.\n");
+        "Device remains in bootloader. Firmware will not boot until\n"
+        "a verified flash is completed and finalized.\n");
         goto done;
     }
 
@@ -538,7 +500,7 @@ int main(int argc, char *argv[])
     }
     printf("Finalize sent. Bootloader is writing metadata and launching firmware.\n");
 
-done:
+    done:
     close(i2c_fd);
     return ret;
 }
