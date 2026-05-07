@@ -353,8 +353,8 @@ input_type=gamepad
 joysticks=1
 while IFS="=" read -r key value; do
     [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
-    key=$(echo "$key" | xargs)
-    value=$(echo "$value" | xargs)
+    key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     case "$key" in
         enable_dim) enable_dim="$value" ;;
         dim_seconds) dim_seconds="$value" ;;
