@@ -239,15 +239,15 @@ dtparam=ant2
 # Set up CM4 audio pin
 dtoverlay=pspi-audio-cm4-kernel6+
 
-# Set minimum ARM frequency to 300
-arm_freq_min=300
+# Set minimum ARM frequency to 100
+arm_freq_min=100
 
-# Set minimum core frequency to 200
-core_freq_min=200
+# Set minimum core frequency to 100
+core_freq_min=100
 
 dtoverlay=pspi-lcd-compute
 
-dtoverlay=vc4-kms-v3d,noaudio
+over_voltage_min=-8
 EOF
             ;;
         lakka_cm5)
@@ -277,15 +277,14 @@ dtparam=ant2
 # Set up CM4 audio pin
 dtoverlay=pspi-audio-cm4-kernel6+
 
-# Set minimum ARM frequency to 300
-arm_freq_min=300
+# Set minimum ARM frequency to 100
+arm_freq_min=100
 
-# Set minimum core frequency to 200
-core_freq_min=200
+# Set minimum core frequency to 100
+core_freq_min=100
 
 dtoverlay=pspi-lcd-compute
 
-dtoverlay=vc4-kms-v3d,noaudio
 EOF
             ;;
         lakka_zero|lakka_arm)
@@ -312,18 +311,26 @@ dtoverlay=pspi-audio-zero-kernel6+
 # Controls the behavior of the activity LED on the Raspberry Pi Zero.
 dtparam=act_led_activelow=no
 
-# Set minimum ARM frequency to 500 MHz
-arm_freq_min=500
+# Set minimum ARM frequency to 100
+arm_freq_min=100
 
-# Set minimum core frequency to 200 MHz
-core_freq_min=200
+# Set minimum core frequency to 100
+core_freq_min=100
 
 dtoverlay=pspi-lcd-zero
 
-dtoverlay=vc4-kms-v3d,noaudio
+over_voltage_min=-8
 EOF
             ;;
     esac
+    # Extract vc4-kms-v3d line from distroconfig.txt and append with ,noaudio
+    vc4_line=$(grep "dtoverlay=vc4-kms-v3d" /mnt/pspi-boot/distroconfig.txt | head -1)
+    if [[ -n "$vc4_line" ]]; then
+        echo "$vc4_line,noaudio" >> /mnt/pspi-boot/config.txt
+        echo "    Appended: $vc4_line,noaudio"
+    else
+        die "vc4-kms-v3d line not found in distroconfig.txt"
+    fi
     echo "    Creating pspi.conf..."
     cat << 'EOF' > /mnt/pspi-boot/pspi.conf
 # Enable dimming after <seconds>, between 1 and 3600
@@ -431,9 +438,7 @@ SVCEOF
 
     echo "    Patching retroarch.cfg..."
     sed -i 's/menu_swap_ok_cancel_buttons = "false"/menu_swap_ok_cancel_buttons = "true"/' /tmp/pspi-target/etc/retroarch.cfg
-    sed -i 's/rgui_menu_color_theme = "4"/rgui_menu_color_theme = "2"/' /tmp/pspi-target/etc/retroarch.cfg
     sed -i 's/xmb_layout = "0"/xmb_layout = "2"/' /tmp/pspi-target/etc/retroarch.cfg
-    sed -i 's/cpu_menu_gov = "ondemand"/cpu_menu_gov = "powersave"/' /tmp/pspi-target/etc/retroarch.cfg
     echo "    Repacking squashfs..."
     mksquashfs /tmp/pspi-target "$work_dir/filesystem.squashfs" -noappend -quiet
 
