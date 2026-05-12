@@ -26,7 +26,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
     // Global counter for power management
     int poweroff_counter = 0;
-    int crc_error_count = 0;
 
     unsigned int polling_delay = DEFAULT_POLLING_DELAY_MS;
 
@@ -37,7 +36,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     bool is_dim = false;
     bool is_idle = false;
     uint32_t previous_status;
-    bool wifi_enabled = false;
     bool wifi_connected = false;
     uint32_t time_at_last_change;
     bool has_wifi = true;
@@ -132,6 +130,18 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     bool extra_buttons = false;
     bool button_config = BUTTON_CONFIG_TRIGGER;
 
+    // Axis calibration defaults (shared by left and right sticks)
+    int axis_min      = 40;
+    int axis_max      = 215;
+    int axis_flat     = 20;
+    #define AXIS_FUZZ 4
+    int axis_center_lx = 127;
+    int axis_center_ly = 127;
+    int axis_center_rx = 127;
+    int axis_center_ry = 127;
+
+    bool autocenter = false;
+
     void parse_command_line_args(int argc, char *argv[]) {
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -139,6 +149,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 "  --input <gamepad|mouse|none>   Select input device type (default: gamepad)\n"
                 "  --nocrc                        Disable CRC checks\n"
                 "  --joysticks <num>              Set number of joysticks (0-2, gamepad only)\n"
+                "  --deadzone <value>             Set stick deadzone flat value (0-100, default: 20, gamepad only)\n"
+                "  --autocenter                   Use stick position at startup as center point (gamepad only)\n"
                 "  --dim <seconds>                Enable dimming after <seconds> idle (1-3600, default: 120)\n"
                 "  --fast                         Enable fast mode (double input polling rate)\n"
                 "  --extrabuttons [trigger|stick] Enable extra buttons (trigger/stick, gamepad only)\n"
@@ -194,6 +206,22 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             } else if (strcmp(argv[i], "--fast") == 0) {
                 printf("Gotta go fast\n");
                 polling_delay = FAST_POLLING_DELAY_MS;
+            } else if (strcmp(argv[i], "--deadzone") == 0) {
+                if (i + 1 < argc) {
+                    int dz = atoi(argv[++i]);
+                    if (dz < 0 || dz > 100) {
+                        printf("Invalid deadzone value. Must be between 0 and 100.\n");
+                        exit(1);
+                    }
+                    axis_flat = dz;
+                    printf("Deadzone: %d\n", axis_flat);
+                } else {
+                    printf("No value specified for --deadzone\n");
+                    exit(1);
+                }
+            } else if (strcmp(argv[i], "--autocenter") == 0) {
+                autocenter = true;
+                printf("Autocenter enabled\n");
             } else if (strcmp(argv[i], "--extrabuttons") == 0) {
                 if (input_type != INPUT_GAMEPAD) {
                     printf("Warning: --extrabuttons is only valid with --input gamepad\n");
@@ -268,25 +296,19 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         }
         if (ioctl(controller_board_fd, I2C_SLAVE, 0x10) < 0) {
             perror("Failed to set i2c slave");
-            close(controller_board_fd);
             cleanup_resources();
             exit(1);
         }
     }
 
     bool read_i2c_data(void) {
-        if (read(controller_board_fd, &current_controller_data, DATASIZE) != DATASIZE) {
-            perror("Failed to read from i2c device");
-            sleep(1);
-            return false;
-        }
+        read(controller_board_fd, &current_controller_data, DATASIZE);
         if (enable_crc) {
             uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)&current_controller_data, 9);
             uint16_t received_crc = (current_controller_data.crc_high << 8) | current_controller_data.crc_low;
             if (computed_crc != received_crc) {
                 printf("CRC Error - Expected: 0x%04X, Received: 0x%04X\n",
                        computed_crc, received_crc);
-                crc_error_count++;
                 return false;
             }
         }
@@ -303,8 +325,22 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
     void init_shared_memory(void) {
         shared_memory_fd = shm_open("my_shm", O_CREAT | O_RDWR, 0666);
-        ftruncate(shared_memory_fd, sizeof(SharedData));
+        if (shared_memory_fd < 0) {
+            perror("Failed to open shared memory");
+            cleanup_resources();
+            exit(1);
+        }
+        if (ftruncate(shared_memory_fd, sizeof(SharedData)) < 0) {
+            perror("Failed to resize shared memory");
+            cleanup_resources();
+            exit(1);
+        }
         shared_memory_data = mmap(0, sizeof(SharedData), PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
+        if (shared_memory_data == MAP_FAILED) {
+            perror("Failed to map shared memory");
+            cleanup_resources();
+            exit(1);
+        }
     }
 
     // ---- Gamepad uinput ----
@@ -340,12 +376,11 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             struct uinput_user_dev uidev = {0};
             snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PS3 Controller");
             uidev.id = (struct input_id){ BUS_USB, 0x054c, 0x0268, 0x0110 };
-            // Left stick: 8-bit output, usable range 40-215, center 127.
-            SET_ABS(uidev, ABS_X,  40, 215, 20, 20);
-            SET_ABS(uidev, ABS_Y,  40, 215, 20, 20);
-            // Right stick: 7-bit position field, range 0-127, center 63.
-            SET_ABS(uidev, ABS_RX,  0, 127, 10, 10);
-            SET_ABS(uidev, ABS_RY,  0, 127, 10, 10);
+            SET_ABS(uidev, ABS_X,  axis_min, axis_max, axis_flat, AXIS_FUZZ);
+            SET_ABS(uidev, ABS_Y,  axis_min, axis_max, axis_flat, AXIS_FUZZ);
+            // Right stick: 7-bit position field shifted to 8-bit space, same range as left.
+            SET_ABS(uidev, ABS_RX, axis_min, axis_max, axis_flat, AXIS_FUZZ);
+            SET_ABS(uidev, ABS_RY, axis_min, axis_max, axis_flat, AXIS_FUZZ);
 
             if (write(uinput_fd, &uidev, sizeof(uidev)) < 0) {
                 perror("Failed to write uinput_user_dev");
@@ -359,10 +394,10 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             // Initialize axes to center before any real data arrives.
             struct input_event init_events[5];
             int n = 0;
-            EMIT(init_events, n, EV_ABS, ABS_X,  127);
-            EMIT(init_events, n, EV_ABS, ABS_Y,  127);
-            EMIT(init_events, n, EV_ABS, ABS_RX,  63);  // center of 0-127
-            EMIT(init_events, n, EV_ABS, ABS_RY,  63);
+            EMIT(init_events, n, EV_ABS, ABS_X,  axis_center_lx);
+            EMIT(init_events, n, EV_ABS, ABS_Y,  axis_center_ly);
+            EMIT(init_events, n, EV_ABS, ABS_RX, axis_center_rx);
+            EMIT(init_events, n, EV_ABS, ABS_RY, axis_center_ry);
             EMIT(init_events, n, EV_SYN, SYN_REPORT, 0);
             write(uinput_fd, init_events, sizeof(struct input_event) * n);
             return 0;
@@ -377,7 +412,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             }
             if (setup_uinput_gamepad(virtual_gamepad_fd) != 0) {
                 perror("Error setting up uinput device");
-                close(virtual_gamepad_fd);
                 cleanup_resources();
                 exit(1);
             }
@@ -457,9 +491,9 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
             if (joystick_count == 2) {
                 if (previous_controller_state.right_stick_x.raw != current_controller_data.right_stick_x.raw)
-                    EMIT(events, n, EV_ABS, ABS_RX, current_controller_data.right_stick_x.bits.position);
+                    EMIT(events, n, EV_ABS, ABS_RX, current_controller_data.right_stick_x.bits.position << 1);
                 if (previous_controller_state.right_stick_y.raw != current_controller_data.right_stick_y.raw)
-                    EMIT(events, n, EV_ABS, ABS_RY, current_controller_data.right_stick_y.bits.position);
+                    EMIT(events, n, EV_ABS, ABS_RY, current_controller_data.right_stick_y.bits.position << 1);
             }
 
             if (extra_buttons) {
@@ -597,7 +631,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 struct nlmsghdr *nh = (struct nlmsghdr *)buf;
                 if (NLMSG_OK(nh, len) && nh->nlmsg_type == RTM_NEWLINK) {
                     struct ifinfomsg *ifi = NLMSG_DATA(nh);
-                    wifi_enabled   = ifi->ifi_flags & IFF_UP;
                     wifi_connected = ifi->ifi_flags & IFF_RUNNING;
                     write(controller_board_fd, (uint8_t[]){0x20, wifi_connected, 0, 0}, 4);
                 }
@@ -623,7 +656,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                          if (ifi->ifi_index != wlan0_ifindex)
                              continue;
 
-                         wifi_enabled = ifi->ifi_flags & IFF_UP;
                          bool check_connection = ifi->ifi_flags & IFF_RUNNING;
 
                          if (check_connection != wifi_connected) {
@@ -680,6 +712,16 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             }
         }
 
+        void sample_axis_centers(void) {
+            read_i2c_data();
+            axis_center_lx = current_controller_data.left_stick_x;
+            axis_center_ly = current_controller_data.left_stick_y;
+            axis_center_rx = current_controller_data.right_stick_x.bits.position << 1;
+            axis_center_ry = current_controller_data.right_stick_y.bits.position << 1;
+            printf("Axis centers: lx=%d ly=%d rx=%d ry=%d\n",
+                   axis_center_lx, axis_center_ly, axis_center_rx, axis_center_ry);
+        }
+
         // ---- Main ----
 
         int main(int argc, char *argv[]) {
@@ -687,6 +729,9 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             init_crc16_ccitt_table();
             init_i2c();
             init_shared_memory();
+            if (autocenter) {
+                sample_axis_centers();
+            }
 
             switch (input_type) {
                 case INPUT_GAMEPAD:
