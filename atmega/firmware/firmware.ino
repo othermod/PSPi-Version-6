@@ -29,7 +29,7 @@ struct SystemState {
   uint8_t sleepPauseCounter;
 };
 
-struct i2cStructure {
+struct I2CFrame {
   uint16_t buttons;
   uint8_t senseSys;
   uint8_t senseBat;
@@ -65,7 +65,8 @@ struct i2cStructure {
 };
 
 SystemState state;
-i2cStructure i2cdata;
+I2CFrame i2cWorking;
+volatile I2CFrame i2cTxReady;
 volatile byte rxData[4];
 volatile bool pendingCommand = false;
 unsigned long lastUpdateTime = 0;
@@ -104,12 +105,12 @@ void initHardware() {
 }
 
 void calculateCRC() {
-  // Calculate CRC16-CCITT over first 9 bytes of i2cdata
+  // Calculate CRC16-CCITT over first 9 bytes of i2cWorking
   uint16_t crc = 0xFFFF;
   uint16_t poly = 0x1021;
 
-  // Process each byte of i2cdata structure (excluding CRC bytes)
-  const uint8_t* data = (const uint8_t*)&i2cdata;
+  // Process each byte of i2cWorking structure (excluding CRC bytes)
+  const uint8_t* data = (const uint8_t*)&i2cWorking;
   for (uint8_t i = 0; i < 9; i++) {
     crc ^= ((uint16_t)data[i] << 8);
     for (uint8_t j = 0; j < 8; j++) {
@@ -117,9 +118,9 @@ void calculateCRC() {
     }
   }
 
-  // Store CRC in i2cdata structure. Look into making this a single uint16 (make sure order stays same as old fw)
-  i2cdata.crc16H = crc >> 8;
-  i2cdata.crc16L = crc & 0xFF;
+  // Store CRC in i2cWorking structure. Look into making this a single uint16 (make sure order stays same as old fw)
+  i2cWorking.crc16H = crc >> 8;
+  i2cWorking.crc16L = crc & 0xFF;
 }
 
 void readEEPROM() {
@@ -128,10 +129,10 @@ void readEEPROM() {
 
   // Handle freshly flashed atmega (0xFF EEPROM values)
   if (brightness > 7) {
-    i2cdata.status.brightness = BRIGHTNESS_DEFAULT;  // Use default value (4)
+    i2cWorking.status.brightness = BRIGHTNESS_DEFAULT;  // Use default value (4)
     writeBrightnessToEEPROM();  // Save default to EEPROM
   } else {
-    i2cdata.status.brightness = brightness;
+    i2cWorking.status.brightness = brightness;
   }
 
   if (mute > 1) {
@@ -147,7 +148,7 @@ void writeMuteStatusToEEPROM() {
 }
 
 void writeBrightnessToEEPROM() {
-  EEPROM.update(EEPROM_BRIGHT_ADDR, i2cdata.status.brightness);
+  EEPROM.update(EEPROM_BRIGHT_ADDR, i2cWorking.status.brightness);
 }
 
 void setBatteryLED() {
@@ -206,8 +207,8 @@ void readBattery() {
   }
 
   //update i2c data
-  i2cdata.senseSys = state.sysVolt >> VOLT_8BIT_SHIFT;
-  i2cdata.senseBat = state.batVolt >> VOLT_8BIT_SHIFT;
+  i2cWorking.senseSys = state.sysVolt >> VOLT_8BIT_SHIFT;
+  i2cWorking.senseBat = state.batVolt >> VOLT_8BIT_SHIFT;
 }
 
 void setBrightness() {
@@ -216,7 +217,7 @@ void setBrightness() {
     return;
   }
 
-  byte bytesToSend[] = {LCD_ADDR, i2cdata.status.brightness * 4 + 1};
+  byte bytesToSend[] = {LCD_ADDR, i2cWorking.status.brightness * 4 + 1};
 
   noInterrupts();
   for (int byte = 0; byte < 2; byte++) {
@@ -248,7 +249,7 @@ void disableDisplay() {
   }
 
   // Fade from current brightness down to minimum
-  uint8_t currentRaw = i2cdata.status.brightness * 4 + 1;
+  uint8_t currentRaw = i2cWorking.status.brightness * 4 + 1;
 
   for (uint8_t rawBrightness = currentRaw; rawBrightness >= 1; rawBrightness--) {
     byte bytesToSend[] = {LCD_ADDR, rawBrightness};
@@ -298,7 +299,7 @@ void enableDisplay() {
   setPinHigh(LCD_CONTROL);
 
   // Fade from off to target brightness
-  uint8_t targetRaw = i2cdata.status.brightness * 4 + 1;
+  uint8_t targetRaw = i2cWorking.status.brightness * 4 + 1;
   for (uint8_t rawBrightness = 1; rawBrightness <= targetRaw; rawBrightness++) {
     byte bytesToSend[] = {LCD_ADDR, rawBrightness};
 
@@ -361,31 +362,31 @@ void readSPIButtons() {
     }
   }
 
-  i2cdata.buttons = newButtonState;
+  i2cWorking.buttons = newButtonState;
 }
 
 void readJoysticks() {
-  i2cdata.joyLX = analogRead(JOY_LX) >> 2;
-  i2cdata.joyLY = analogRead(JOY_LY) >> 2;
-  i2cdata.joyRXBits.analog = analogRead(JOY_RX) >> 3;
-  i2cdata.joyRYBits.analog = analogRead(JOY_RY) >> 3;
-  i2cdata.joyRXBits.extraButton = !readPin(BTN_EXTRA1); // extra button state
-  i2cdata.joyRYBits.extraButton = !readPin(BTN_EXTRA2); // extra button state
+  i2cWorking.joyLX = analogRead(JOY_LX) >> 2;
+  i2cWorking.joyLY = analogRead(JOY_LY) >> 2;
+  i2cWorking.joyRXBits.analog = analogRead(JOY_RX) >> 3;
+  i2cWorking.joyRYBits.analog = analogRead(JOY_RY) >> 3;
+  i2cWorking.joyRXBits.extraButton = !readPin(BTN_EXTRA1); // extra button state
+  i2cWorking.joyRYBits.extraButton = !readPin(BTN_EXTRA2); // extra button state
 }
 
 void checkLeftSwitch() {
-  i2cdata.status.leftSwitch = !readPin(SWITCH_WIFI);
+  i2cWorking.status.leftSwitch = !readPin(SWITCH_WIFI);
 }
 
 void checkShutdownButton() {
-  i2cdata.status.sdPressed = !readPin(BTN_SHUTDOWN);
+  i2cWorking.status.sdPressed = !readPin(BTN_SHUTDOWN);
 }
 
 void checkDisplayButton() {
   if (!readPin(BTN_DISP)) {
     state.dispPressed = true;
   } else if (state.dispPressed) {
-    i2cdata.status.brightness++; // increment to next brightness. valid brightness levels are 0-7. this will roll over to 0 because it is only 3 bits
+    i2cWorking.status.brightness++; // increment to next brightness. valid brightness levels are 0-7. this will roll over to 0 because it is only 3 bits
     state.dispPressed = false;
     setBrightness();
     writeBrightnessToEEPROM();
@@ -399,12 +400,12 @@ void toggleAudioCircuit() {
     setPinAsOutput(EN_AMP);
     delay(1);
     setPinLow(EN_AUDIO_POWER);
-    i2cdata.status.muted = true;
+    i2cWorking.status.muted = true;
   } else {
     setPinAsInput(EN_AMP);
     delay(1);
     setPinHigh(EN_AUDIO_POWER);
-    i2cdata.status.muted = false;
+    i2cWorking.status.muted = false;
   }
 }
 
@@ -441,7 +442,7 @@ void checkMuteButton() {
 }
 
 void enterSleep() {
-  i2cdata.status.sleeping = true;
+  i2cWorking.status.sleeping = true;
   state.sleeping = true;
   state.sleepExitCounter = 0;
   state.sleepPauseCounter = 200;
@@ -456,7 +457,7 @@ void enterSleep() {
 }
 
 void exitSleep() {
-  i2cdata.status.sleeping = false;
+  i2cWorking.status.sleeping = false;
   state.sleeping = false;
   toggleAudioCircuit();
   setBatteryLED();
@@ -525,7 +526,7 @@ void processI2CCommand() {
 
     case CMD_BRIGHT:
       if (rxData[1] >= 1 && rxData[1] <= 8) {
-        i2cdata.status.brightness = rxData[1] - 1;  // Store 1-8 to the status, subtract 1 so its correct
+        i2cWorking.status.brightness = rxData[1] - 1;  // Store 1-8 to the status, subtract 1 so its correct
         if (!state.sleeping) { // don't actually set it while in sleep mode. itll set when returning from sleep.
           setBrightness();
         }
@@ -545,11 +546,7 @@ void processI2CCommand() {
   }
 }
 void onRequest() {
-  if (state.crcEnabled) {
-    calculateCRC();
-  }
-
-  Wire.write((const uint8_t*)&i2cdata, sizeof(i2cdata));
+  Wire.write((const uint8_t*)&i2cTxReady, sizeof(i2cTxReady));
 
   if (state.idle) {
     state.idle = false;
@@ -585,7 +582,7 @@ void checkForInactiveI2C() {
 
 void checkHeadphones() {
   if (!state.mute) {
-    i2cdata.status.headphones = readPin(EN_AMP);
+    i2cWorking.status.headphones = readPin(EN_AMP);
   }
 }
 
@@ -651,5 +648,9 @@ void loop() {
     } else {
       normalModeFunctions();        // update only when in normal mode
     }
+    if (state.crcEnabled) calculateCRC();
+    noInterrupts();
+    i2cTxReady = i2cWorking; // atomic snapshot so onRequest always sees consistent data
+    interrupts();
   }
 }

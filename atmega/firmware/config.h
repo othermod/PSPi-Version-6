@@ -93,7 +93,7 @@
 #define T_L_HB 10    // Low time, high bit
 #define T_OFF 3000   // Reset time
 
-#define READ_MUTE_BUTTON i2cdata.buttons & 0b0000000000000001
+#define READ_MUTE_BUTTON i2cWorking.buttons & 0b0000000000000001
 
 #define LED_FULL_GREEN 255
 #define LED_FULL_ORANGE 0
