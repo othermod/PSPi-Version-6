@@ -172,10 +172,15 @@ static void twi_handle(void)
                 if (page_write_pending)
                 {
                     page_write_pending = 0;
+                    byte_cnt = 0;
                     /* hold off ACK while flash write is in progress */
                     TWI_CLEAR_ACK(twi_ctrl);
                     TWCR = (1<<TWINT) | twi_ctrl;
                     write_flash_page();
+                    /* re-enable ACK cleanly without touching TWINT, then return
+                     * to skip the TWCR write at the end of twi_handle() */
+                    TWCR = (1<<TWEN) | (1<<TWEA);
+                    return;
                 }
                 byte_cnt = 0;
                 TWI_SET_ACK(twi_ctrl);

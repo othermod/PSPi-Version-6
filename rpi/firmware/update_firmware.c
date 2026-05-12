@@ -110,16 +110,28 @@ static int bl_set_page(uint8_t page)
     return i2c_write(BL_ADDR, buf, 2);
 }
 
-/* Bootloader commits the page to flash on STOP after the 64th byte. */
+/* Bootloader commits the page to flash on STOP after the 64th byte.
+ * It clears TWEA (NACKs) during the write and restores it when done,
+ * so poll for ACK rather than sleeping a fixed worst-case duration. */
 static int bl_write_page(const uint8_t *data)
 {
     uint8_t buf[1 + SPM_PAGESIZE];
+    int     elapsed_us = 0;
+
     buf[0] = CMD_WRITE_PAGE;
     memcpy(buf + 1, data, SPM_PAGESIZE);
     if (i2c_write(BL_ADDR, buf, sizeof(buf)) < 0)
         return -1;
-    usleep(FLASH_WRITE_WAIT_US);
-    return 0;
+
+    while (elapsed_us < FLASH_WRITE_WAIT_US) {
+        usleep(1000);
+        elapsed_us += 1000;
+        if (i2c_probe(BL_ADDR) == 0)
+            return 0;
+    }
+
+    fprintf(stderr, "Timed out waiting for bootloader after flash write.\n");
+    return -1;
 }
 
 static int bl_read_page(uint8_t *buf, size_t len)
@@ -323,6 +335,30 @@ static int flash_image(const flash_image_t *image)
     return 0;
 }
 
+static int read_page_reliable(uint8_t page, uint8_t *buf)
+{
+    int attempt;
+    for (attempt = 0; attempt < FLASH_WRITE_MAX_RETRIES; attempt++) {
+        if (attempt > 0)
+            usleep(FLASH_WRITE_WAIT_US);
+        if (bl_set_page(page) < 0)
+            continue;
+        if (bl_read_page(buf, SPM_PAGESIZE) < 0)
+            continue;
+        return 0;
+    }
+    return -1;
+}
+
+static int count_mismatches(const uint8_t *expected, const uint8_t *actual)
+{
+    int i, errs = 0;
+    for (i = 0; i < SPM_PAGESIZE; i++)
+        if (expected[i] != actual[i])
+            errs++;
+    return errs;
+}
+
 static int verify_image(const flash_image_t *image)
 {
     int page, verified = 0, total_errs = 0;
@@ -331,40 +367,27 @@ static int verify_image(const flash_image_t *image)
 
     for (page = 0; page < NUM_PAGES; page++) {
         uint8_t actual[SPM_PAGESIZE];
-        int     attempt, ok = 0;
-        int     page_errs = 0;
-        int     i;
+        int     pass, page_errs = 0;
 
         if (!image->page_has_data[page])
             continue;
 
-        for (attempt = 0; attempt < FLASH_WRITE_MAX_RETRIES; attempt++) {
-            if (attempt > 0) {
-                fprintf(stderr, "\n  page %d: I2C error, retrying (%d/%d)...\n",
-                        page, attempt, FLASH_WRITE_MAX_RETRIES - 1);
-                usleep(FLASH_WRITE_WAIT_US);
+        /* Retry the read up to FLASH_WRITE_MAX_RETRIES times before giving up. */
+        for (pass = 0; pass < FLASH_WRITE_MAX_RETRIES; pass++) {
+            if (read_page_reliable((uint8_t)page, actual) < 0) {
+                fprintf(stderr, "\n  page %d: I2C error reading back, aborting.\n", page);
+                return -1;
             }
-            if (bl_set_page((uint8_t)page) < 0)
-                continue;
-            if (bl_read_page(actual, SPM_PAGESIZE) < 0)
-                continue;
-            ok = 1;
-            break;
+            page_errs = count_mismatches(image->data + page * SPM_PAGESIZE, actual);
+            if (page_errs == 0)
+                break;
+            fprintf(stderr, "\n  page %d: mismatch (%d byte(s)), retrying read (%d/%d)...\n",
+                    page, page_errs, pass + 1, FLASH_WRITE_MAX_RETRIES);
         }
-
-        if (!ok) {
-            fprintf(stderr, "\n  page %d: I2C error after %d attempts, aborting.\n",
-                    page, FLASH_WRITE_MAX_RETRIES);
-            return -1;
-        }
-
-        for (i = 0; i < SPM_PAGESIZE; i++)
-            if (image->data[page * SPM_PAGESIZE + i] != actual[i])
-                page_errs++;
 
         if (page_errs > 0) {
-            printf("\r  [%d/%d] page %d MISMATCH (%d byte(s))\n",
-                   ++verified, image->num_pages, page, page_errs);
+            fprintf(stderr, "\n  page %d: MISMATCH (%d byte(s)) after %d read attempt(s).\n",
+                    page, page_errs, FLASH_WRITE_MAX_RETRIES);
             total_errs += page_errs;
         } else {
             printf("\r  [%d/%d] OK", ++verified, image->num_pages);
