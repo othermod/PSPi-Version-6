@@ -38,7 +38,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     bool is_idle = false;
     uint32_t previous_status;
     bool wifi_connected = false;
-    uint32_t time_at_last_change;
+    time_t time_at_last_change;
     bool has_wifi = true;
     uint8_t brightness;
     #define DATASIZE 11
@@ -690,12 +690,18 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
         // ---- Idle / dimming ----
 
+        static inline time_t monotonic_seconds(void) {
+            struct timespec ts;
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            return ts.tv_sec;
+        }
+
         void check_idle_state(int i2c_fd) {
             uint32_t status = (current_controller_data.buttons.raw << 18) |
             ((current_controller_data.left_stick_x & 0xF0) << 4) |
             (current_controller_data.left_stick_y >> 4);
 
-            const time_t current_time = time(NULL);
+            const time_t current_time = monotonic_seconds();
 
             if (previous_status == status) {
                 if (!is_idle) {
