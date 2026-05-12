@@ -386,7 +386,7 @@ while IFS="=" read -r key value; do
         deadzone) deadzone="$value" ;;
         autocenter) autocenter="$value" ;;
         verbose) verbose="$value" ;;
-        extrabuttons) extrabuttons=disabled"$value" ;;
+        extrabuttons) extrabuttons="$value" ;;
     esac
 done < "$CONF"
 
