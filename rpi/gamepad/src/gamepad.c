@@ -232,18 +232,27 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                     printf("Warning: --extrabuttons is only valid with --input gamepad\n");
                     continue;
                 }
-                extra_buttons = true;
-                if (i + 1 < argc) {
-                    if (strcmp(argv[i + 1], "trigger") == 0) {
-                        button_config = BUTTON_CONFIG_TRIGGER;
-                        i++;
-                    } else if (strcmp(argv[i + 1], "stick") == 0) {
-                        button_config = BUTTON_CONFIG_STICK;
-                        i++;
-                    }
+                if (i + 1 >= argc) {
+                    printf("No value specified for --extrabuttons. Use trigger, stick, or disabled.\n");
+                    exit(1);
                 }
-                printf("Extra buttons enabled: %s mode\n",
-                       button_config == BUTTON_CONFIG_TRIGGER ? "trigger" : "stick");
+                if (strcmp(argv[i + 1], "disabled") == 0) {
+                    extra_buttons = false;
+                    i++;
+                } else if (strcmp(argv[i + 1], "trigger") == 0) {
+                    extra_buttons = true;
+                    button_config = BUTTON_CONFIG_TRIGGER;
+                    i++;
+                } else if (strcmp(argv[i + 1], "stick") == 0) {
+                    extra_buttons = true;
+                    button_config = BUTTON_CONFIG_STICK;
+                    i++;
+                } else {
+                    printf("Invalid extrabuttons value '%s'. Use trigger, stick, or disabled.\n", argv[i + 1]);
+                    exit(1);
+                }
+                printf("Extra buttons: %s\n",
+                       extra_buttons ? (button_config == BUTTON_CONFIG_TRIGGER ? "enabled (trigger)" : "enabled (stick)") : "disabled");
             } else {
                 printf("Unknown argument '%s'\n", argv[i]);
                 exit(1);

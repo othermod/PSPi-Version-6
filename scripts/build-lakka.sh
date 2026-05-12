@@ -4,11 +4,11 @@ set -euo pipefail
 
 [[ $EUID -ne 0 ]] && echo "ERROR: This script must be run as root (use sudo)" && exit 1
 ###############################################################################
-# build-images.sh
+# build-lakka.sh
 # Builds patched Lakka images for PSPi hardware (CM4 and Zero2).
 #
 # Usage:
-#   ./scripts/build-images.sh [--version X.Y.Z] [--driver-binaries PATH]
+#   ./scripts/build-lakka.sh [--version X.Y.Z] [--driver-binaries PATH]
 ###############################################################################
 
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -347,7 +347,14 @@ disable_crc=false
 input_type=gamepad
 # Set number of joysticks, where <num> is between 0 and 2
 joysticks=1
-
+# Set stick deadzone flat value (0-100, default: 20)
+deadzone=20
+# Use stick position at startup as center point
+autocenter=false
+# Enable verbose output (e.g. CRC errors)
+verbose=false
+# Enable extra buttons (trigger, stick, or disabled)
+extrabuttons=disabled
 EOF
 
     echo "    Creating boot.sh..."
@@ -361,6 +368,10 @@ fast_mode=false
 disable_crc=false
 input_type=gamepad
 joysticks=1
+deadzone=20
+autocenter=false
+verbose=false
+extrabuttons=disabled
 while IFS="=" read -r key value; do
     [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
     key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
@@ -372,6 +383,10 @@ while IFS="=" read -r key value; do
         disable_crc) disable_crc="$value" ;;
         input_type) input_type="$value" ;;
         joysticks) joysticks="$value" ;;
+        deadzone) deadzone="$value" ;;
+        autocenter) autocenter="$value" ;;
+        verbose) verbose="$value" ;;
+        extrabuttons) extrabuttons=disabled"$value" ;;
     esac
 done < "$CONF"
 
@@ -381,6 +396,10 @@ GAMEPAD_ARGS=""
 [[ "$fast_mode" == "true" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --fast"
 [[ "$input_type" != "gamepad" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --input $input_type"
 [[ "$joysticks" != "1" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --joysticks $joysticks"
+[[ "$deadzone" != "20" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --deadzone $deadzone"
+[[ "$autocenter" == "true" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --autocenter"
+[[ "$verbose" == "true" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --verbose"
+[[ "$extrabuttons" != "disabled" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --extrabuttons $extrabuttons"
 
 
 # Auto-detect architecture for correct binaries
