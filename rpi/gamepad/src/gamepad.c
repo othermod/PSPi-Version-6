@@ -33,6 +33,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
     // Configuration flags
     bool enable_crc = true;
+    bool verbose = false;
     bool is_dim = false;
     bool is_idle = false;
     uint32_t previous_status;
@@ -153,12 +154,16 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 "  --autocenter                   Use stick position at startup as center point (gamepad only)\n"
                 "  --dim <seconds>                Enable dimming after <seconds> idle (1-3600, default: 120)\n"
                 "  --fast                         Enable fast mode (double input polling rate)\n"
+                "  --verbose                      Show verbose output (e.g. CRC errors)\n"
                 "  --extrabuttons [trigger|stick] Enable extra buttons (trigger/stick, gamepad only)\n"
                 "  --help, -h                     Display this help and exit");
                 exit(0);
             } else if (strcmp(argv[i], "--nocrc") == 0) {
                 enable_crc = false;
                 printf("CRC Disabled\n");
+            } else if (strcmp(argv[i], "--verbose") == 0) {
+                verbose = true;
+                printf("Verbose mode enabled\n");
             } else if (strcmp(argv[i], "--input") == 0) {
                 if (i + 1 < argc) {
                     if (strcmp(argv[i + 1], "gamepad") == 0) {
@@ -239,6 +244,9 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 }
                 printf("Extra buttons enabled: %s mode\n",
                        button_config == BUTTON_CONFIG_TRIGGER ? "trigger" : "stick");
+            } else {
+                printf("Unknown argument '%s'\n", argv[i]);
+                exit(1);
             }
         }
     }
@@ -307,8 +315,13 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)&current_controller_data, 9);
             uint16_t received_crc = (current_controller_data.crc_high << 8) | current_controller_data.crc_low;
             if (computed_crc != received_crc) {
-                printf("CRC Error - Expected: 0x%04X, Received: 0x%04X\n",
-                       computed_crc, received_crc);
+                if (verbose) {
+                    printf("CRC Error - Expected: 0x%04X, Received: 0x%04X | Data: ",
+                           computed_crc, received_crc);
+                    const uint8_t *d = (const uint8_t *)&current_controller_data;
+                    for (int b = 0; b < DATASIZE; b++) printf("0x%02X ", d[b]);
+                    printf("\n");
+                }
                 return false;
             }
         }
