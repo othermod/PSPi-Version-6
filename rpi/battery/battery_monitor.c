@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -13,7 +14,8 @@
 #define SENSE_RESISTOR_MILLIOHM              50
 #define RESISTOR_A_KOHM                      150
 #define RESISTOR_B_KOHM                      10
-#define BATTERY_INTERNAL_RESISTANCE_MILLIOHM 256
+#define BATTERY_INTERNAL_RESISTANCE_MILLIOHM     230
+#define BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM 150
 #define DISCHARGING 0
 #define CHARGING    1
 #define CHARGED     2
@@ -65,13 +67,25 @@ void calculateAmperage() {
     battery.current_ma    = battery.sense_drop_mv * (1000 / SENSE_RESISTOR_MILLIOHM);
 }
 
+static int get_internal_resistance_milliohm() {
+    // Internal resistance scales with SOC.
+    // Uses battery.percent from the previous iteration, self-correcting on each pass.
+    if (battery.percent <= 0)   return BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM;
+    if (battery.percent >= 100) return BATTERY_INTERNAL_RESISTANCE_MILLIOHM;
+
+    return BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM
+        + (BATTERY_INTERNAL_RESISTANCE_MILLIOHM - BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM)
+        * battery.percent / 100;
+}
+
 void calculateVoltage() {
     // Remove the sense resistor drop to get closer to true battery voltage
     battery.adjusted_sys_mv = battery.sys_mv_filtered - battery.sense_drop_mv;
 
-    // Compensate for internal resistance sag under load
+    // Compensate for internal resistance.
+    // R_internal scales with SOC
     battery.open_circuit_mv = battery.adjusted_sys_mv
-    - battery.current_ma * BATTERY_INTERNAL_RESISTANCE_MILLIOHM / 1000;
+    - battery.current_ma * get_internal_resistance_milliohm() / 1000;
 
     // Nudge the display voltage one step toward open_circuit_mv,
     // ignoring noise within a ±25mV hysteresis band
@@ -145,8 +159,28 @@ static void update_sysfs() {
 
 // --- Main -------------------------------------------------------------------
 
-int main() {
+int main(int argc, char *argv[]) {
+    bool verbose = false;
+    bool logging = false;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--verbose") == 0) verbose = true;
+        if (strcmp(argv[i], "--logging") == 0) logging = true;
+    }
+
     if (setup_sysfs() != 0) return 1;
+
+    FILE *log_file = NULL;
+    if (logging) {
+        log_file = fopen("/tmp/battery_monitor.csv", "a");
+        if (!log_file) {
+            fprintf(stderr, "Failed to open log file: %s\n", strerror(errno));
+            return 1;
+        }
+        // Write header if file is empty
+        fseek(log_file, 0, SEEK_END);
+        if (ftell(log_file) == 0)
+            fprintf(log_file, "timestamp,percent,charge_state,ocv_mv,display_mv,current_ma,r_internal_mohm\n");
+    }
 
     int shm_fd;
     while ((shm_fd = shm_open("my_shm", O_RDONLY, 0666)) == -1) {
@@ -161,16 +195,26 @@ int main() {
         return 1;
     }
 
-    // Seed the smoothing filters with the current reading
-    battery.sys_mv_filtered = shared_data->adc_sys * 16;
-    battery.bat_mv_filtered = shared_data->adc_sys * 16;
-    battery.display_mv      = 3800;
+    // Seed the smoothing filters at their steady-state value (8 * sys_mv)
+    sys_mv = shared_data->adc_sys * 3000 / 1024;
+    bat_mv = shared_data->adc_bat * 3000 / 1024;
+    battery.sys_mv_filtered = sys_mv * 8;
+    battery.bat_mv_filtered = bat_mv * 8;
+    battery.percent         = 50; // reasonable starting point for resistance lookup
+
+    // Run the pipeline once to get a real initial OCV estimate
+    calculateAmperage();
+    calculateVoltage();
+    calculateBatteryStatus();
+    battery.display_mv = battery.open_circuit_mv;
 
     uint8_t prev_charge_state = 255; // force a write on first iteration
     int     prev_percent      = -1;
+    int     log_ticks         = 0;
+    const int LOG_INTERVAL    = 1200; // 1200 * 50ms = 60 seconds
 
     while (1) {
-        // Convert raw ADC values to millivolts (8-bit ADC, 3.0V reference)
+        // Convert raw ADC values to millivolts (10-bit ATmega ADC, 3.0V reference)
         sys_mv = shared_data->adc_sys * 3000 / 1024;
         bat_mv = shared_data->adc_bat * 3000 / 1024;
 
@@ -178,16 +222,46 @@ int main() {
         calculateVoltage();
         calculateBatteryStatus();
 
+        const char *state_str[] = { "DISCHARGING", "CHARGING", "CHARGED" };
+
         if (battery.charge_state != prev_charge_state ||
             battery.percent       != prev_percent) {
 
-            update_sysfs();
-
-        prev_charge_state = battery.charge_state;
-        prev_percent      = battery.percent;
+            if (verbose) {
+                printf("[battery] %3d%%  %s  ocv=%dmV  display=%dmV  current=%dmA  r_internal=%dmΩ\n",
+                    battery.percent,
+                    state_str[battery.charge_state],
+                    battery.open_circuit_mv,
+                    battery.display_mv,
+                    battery.current_ma,
+                    get_internal_resistance_milliohm());
+                fflush(stdout);
             }
 
-            usleep(50000); // poll every 50ms
+            update_sysfs();
+
+            prev_charge_state = battery.charge_state;
+            prev_percent      = battery.percent;
+        }
+
+        if (logging && ++log_ticks >= LOG_INTERVAL) {
+            log_ticks = 0;
+            time_t now = time(NULL);
+            struct tm *t = localtime(&now);
+            char timestamp[32];
+            strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
+            fprintf(log_file, "%s,%d,%s,%d,%d,%d,%d\n",
+                timestamp,
+                battery.percent,
+                state_str[battery.charge_state],
+                battery.open_circuit_mv,
+                battery.display_mv,
+                battery.current_ma,
+                get_internal_resistance_milliohm());
+            fflush(log_file);
+        }
+
+        usleep(50000); // poll every 50ms
     }
 
     munmap(shared_data, sizeof(ControllerData));
