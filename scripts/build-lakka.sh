@@ -237,7 +237,7 @@ framebuffer_width=800
 framebuffer_height=480
 
 # Power off the Raspberry Pi when GPIO pin 44 is triggered
-dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes
+dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
 
 # Enable the PCF8563 Real Time Clock module
 dtoverlay=i2c-rtc,pcf8563
@@ -278,7 +278,7 @@ framebuffer_width=800
 framebuffer_height=480
 
 # Power off the Raspberry Pi when GPIO pin 44 is triggered
-dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes
+dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
 
 # Enable the PCF8563 Real Time Clock module
 dtoverlay=i2c-rtc,pcf8563
@@ -315,7 +315,7 @@ framebuffer_width=800
 framebuffer_height=480
 
 # Power off the Raspberry Pi when GPIO pin 4 is triggered
-dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes
+dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
 
 # Enable the PCF8563 Real Time Clock module
 dtoverlay=i2c-rtc,pcf8563
