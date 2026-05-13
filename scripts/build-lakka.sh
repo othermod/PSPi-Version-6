@@ -74,7 +74,7 @@ build_drivers() {
     mkdir -p "$DRIVERS_BIN_DIR"
 
     # Build gamepad binary (32-bit + 64-bit)
-    echo "[1/5] Building gamepad binary..."
+    echo "[1/6] Building gamepad binary..."
     local gamepad_dir="$PROJECT_DIR/rpi/gamepad"
     if [[ ! -d "$gamepad_dir" ]]; then
         die "Gamepad source not found at $gamepad_dir"
@@ -89,7 +89,7 @@ build_drivers() {
     echo "  Gamepad: 32-bit and 64-bit built."
 
     # Build battery monitor binary (32-bit + 64-bit)
-    echo "[2/5] Building battery monitor..."
+    echo "[2/6] Building battery monitor..."
     local battery_dir="$PROJECT_DIR/rpi/battery"
     if [[ ! -d "$battery_dir" ]]; then
         die "Battery monitor source not found at $battery_dir"
@@ -103,8 +103,23 @@ build_drivers() {
     cp "$battery_dir/bin/64bit/battery_monitor" "$DRIVERS_BIN_DIR/battery_monitor_64"
     echo "  Battery monitor: 32-bit and 64-bit built."
 
+    # Build RTC daemon binary (32-bit + 64-bit)
+    echo "[3/6] Building RTC daemon..."
+    local rtc_dir="$PROJECT_DIR/rpi/rtc"
+    if [[ ! -d "$rtc_dir" ]]; then
+        die "RTC source not found at $rtc_dir"
+    fi
+    (
+        cd "$rtc_dir"
+        make 32 || die "Failed to build 32-bit rtc"
+        make 64 || die "Failed to build 64-bit rtc"
+    )
+    cp "$rtc_dir/bin/32bit/rtc" "$DRIVERS_BIN_DIR/rtc_32"
+    cp "$rtc_dir/bin/64bit/rtc" "$DRIVERS_BIN_DIR/rtc_64"
+    echo "  RTC: 32-bit and 64-bit built."
+
     # Build audio overlays
-    echo "[3/5] Building audio overlays..."
+    echo "[4/6] Building audio overlays..."
     local audio_dir="$PROJECT_DIR/rpi/audio"
     if [[ ! -d "$audio_dir" ]]; then
         die "Audio overlay source not found at $audio_dir"
@@ -119,7 +134,7 @@ build_drivers() {
     echo "  Audio overlays built."
 
     # Build LCD overlays
-    echo "[4/5] Building LCD overlays..."
+    echo "[5/6] Building LCD overlays..."
     local lcd_dir="$PROJECT_DIR/rpi/lcd"
     if [[ ! -d "$lcd_dir" ]]; then
         die "LCD overlay source not found at $lcd_dir"
@@ -134,7 +149,7 @@ build_drivers() {
     echo "  LCD overlays built."
 
     # Build PCIe overlay
-    echo "[5/5] Building PCIe overlay..."
+    echo "[6/6] Building PCIe overlay..."
     local pcie_dir="$PROJECT_DIR/rpi/pcie"
     if [[ ! -d "$pcie_dir" ]]; then
         die "PCIe overlay source not found at $pcie_dir"
@@ -430,17 +445,51 @@ BOOTEOF
     mkdir -p /mnt/pspi-boot/drivers/bin
     if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
         for f in "$DRIVER_BINARIES_DIR"/*; do
-            [[ -f "$f" ]] && cp "$f" /mnt/pspi-boot/drivers/bin/
+            [[ -f "$f" ]] && [[ "$(basename "$f")" != rtc_* ]] && cp "$f" /mnt/pspi-boot/drivers/bin/
         done
     else
-        cp "$DRIVERS_BIN_DIR"/* /mnt/pspi-boot/drivers/bin/
+        for f in "$DRIVERS_BIN_DIR"/*; do
+            [[ -f "$f" ]] && [[ "$(basename "$f")" != rtc_* ]] && cp "$f" /mnt/pspi-boot/drivers/bin/
+        done
     fi
+
+    # Copy correct architecture RTC binary
+    echo "    Copying RTC binary for target architecture..."
+    case "$device_type" in
+        lakka_cm4|lakka_cm5|lakka_zero) BIN=64 ;;
+        lakka_arm)                      BIN=32 ;;
+    esac
+    if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
+        cp "$DRIVER_BINARIES_DIR/rtc_${BIN}" /mnt/pspi-boot/drivers/bin/rtc
+    else
+        cp "$DRIVERS_BIN_DIR/rtc_${BIN}" /mnt/pspi-boot/drivers/bin/rtc
+    fi
+    echo "  Using rtc_${BIN} as /flash/drivers/bin/rtc"
 
     echo "    Mounting SYSTEM squashfs..."
     mount --type squashfs --options loop --source /mnt/pspi-boot/SYSTEM --target /mnt/pspi-squashfs
 
     echo "    Mounting overlay..."
     mount --type overlay --options "lowerdir=/mnt/pspi-squashfs,upperdir=/tmp/pspi-upper,workdir=/tmp/pspi-work" --source overlay --target /tmp/pspi-target
+
+    echo "    Creating RTC service..."
+    cat << 'SVCEOF' > /tmp/pspi-target/usr/lib/systemd/system/pspi-rtc.service
+[Unit]
+Description=PSPi RTC daemon (PCF8563)
+After=dev-i2c-1.device
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+ExecStart=/flash/drivers/bin/rtc
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=sysinit.target
+SVCEOF
+    mkdir -p /tmp/pspi-target/usr/lib/systemd/system/sysinit.target.wants
+    ln -sf ../system/pspi-rtc.service /tmp/pspi-target/usr/lib/systemd/system/sysinit.target.wants/pspi-rtc.service
 
     echo "    Creating pspi service..."
     cat << 'SVCEOF' > /tmp/pspi-target/usr/lib/systemd/system/pspi.service
@@ -584,4 +633,3 @@ rm -rf "$DRIVERS_BIN_DIR"
 
 echo ""
 echo "Done. Artifacts in: $OUTPUT_DIR"
-

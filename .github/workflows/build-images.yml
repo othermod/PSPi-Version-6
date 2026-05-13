@@ -17,6 +17,9 @@ jobs:
   build-battery:
     uses: ./.github/workflows/build-battery.yml
 
+  build-rtc:
+    uses: ./.github/workflows/build-rtc.yml
+
   build-audio:
     uses: ./.github/workflows/build-audio.yml
 
@@ -27,7 +30,7 @@ jobs:
     uses: ./.github/workflows/build-pcie.yml
 
   collect-artifacts:
-    needs: [build-gamepad, build-battery, build-audio, build-lcd, build-pcie]
+    needs: [build-gamepad, build-battery, build-rtc, build-audio, build-lcd, build-pcie]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -48,6 +51,10 @@ jobs:
           mkdir -p drivers-bin/battery
           mv artifacts/pspi-battery-bin/32bit/battery_monitor drivers-bin/battery_monitor_32
           mv artifacts/pspi-battery-bin/64bit/battery_monitor drivers-bin/battery_monitor_64
+          
+          # RTC
+          mv artifacts/pspi-rtc-bin/32bit/rtc drivers-bin/rtc_32
+          mv artifacts/pspi-rtc-bin/64bit/rtc drivers-bin/rtc_64
           
           # Audio overlays
           mkdir -p drivers-bin/audio_overlays
