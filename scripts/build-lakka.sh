@@ -417,14 +417,9 @@ GAMEPAD_ARGS=""
 [[ "$extrabuttons" != "disabled" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --extrabuttons $extrabuttons"
 
 
-# Auto-detect architecture for correct binaries
-case $(uname -m) in
-    aarch64) BIN=64 ;;
-    *)       BIN=32 ;;
-esac
 
-/flash/drivers/bin/gamepad_$BIN $GAMEPAD_ARGS &
-/flash/drivers/bin/battery_monitor_$BIN &
+/flash/drivers/bin/gamepad $GAMEPAD_ARGS &
+/flash/drivers/bin/battery_monitor &
 wait
 BOOTEOF
     chmod +x /mnt/pspi-boot/boot.sh
@@ -441,30 +436,27 @@ BOOTEOF
         cp "$PROJECT_DIR/rpi/pcie/"*.dtbo /mnt/pspi-boot/overlays/ 2>/dev/null || true
     fi
 
-    echo "    Copying driver binaries..."
-    mkdir -p /mnt/pspi-boot/drivers/bin
-    if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
-        for f in "$DRIVER_BINARIES_DIR"/*; do
-            [[ -f "$f" ]] && [[ "$(basename "$f")" != rtc_* ]] && cp "$f" /mnt/pspi-boot/drivers/bin/
-        done
-    else
-        for f in "$DRIVERS_BIN_DIR"/*; do
-            [[ -f "$f" ]] && [[ "$(basename "$f")" != rtc_* ]] && cp "$f" /mnt/pspi-boot/drivers/bin/
-        done
-    fi
-
-    # Copy correct architecture RTC binary
-    echo "    Copying RTC binary for target architecture..."
+    # Determine target architecture
+    echo "    Determining target architecture..."
     case "$device_type" in
         lakka_cm4|lakka_cm5|lakka_zero) BIN=64 ;;
         lakka_arm)                      BIN=32 ;;
     esac
+    echo "  Using ${BIN}-bit binaries."
+
+    # Copy correct architecture binaries
+    echo "    Copying driver binaries..."
+    mkdir -p /mnt/pspi-boot/drivers/bin
     if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
-        cp "$DRIVER_BINARIES_DIR/rtc_${BIN}" /mnt/pspi-boot/drivers/bin/rtc
+        DIR="$DRIVER_BINARIES_DIR"
     else
-        cp "$DRIVERS_BIN_DIR/rtc_${BIN}" /mnt/pspi-boot/drivers/bin/rtc
+        DIR="$DRIVERS_BIN_DIR"
     fi
-    echo "  Using rtc_${BIN} as /flash/drivers/bin/rtc"
+
+    cp "$DIR/gamepad_${BIN}" /mnt/pspi-boot/drivers/bin/gamepad
+    cp "$DIR/battery_monitor_${BIN}" /mnt/pspi-boot/drivers/bin/battery_monitor
+    cp "$DIR/rtc_${BIN}" /mnt/pspi-boot/drivers/bin/rtc
+    echo "  Copied gamepad, battery_monitor, and rtc."
 
     echo "    Mounting SYSTEM squashfs..."
     mount --type squashfs --options loop --source /mnt/pspi-boot/SYSTEM --target /mnt/pspi-squashfs
