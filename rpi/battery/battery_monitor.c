@@ -11,11 +11,11 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#define SENSE_RESISTOR_MILLIOHM              50
-#define RESISTOR_A_KOHM                      150
-#define RESISTOR_B_KOHM                      10
-#define BATTERY_INTERNAL_RESISTANCE_MILLIOHM     230
-#define BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM 150
+#define SENSE_RESISTOR_MILLIOHM                     50
+#define RESISTOR_A_KOHM                             150
+#define RESISTOR_B_KOHM                             10
+#define BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM   210
+#define BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM  190
 #define DISCHARGING 0
 #define CHARGING    1
 #define CHARGED     2
@@ -70,12 +70,12 @@ void calculateAmperage() {
 static int get_internal_resistance_milliohm() {
     // Internal resistance scales with SOC.
     // Uses battery.percent from the previous iteration, self-correcting on each pass.
-    if (battery.percent <= 0)   return BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM;
-    if (battery.percent >= 100) return BATTERY_INTERNAL_RESISTANCE_MILLIOHM;
+    if (battery.percent <= 0)   return BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM;
+    if (battery.percent >= 100) return BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM;
 
-    return BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM
-        + (BATTERY_INTERNAL_RESISTANCE_MILLIOHM - BATTERY_INTERNAL_RESISTANCE_LOW_MILLIOHM)
-        * battery.percent / 100;
+    return BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM
+    + (BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM - BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM)
+    * battery.percent / 100;
 }
 
 void calculateVoltage() {
@@ -94,10 +94,27 @@ void calculateVoltage() {
 }
 
 void calculateBatteryStatus() {
-    // Linear map: 3.025V = 0%, 4.025V = 100% (7.5mV per percent)
-    battery.percent = 100 - (4025 - battery.display_mv) / 7.5;
-    if      (battery.percent < 0)   battery.percent = 0;
-    else if (battery.percent > 100) battery.percent = 100;
+    // Polynomial map: 3.025V = 0%, 4.025V = 100%
+    // Derived from real discharge data; weights the 20-35% range heavier
+    // and corrects for the fast voltage drop at the top and bottom 10%.
+    // Equation: percent = 100*x + x*(1-x)*(-334 + 904*x - 590*x^2)
+    // where x = (display_mv - 3025) / 1000.0
+    // Implemented in integer arithmetic using int64_t for intermediate products.
+    {
+        int xs = battery.display_mv - 3025; // 0..1000
+        if (xs <= 0) {
+            battery.percent = 0;
+        } else if (xs >= 1000) {
+            battery.percent = 100;
+        } else {
+            int linear      = xs / 10;
+            int64_t poly1000 = -334000 + 904 * xs - 590 * (int64_t)xs * xs / 1000;
+            int correction  = (int)((int64_t)xs * (1000 - xs) * poly1000 / 1000000000LL);
+            battery.percent = linear + correction;
+            if      (battery.percent < 0)   battery.percent = 0;
+            else if (battery.percent > 100) battery.percent = 100;
+        }
+    }
 
     // Determine charge state from current flow
     if (battery.current_ma < -60)  battery.charge_state = DISCHARGING;
@@ -162,9 +179,16 @@ static void update_sysfs() {
 int main(int argc, char *argv[]) {
     bool verbose = false;
     bool logging = false;
+    int  log_interval_sec = 60;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--verbose") == 0) verbose = true;
-        if (strcmp(argv[i], "--logging") == 0) logging = true;
+        if (strcmp(argv[i], "--logging") == 0) {
+            logging = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                log_interval_sec = atoi(argv[++i]);
+                if (log_interval_sec < 1) log_interval_sec = 1;
+            }
+        }
     }
 
     if (setup_sysfs() != 0) return 1;
@@ -216,7 +240,7 @@ int main(int argc, char *argv[]) {
     uint8_t prev_charge_state = 255; // force a write on first iteration
     int     prev_percent      = -1;
     int     log_ticks         = 0;
-    const int LOG_INTERVAL    = 1200; // 1200 * 50ms = 60 seconds
+    const int LOG_INTERVAL    = log_interval_sec * 20; // 20 ticks per second (50ms each)
 
     while (1) {
         // Convert raw ADC values to millivolts (10-bit ATmega ADC, 3.0V reference)
@@ -234,12 +258,12 @@ int main(int argc, char *argv[]) {
 
             if (verbose) {
                 printf("[battery] %3d%%  %s  ocv=%dmV  display=%dmV  current=%dmA  r_internal=%dmΩ\n",
-                    battery.percent,
-                    state_str[battery.charge_state],
-                    battery.open_circuit_mv,
-                    battery.display_mv,
-                    battery.current_ma,
-                    get_internal_resistance_milliohm());
+                       battery.percent,
+                       state_str[battery.charge_state],
+                       battery.open_circuit_mv,
+                       battery.display_mv,
+                       battery.current_ma,
+                       get_internal_resistance_milliohm());
                 fflush(stdout);
             }
 
@@ -247,26 +271,26 @@ int main(int argc, char *argv[]) {
 
             prev_charge_state = battery.charge_state;
             prev_percent      = battery.percent;
-        }
+            }
 
-        if (logging && ++log_ticks >= LOG_INTERVAL) {
-            log_ticks = 0;
-            time_t now = time(NULL);
-            struct tm *t = localtime(&now);
-            char timestamp[32];
-            strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
-            fprintf(log_file, "%s,%d,%s,%d,%d,%d,%d\n",
-                timestamp,
-                battery.percent,
-                state_str[battery.charge_state],
-                battery.open_circuit_mv,
-                battery.display_mv,
-                battery.current_ma,
-                get_internal_resistance_milliohm());
-            fflush(log_file);
-        }
+            if (logging && ++log_ticks >= LOG_INTERVAL) {
+                log_ticks = 0;
+                time_t now = time(NULL);
+                struct tm *t = localtime(&now);
+                char timestamp[32];
+                strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", t);
+                fprintf(log_file, "%s,%d,%s,%d,%d,%d,%d\n",
+                        timestamp,
+                        battery.percent,
+                        state_str[battery.charge_state],
+                        battery.open_circuit_mv,
+                        battery.display_mv,
+                        battery.current_ma,
+                        get_internal_resistance_milliohm());
+                fflush(log_file);
+            }
 
-        usleep(50000); // poll every 50ms
+            usleep(50000); // poll every 50ms
     }
 
     munmap(shared_data, sizeof(ControllerData));
