@@ -195,6 +195,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Wait for the first valid ADC sample -- shm may exist before
+    // the producer has written its first reading
+    while (shared_data->adc_sys == 0 || shared_data->adc_bat == 0)
+        usleep(10000);
+
     // Seed the smoothing filters at their steady-state value (8 * sys_mv)
     sys_mv = shared_data->adc_sys * 3000 / 1024;
     bat_mv = shared_data->adc_bat * 3000 / 1024;
