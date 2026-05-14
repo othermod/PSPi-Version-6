@@ -119,7 +119,7 @@ void calculateBatteryStatus() {
     // Determine charge state from current flow
     if (battery.current_ma < -60)  battery.charge_state = DISCHARGING;
     if (battery.current_ma >= 0)   battery.charge_state = CHARGING;
-    if (battery.display_mv > 4050 && battery.current_ma > -40)
+    if (battery.display_mv > 4000 && abs(battery.current_ma) < 50)
         battery.charge_state = CHARGED;
 }
 
@@ -170,7 +170,12 @@ static void update_sysfs() {
     snprintf(buf, sizeof(buf), "%d\n", battery.percent);
     write_file(BAT_DIR "/capacity",     buf);
 
-    write_file(BAT_DIR "/status",       plugged_in ? "Charging\n"  : "Discharging\n");
+    const char *status_str;
+    if      (battery.charge_state == CHARGED)  status_str = "Full\n";
+    else if (battery.charge_state == CHARGING) status_str = "Charging\n";
+    else                                        status_str = "Discharging\n";
+
+    write_file(BAT_DIR "/status",       status_str);
     write_file(BAT_DIR "/power/online", plugged_in ? "1\n"         : "0\n");
 }
 
