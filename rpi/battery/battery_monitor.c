@@ -93,28 +93,45 @@ void calculateVoltage() {
     else if (battery.open_circuit_mv < battery.display_mv - 25) battery.display_mv--;
 }
 
-void calculateBatteryStatus() {
-    // Polynomial map: 3.025V = 0%, 4.025V = 100%
-    // Derived from real discharge data; weights the 20-35% range heavier
-    // and corrects for the fast voltage drop at the top and bottom 10%.
-    // Equation: percent = 100*x + x*(1-x)*(-334 + 904*x - 590*x^2)
-    // where x = (display_mv - 3025) / 1000.0
-    // Implemented in integer arithmetic using int64_t for intermediate products.
-    {
-        int xs = battery.display_mv - 3025; // 0..1000
-        if (xs <= 0) {
-            battery.percent = 0;
-        } else if (xs >= 1000) {
-            battery.percent = 100;
-        } else {
-            int linear      = xs / 10;
-            int64_t poly1000 = -334000 + 904 * xs - 590 * (int64_t)xs * xs / 1000;
-            int correction  = (int)((int64_t)xs * (1000 - xs) * poly1000 / 1000000000LL);
-            battery.percent = linear + correction;
-            if      (battery.percent < 0)   battery.percent = 0;
-            else if (battery.percent > 100) battery.percent = 100;
-        }
+// Voltage (mV) corresponding to each SOC level 0..99%.
+// soc_mv_table[i] = voltage at which the battery is considered i% full.
+// Derived from a real discharge log: 11891 samples split into 100 equal
+// time-buckets, median display_mv taken per bucket, ties nudged +1mV
+// to preserve strict monotonicity.
+static const uint16_t soc_mv_table[100] = {
+    3270, 3288, 3295, 3301, 3323, // 0-4%
+    3333, 3340, 3341, 3360, 3377, // 5-9%
+    3380, 3381, 3386, 3388, 3398, // 10-14%
+    3423, 3424, 3428, 3430, 3431, // 15-19%
+    3432, 3434, 3436, 3438, 3454, // 20-24%
+    3472, 3473, 3474, 3475, 3476, // 25-29%
+    3477, 3479, 3480, 3481, 3482, // 30-34%
+    3485, 3486, 3498, 3506, 3507, // 35-39%
+    3509, 3512, 3513, 3514, 3515, // 40-44%
+    3516, 3521, 3529, 3546, 3555, // 45-49%
+    3558, 3562, 3565, 3566, 3570, // 50-54%
+    3583, 3605, 3607, 3613, 3616, // 55-59%
+    3621, 3637, 3656, 3657, 3659, // 60-64%
+    3664, 3685, 3703, 3704, 3709, // 65-69%
+    3715, 3731, 3748, 3755, 3758, // 70-74%
+    3761, 3787, 3796, 3799, 3805, // 75-79%
+    3807, 3830, 3837, 3838, 3840, // 80-84%
+    3845, 3880, 3881, 3885, 3889, // 85-89%
+    3904, 3925, 3929, 3934, 3940, // 90-94%
+    3975, 3977, 3981, 4014, 4020, // 95-99%
+};
+
+static int percent_from_voltage(uint16_t mv) {
+    if (mv <= soc_mv_table[0])  return 0;
+    if (mv >  soc_mv_table[99]) return 100;
+    for (int i = 99; i >= 0; i--) {
+        if (mv >= soc_mv_table[i]) return i;
     }
+    return 0;
+}
+
+void calculateBatteryStatus() {
+    battery.percent = percent_from_voltage(battery.display_mv);
 
     // Determine charge state from current flow
     if (battery.current_ma < -60)  battery.charge_state = DISCHARGING;
