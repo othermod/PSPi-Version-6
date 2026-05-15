@@ -42,28 +42,28 @@ jobs:
       - name: Flatten structure
         run: |
           mkdir -p drivers-bin
-          
+
           # Gamepad
           mv artifacts/pspi-gamepad-bin/32bit/gamepad drivers-bin/gamepad_32
           mv artifacts/pspi-gamepad-bin/64bit/gamepad drivers-bin/gamepad_64
-          
+
           # Battery
           mkdir -p drivers-bin/battery
           mv artifacts/pspi-battery-bin/32bit/battery_monitor drivers-bin/battery_monitor_32
           mv artifacts/pspi-battery-bin/64bit/battery_monitor drivers-bin/battery_monitor_64
-          
+
           # RTC
           mv artifacts/pspi-rtc-bin/32bit/rtc drivers-bin/rtc_32
           mv artifacts/pspi-rtc-bin/64bit/rtc drivers-bin/rtc_64
-          
+
           # Audio overlays
           mkdir -p drivers-bin/audio_overlays
           mv artifacts/pspi-audio-overlays/*.dtbo drivers-bin/audio_overlays/
-          
+
           # LCD overlays
           mkdir -p drivers-bin/lcd_overlays
           mv artifacts/pspi-lcd-overlays/*.dtbo drivers-bin/lcd_overlays/
-          
+
           # PCIe overlay
           mkdir -p drivers-bin/pcie_overlays
           mv artifacts/pspi-pcie-overlay/*.dtbo drivers-bin/pcie_overlays
@@ -74,11 +74,9 @@ jobs:
           name: pspi-driver-binaries
           path: drivers-bin/
 
-  build-images:
+  build-image-cm4:
     needs: collect-artifacts
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,22 +109,173 @@ jobs:
             wget \
             util-linux
 
-      - name: Build images
+      - name: Build image
         run: |
           sudo ./scripts/build-lakka.sh \
             --version "${{ steps.version.outputs.version }}" \
-            --driver-binaries "$(pwd)/drivers-bin"
+            --driver-binaries "$(pwd)/drivers-bin" \
+            --target cm4
 
       - name: Upload build artifacts
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: pspi-images-${{ steps.version.outputs.version }}
+          name: pspi-images-${{ steps.version.outputs.version }}-cm4
+          path: completed_images/
+          retention-days: 14
+
+  build-image-cm5:
+    needs: collect-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download driver binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-driver-binaries
+          path: drivers-bin/
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION="${VERSION#[vV]}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            squashfs-tools \
+            p7zip-full \
+            device-tree-compiler \
+            git \
+            wget \
+            util-linux
+
+      - name: Build image
+        run: |
+          sudo ./scripts/build-lakka.sh \
+            --version "${{ steps.version.outputs.version }}" \
+            --driver-binaries "$(pwd)/drivers-bin" \
+            --target cm5
+
+      - name: Upload build artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-images-${{ steps.version.outputs.version }}-cm5
+          path: completed_images/
+          retention-days: 14
+
+  build-image-zero:
+    needs: collect-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download driver binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-driver-binaries
+          path: drivers-bin/
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION="${VERSION#[vV]}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            squashfs-tools \
+            p7zip-full \
+            device-tree-compiler \
+            git \
+            wget \
+            util-linux
+
+      - name: Build image
+        run: |
+          sudo ./scripts/build-lakka.sh \
+            --version "${{ steps.version.outputs.version }}" \
+            --driver-binaries "$(pwd)/drivers-bin" \
+            --target zero
+
+      - name: Upload build artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-images-${{ steps.version.outputs.version }}-zero
+          path: completed_images/
+          retention-days: 14
+
+  build-image-arm:
+    needs: collect-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download driver binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-driver-binaries
+          path: drivers-bin/
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION="${VERSION#[vV]}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            squashfs-tools \
+            p7zip-full \
+            device-tree-compiler \
+            git \
+            wget \
+            util-linux
+
+      - name: Build image
+        run: |
+          sudo ./scripts/build-lakka.sh \
+            --version "${{ steps.version.outputs.version }}" \
+            --driver-binaries "$(pwd)/drivers-bin" \
+            --target arm
+
+      - name: Upload build artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-images-${{ steps.version.outputs.version }}-arm
           path: completed_images/
           retention-days: 14
 
   release:
-    needs: build-images
+    needs: [build-image-cm4, build-image-cm5, build-image-zero, build-image-arm]
     runs-on: ubuntu-latest
     steps:
       - name: Determine version
@@ -146,8 +295,9 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: pspi-images-${{ steps.version.outputs.version }}
+          pattern: pspi-images-${{ steps.version.outputs.version }}-*
           path: completed_images/
+          merge-multiple: true
 
       - name: Create GitHub Release
         env:
