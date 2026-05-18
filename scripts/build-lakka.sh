@@ -504,6 +504,8 @@ SVCEOF
     sed -i 's/xmb_layout = "0"/xmb_layout = "2"/' /tmp/pspi-target/etc/retroarch.cfg
     sed -i 's/xmb_menu_color_theme = .*/xmb_menu_color_theme = "2"/' /tmp/pspi-target/etc/retroarch.cfg
     sed -i 's/menu_shader_pipeline = .*/menu_shader_pipeline = "0"/' /tmp/pspi-target/etc/retroarch.cfg
+    sed -i 's/input_volume_up = "add"/input_volume_up = "volumeup"/' /tmp/pspi-target/etc/retroarch.cfg
+    sed -i 's/input_volume_down = "subtract"/input_volume_down = "volumedown"/' /tmp/pspi-target/etc/retroarch.cfg
     echo "    Repacking squashfs..."
     mksquashfs /tmp/pspi-target "$work_dir/filesystem.squashfs" -noappend -quiet
 

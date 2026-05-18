@@ -118,6 +118,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     // Global file descriptors
     int controller_board_fd;
     int virtual_gamepad_fd = -1;
+    int virtual_keyboard_fd = -1;
     int virtual_mouse_fd = -1;
     int wifi_monitor_fd;
     int shared_memory_fd;
@@ -281,10 +282,44 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         return crc;
     }
 
-    void cleanup_resources(void) {
+        void init_virtual_keyboard(void) {
+        virtual_keyboard_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+        if (virtual_keyboard_fd < 0) {
+            perror("Could not open uinput device for keyboard");
+            return;
+        }
+
+        ioctl(virtual_keyboard_fd, UI_SET_EVBIT, EV_KEY);
+        ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEUP);
+        ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEDOWN);
+
+        struct uinput_user_dev uidev = {0};
+        snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi Keyboard");
+        uidev.id = (struct input_id){ BUS_USB, 0x1234, 0x5678, 0 };
+
+        if (write(virtual_keyboard_fd, &uidev, sizeof(uidev)) < 0) {
+            perror("Failed to write uinput_user_dev for keyboard");
+            close(virtual_keyboard_fd);
+            virtual_keyboard_fd = -1;
+            return;
+        }
+        if (ioctl(virtual_keyboard_fd, UI_DEV_CREATE) < 0) {
+            perror("Failed to create uinput keyboard device");
+            close(virtual_keyboard_fd);
+            virtual_keyboard_fd = -1;
+            return;
+        }
+        printf("Virtual keyboard created\n");
+    }
+
+void cleanup_resources(void) {
         if (virtual_gamepad_fd >= 0) {
             ioctl(virtual_gamepad_fd, UI_DEV_DESTROY);
             close(virtual_gamepad_fd);
+        }
+        if (virtual_keyboard_fd >= 0) {
+            ioctl(virtual_keyboard_fd, UI_DEV_DESTROY);
+            close(virtual_keyboard_fd);
         }
         if (virtual_mouse_fd >= 0) {
             ioctl(virtual_mouse_fd, UI_DEV_DESTROY);
@@ -375,34 +410,60 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         int setup_uinput_gamepad(int uinput_fd) {
             // UI_SET_* ioctls must come before writing uinput_user_dev.
             ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
-            // Keycodes match the real PS3 hid-sony driver so RetroArch/Lakka assigns
-            // the correct joydev indices and the PS3 autoconfig profile works as-is.
+            // Keycodes match the real PS3 hid-sony driver layout, producing button
+            // indices that match SDL gamecontrollerdb GUID 030000004c0500006802000011810000:
+            //   b0=a(cross)  b1=b(circle)  b2=y(triangle)  b3=x(square)
+            //   b4=leftshoulder(L1)    b5=rightshoulder(R1)
+            //   b6=BTN_TL2  b7=BTN_TR2  (index placeholders; L2/R2 are axes a2/a5)
+            //   b8=back  b9=start  b10=guide
+            //   b11=leftstick(L3)  b12=rightstick(R3)
+            //   b13=dpup  b14=dpdown  b15=dpleft  b16=dpright
+            // BTN_TL2/BTN_TR2 must be registered to push BTN_SELECT to index b8.
+            // In --extrabuttons trigger mode they also receive button events so ES
+            // sees L2/R2 as digital buttons (pageup/pagedown) in addition to axes.
             static const uint16_t ps3_keys[] = {
-                BTN_SOUTH, BTN_EAST, BTN_NORTH, BTN_WEST,   // 0-3  cross/circle/tri/square
-                BTN_TL, BTN_TR, BTN_TL2, BTN_TR2,            // 4-7  L1 R1 L2 R2
-                BTN_SELECT, BTN_START, BTN_MODE,              // 8-10 select start PS
-                BTN_THUMBL, BTN_THUMBR,                       // 11-12 L3 R3
-                BTN_DPAD_UP, BTN_DPAD_DOWN,                   // 13-14
-                BTN_DPAD_LEFT, BTN_DPAD_RIGHT,                // 15-16
-                KEY_KPMINUS, KEY_KPPLUS,                 // 17-18 Vol- Vol+
+                BTN_SOUTH,      // b0  - a / cross
+                BTN_EAST,       // b1  - b / circle
+                BTN_NORTH,      // b2  - y / triangle
+                BTN_WEST,       // b3  - x / square
+                BTN_TL,         // b4  - leftshoulder  (L1)
+                BTN_TR,         // b5  - rightshoulder (R1)
+                BTN_TL2,        // b6  - L2 button (also emitted as ABS_Z axis)
+                BTN_TR2,        // b7  - R2 button (also emitted as ABS_RZ axis)
+                BTN_SELECT,     // b8  - back
+                BTN_START,      // b9  - start
+                BTN_MODE,       // b10 - guide / PS button
+                BTN_THUMBL,     // b11 - leftstick  (L3, extra_buttons stick)
+                BTN_THUMBR,     // b12 - rightstick (R3, extra_buttons stick)
+                BTN_DPAD_UP,    // b13 - dpup
+                BTN_DPAD_DOWN,  // b14 - dpdown
+                BTN_DPAD_LEFT,  // b15 - dpleft
+                BTN_DPAD_RIGHT, // b16 - dpright
             };
             for (size_t i = 0; i < sizeof(ps3_keys)/sizeof(ps3_keys[0]); i++)
                 ioctl(uinput_fd, UI_SET_KEYBIT, ps3_keys[i]);
 
+            // Axis order must match hid-sony: X, Y, Z(L2), RX, RY, RZ(R2).
+            // joydev assigns sequential indices so SDL sees:
+            //   a0=leftx  a1=lefty  a2=lefttrigger  a3=rightx  a4=righty  a5=righttrigger
             ioctl(uinput_fd, UI_SET_EVBIT, EV_ABS);
             ioctl(uinput_fd, UI_SET_ABSBIT, ABS_X);
             ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Y);
+            ioctl(uinput_fd, UI_SET_ABSBIT, ABS_Z);    // L2 trigger axis
             ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RX);
             ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RY);
+            ioctl(uinput_fd, UI_SET_ABSBIT, ABS_RZ);   // R2 trigger axis
 
             struct uinput_user_dev uidev = {0};
             snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PS3 Controller");
-            uidev.id = (struct input_id){ BUS_USB, 0x054c, 0x0268, 0x0110 };
+            uidev.id = (struct input_id){ BUS_USB, 0x054c, 0x0268, 0x8111 };
             SET_ABS(uidev, ABS_X,  axis_min, axis_max, axis_flat, AXIS_FUZZ);
             SET_ABS(uidev, ABS_Y,  axis_min, axis_max, axis_flat, AXIS_FUZZ);
+            SET_ABS(uidev, ABS_Z,  0, 255, 0, 0);      // L2: digital 0 or 255, no deadzone
             // Right stick: 7-bit position field shifted to 8-bit space, same range as left.
             SET_ABS(uidev, ABS_RX, axis_min, axis_max, axis_flat, AXIS_FUZZ);
             SET_ABS(uidev, ABS_RY, axis_min, axis_max, axis_flat, AXIS_FUZZ);
+            SET_ABS(uidev, ABS_RZ, 0, 255, 0, 0);      // R2: digital 0 or 255, no deadzone
 
             if (write(uinput_fd, &uidev, sizeof(uidev)) < 0) {
                 perror("Failed to write uinput_user_dev");
@@ -413,13 +474,15 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 return -1;
             }
 
-            // Initialize axes to center before any real data arrives.
-            struct input_event init_events[5];
+            // Initialize axes: sticks to center, triggers to 0 (not pressed).
+            struct input_event init_events[7];
             int n = 0;
             EMIT(init_events, n, EV_ABS, ABS_X,  axis_center_lx);
             EMIT(init_events, n, EV_ABS, ABS_Y,  axis_center_ly);
+            EMIT(init_events, n, EV_ABS, ABS_Z,  0);
             EMIT(init_events, n, EV_ABS, ABS_RX, axis_center_rx);
             EMIT(init_events, n, EV_ABS, ABS_RY, axis_center_ry);
+            EMIT(init_events, n, EV_ABS, ABS_RZ, 0);
             EMIT(init_events, n, EV_SYN, SYN_REPORT, 0);
             write(uinput_fd, init_events, sizeof(struct input_event) * n);
             return 0;
@@ -453,7 +516,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 KEY_BACK, KEY_FORWARD, KEY_LEFTMETA,
                 BTN_LEFT, BTN_RIGHT,
                 KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER,
-                KEY_KPMINUS, KEY_KPPLUS,
             };
             ioctl(virtual_mouse_fd, UI_SET_EVBIT, EV_KEY);
             for (size_t i = 0; i < sizeof(mouse_keys)/sizeof(mouse_keys[0]); i++)
@@ -475,22 +537,20 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
         typedef struct { uint16_t hw_mask; uint16_t keycode; } ButtonMap;
         static const ButtonMap button_map[] = {
-            { 0x0008, BTN_SOUTH       },  // a/cross       -> joydev 0
-            { 0x0040, BTN_EAST        },  // b/circle      -> joydev 1
-            { 0x0020, BTN_NORTH       },  // y/triangle    -> joydev 2
-            { 0x0010, BTN_WEST        },  // x/square      -> joydev 3
-            { 0x0100, BTN_TL          },  // L1            -> joydev 4
-            { 0x0080, BTN_TR          },  // R1            -> joydev 5
-            // BTN_TL2/BTN_TR2 (joydev 6/7) and BTN_THUMBL/R (11/12) via extra_buttons
-            { 0x0002, BTN_SELECT      },  // select        -> joydev 8
-            { 0x0004, BTN_START       },  // start         -> joydev 9
-            { 0x8000, BTN_MODE        },  // PS button     -> joydev 10
-            { 0x0400, BTN_DPAD_UP     },  // d-pad up      -> joydev 13
-            { 0x0800, BTN_DPAD_DOWN   },  // d-pad down    -> joydev 14
-            { 0x0200, BTN_DPAD_LEFT   },  // d-pad left    -> joydev 15
-            { 0x1000, BTN_DPAD_RIGHT  },  // d-pad right   -> joydev 16
-            { 0x2000, KEY_KPPLUS   },  // vol+ (bit 13 is actually vol+)
-            { 0x4000, KEY_KPMINUS  },  // vol- (bit 14 is actually vol-)
+            { 0x0002, BTN_SELECT     },  // select   -> b8  back
+            { 0x0004, BTN_START      },  // start    -> b9
+            { 0x0400, BTN_DPAD_UP    },  // dpup     -> b13
+            { 0x1000, BTN_DPAD_RIGHT },  // dpright  -> b16
+            { 0x0800, BTN_DPAD_DOWN  },  // dpdown   -> b14
+            { 0x0200, BTN_DPAD_LEFT  },  // dpleft   -> b15
+            // L2/R2 handled in extra_buttons as ABS_Z/ABS_RZ axes + BTN_TL2/BTN_TR2
+            { 0x0100, BTN_TL         },  // L1       -> b4  leftshoulder
+            { 0x0080, BTN_TR         },  // R1       -> b5  rightshoulder
+            { 0x0020, BTN_NORTH      },  // triangle -> b2  y
+            { 0x0040, BTN_EAST       },  // circle   -> b1  b
+            { 0x0008, BTN_SOUTH      },  // cross    -> b0  a
+            { 0x0010, BTN_WEST       },  // square   -> b3  x
+            { 0x8000, BTN_MODE       },  // PS btn   -> b10 guide
         };
 
         void update_gamepad_events(int uinput_fd) {
@@ -519,12 +579,23 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             }
 
             if (extra_buttons) {
-                uint16_t btn_y = (button_config == BUTTON_CONFIG_TRIGGER) ? BTN_TL2   : BTN_THUMBL;
-                uint16_t btn_x = (button_config == BUTTON_CONFIG_TRIGGER) ? BTN_TR2   : BTN_THUMBR;
-                if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button)
-                    EMIT(events, n, EV_KEY, btn_y, current_controller_data.right_stick_y.bits.button);
-                if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button)
-                    EMIT(events, n, EV_KEY, btn_x, current_controller_data.right_stick_x.bits.button);
+                if (button_config == BUTTON_CONFIG_TRIGGER) {
+                    // L2/R2: emit as both axis (SDL/RetroArch) and button (ES pageup/pagedown)
+                    if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button) {
+                        EMIT(events, n, EV_ABS, ABS_Z,   current_controller_data.right_stick_y.bits.button ? 255 : 0);
+                        EMIT(events, n, EV_KEY, BTN_TL2, current_controller_data.right_stick_y.bits.button);
+                    }
+                    if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button) {
+                        EMIT(events, n, EV_ABS, ABS_RZ,  current_controller_data.right_stick_x.bits.button ? 255 : 0);
+                        EMIT(events, n, EV_KEY, BTN_TR2, current_controller_data.right_stick_x.bits.button);
+                    }
+                } else {
+                    // L3/R3 stick click
+                    if (previous_controller_state.right_stick_y.bits.button != current_controller_data.right_stick_y.bits.button)
+                        EMIT(events, n, EV_KEY, BTN_THUMBL, current_controller_data.right_stick_y.bits.button);
+                    if (previous_controller_state.right_stick_x.bits.button != current_controller_data.right_stick_x.bits.button)
+                        EMIT(events, n, EV_KEY, BTN_THUMBR, current_controller_data.right_stick_x.bits.button);
+                }
             }
 
             if (n > 0) {
@@ -539,7 +610,24 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         #define AXIS_THRESHOLD_LOW 112
         #define AXIS_THRESHOLD_HIGH 142
 
-        void update_mouse_events(int uinput_fd) {
+            void update_keyboard_events(void) {
+        if (virtual_keyboard_fd < 0) return;
+
+        struct input_event events[4];
+        int n = 0;
+
+        if (previous_controller_state.buttons.bits.vol_plus != current_controller_data.buttons.bits.vol_plus)
+            EMIT(events, n, EV_KEY, KEY_VOLUMEUP, current_controller_data.buttons.bits.vol_plus);
+        if (previous_controller_state.buttons.bits.vol_minus != current_controller_data.buttons.bits.vol_minus)
+            EMIT(events, n, EV_KEY, KEY_VOLUMEDOWN, current_controller_data.buttons.bits.vol_minus);
+
+        if (n > 0) {
+            EMIT(events, n, EV_SYN, SYN_REPORT, 0);
+            write(virtual_keyboard_fd, events, sizeof(struct input_event) * n);
+        }
+    }
+
+void update_mouse_events(int uinput_fd) {
             struct input_event events[20];
             int n = 0;
 
@@ -569,8 +657,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 { 1 << 10, KEY_UP       },  // dpad_up
                 { 1 << 11, KEY_DOWN     },  // dpad_down
                 { 1 << 12, KEY_RIGHT    },  // dpad_right
-                { 1 << 13, KEY_KPPLUS   },  // vol+ (bit 13 is actually vol+)
-                { 1 << 14, KEY_KPMINUS  },  // vol- (bit 14 is actually vol-)
                 { 1 << 15, KEY_LEFTMETA },  // home
             };
             uint16_t changed_buttons = previous_mouse_data.buttons.raw ^ current_controller_data.buttons.raw;
@@ -764,6 +850,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
             switch (input_type) {
                 case INPUT_GAMEPAD:
                     init_virtual_gamepad();
+                    init_virtual_keyboard();
                     break;
                 case INPUT_MOUSE:
                     init_virtual_mouse();
@@ -796,6 +883,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                         if (previous_controller_state.buttons.raw != current_controller_data.buttons.raw ||
                             memcmp(&previous_controller_state.left_stick_x, &current_controller_data.left_stick_x, 4) != 0) {
                             update_gamepad_events(virtual_gamepad_fd);
+                            update_keyboard_events();
                         previous_controller_state = current_controller_data;
                             }
                             break;
