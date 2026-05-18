@@ -129,8 +129,6 @@ build_drivers() {
         make clean || true
         make all || die "Failed to build audio overlays"
     )
-    mkdir -p "$OUTPUT_DIR/audio_overlays"
-    cp "$audio_dir"/*.dtbo "$OUTPUT_DIR/audio_overlays/" 2>/dev/null || true
     echo "  Audio overlays built."
 
     # Build LCD overlays
@@ -144,8 +142,6 @@ build_drivers() {
         make clean || true
         make all || die "Failed to build LCD overlays"
     )
-    mkdir -p "$OUTPUT_DIR/lcd_overlays"
-    cp "$lcd_dir"/*.dtbo "$OUTPUT_DIR/lcd_overlays/" 2>/dev/null || true
     echo "  LCD overlays built."
 
     # Build PCIe overlay
@@ -159,8 +155,6 @@ build_drivers() {
         make clean || true
         make all || die "Failed to build PCIe overlay"
     )
-    mkdir -p "$OUTPUT_DIR/pcie_overlays"
-    cp "$pcie_dir"/*.dtbo "$OUTPUT_DIR/pcie_overlays/" 2>/dev/null || true
     echo "  PCIe overlay built."
 
     echo "Driver binaries and overlays ready."
@@ -625,5 +619,7 @@ fi
 rm -rf "$DRIVERS_BIN_DIR"
 
 
+rm -rf /tmp/pspi-upper /tmp/pspi-work /tmp/pspi-target
+echo "Cleaning /tmp..."
 echo ""
 echo "Done. Artifacts in: $OUTPUT_DIR"
