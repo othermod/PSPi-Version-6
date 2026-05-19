@@ -234,6 +234,19 @@ SVCEOF
 
     echo "  Repacking squashfs..."
     mksquashfs "$overlay_target" "$work_dir/filesystem.squashfs" -noappend -quiet
+
+    # Unmount overlay and squashfs before zeroing to prevent corruption
+    echo "  Unmounting overlay and squashfs..."
+    umount "$overlay_target"
+    umount "$mnt_squashfs"
+
+    # Zero out free space in the boot partition to improve compression
+    echo "  Zeroing out free space in boot partition..."
+    dd if=/dev/zero of="$mnt_boot/SYSTEM" bs=1M status=progress || true
+    sync
+    rm "$mnt_boot/SYSTEM"
+
+    # Copy the repacked squashfs back to the image
     cp "$work_dir/filesystem.squashfs" "$mnt_boot/SYSTEM"
     md5sum "$mnt_boot/SYSTEM" > "$mnt_boot/SYSTEM.md5"
 }
