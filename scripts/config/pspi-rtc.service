@@ -1,0 +1,14 @@
+[Unit]
+Description=PSPi RTC daemon (PCF8563)
+After=dev-i2c-1.device
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+WorkingDirectory=__DRIVERS_BASE__
+ExecStart=__DRIVERS_BASE__/drivers/rtc
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=sysinit.target

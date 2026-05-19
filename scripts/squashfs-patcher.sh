@@ -1,0 +1,353 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ $EUID -ne 0 ]] && echo "ERROR: This script must be run as root (use sudo)" && exit 1
+
+# Usage:
+#   ./scripts/buildroot.sh --distro <name> [--version X.Y.Z] [--driver-binaries PATH] [--target TARGET]
+#
+# Distro configs live in scripts/distros/<name>.sh and must define:
+#   SQUASHFS_PATH                - path to squashfs within the mounted boot partition
+#   DRIVERS_BASE                 - runtime path where drivers/boot.sh live on the device
+#   VC4_REQUIRED                 - true|false, whether missing vc4-kms-v3d line is fatal
+#   INIT_SYSTEM                  - systemd or sysv
+#   SQUASHFS_COMP_ARGS           - extra args passed to mksquashfs (e.g. "-comp zstd"), can be empty
+#   ALL_TARGETS                  - bash array of target names; each must match a config/<name>.txt
+#   TARGET_URL[<target>]         - download URL; compression detected from file extension
+#   TARGET_SHA256[<target>]      - SHA256 of the download, or empty to skip verification
+#   TARGET_PSPI_PREFIX[<target>] - output filename prefix; -v<version>.img.gz appended automatically
+#   TARGET_BIN[<target>]         - 32 or 64
+#
+# Optional hooks (define in distro config if needed):
+#   distro_post_patch() - called with (overlay_target, mnt_boot, work_dir, BIN)
+#                         before squashfs is repacked; use for rootfs edits
+#   distro_post_write() - called with (mnt_boot, BIN) after squashfs is copied
+#                         back; use for checksums, board marker files, etc.
+
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+DISTRO=""
+VERSION=""
+DRIVER_BINARIES_DIR=""
+TARGET=""
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+CONFIG_DIR="$SCRIPT_DIR/config"
+OUTPUT_DIR="$PROJECT_DIR/completed_images"
+CACHE_DIR="$PROJECT_DIR/cache"
+DRIVERS_BIN_DIR=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --distro)          DISTRO="$2";              shift 2 ;;
+        --version)         VERSION="$2";             shift 2 ;;
+        --driver-binaries) DRIVER_BINARIES_DIR="$2"; shift 2 ;;
+        --target)          TARGET="$2";              shift 2 ;;
+        --help|-h)         sed -n '/^# Usage:/,/^$/p' "$0"; exit 0 ;;
+        *)                 die "Unknown argument: $1 (use --help)" ;;
+    esac
+done
+
+[[ -z "$DISTRO" ]] && die "No distro specified. Use --distro <name>"
+DISTRO_FILE="$SCRIPT_DIR/distros/${DISTRO}.sh"
+[[ -f "$DISTRO_FILE" ]] || die "Distro config not found: $DISTRO_FILE"
+# shellcheck source=/dev/null
+source "$DISTRO_FILE"
+
+# Validate required distro vars
+: "${SQUASHFS_PATH:?$DISTRO_FILE must set SQUASHFS_PATH}"
+: "${DRIVERS_BASE:?$DISTRO_FILE must set DRIVERS_BASE}"
+: "${VC4_REQUIRED:?$DISTRO_FILE must set VC4_REQUIRED}"
+: "${INIT_SYSTEM:?$DISTRO_FILE must set INIT_SYSTEM (systemd or sysv)}"
+: "${ALL_TARGETS:?$DISTRO_FILE must set ALL_TARGETS}"
+SQUASHFS_COMP_ARGS="${SQUASHFS_COMP_ARGS:-}"
+
+if [[ -z "$VERSION" ]]; then
+    LAST_TAG="$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null || true)"
+    VERSION="${LAST_TAG#v}"
+    [[ -z "$VERSION" ]] && VERSION="0.0.0"
+fi
+
+cleanup() {
+    awk '$3=="overlay" && $2~/pspi/ {print $2}' /proc/mounts | while read -r mp; do
+        umount "$mp" 2>/dev/null || true
+    done
+    awk '$3=="squashfs" && $2~/pspi/ {print $2}' /proc/mounts | while read -r mp; do
+        umount "$mp" 2>/dev/null || true
+    done
+    awk '$2~/pspi/ {print $2}' /proc/mounts | while read -r mp; do
+        umount "$mp" 2>/dev/null || true
+    done
+    for dev in /dev/loop{0..7}; do
+        losetup -d "$dev" 2>/dev/null || true
+    done
+    rm -rf /tmp/pspi-build-*
+}
+
+build_drivers() {
+    mkdir -p "$DRIVERS_BIN_DIR"
+
+    echo "Building gamepad..."
+    ( cd "$PROJECT_DIR/rpi/gamepad" && make 32 && make 64 )
+    cp "$PROJECT_DIR/rpi/gamepad/bin/32bit/gamepad"         "$DRIVERS_BIN_DIR/gamepad_32"
+    cp "$PROJECT_DIR/rpi/gamepad/bin/64bit/gamepad"         "$DRIVERS_BIN_DIR/gamepad_64"
+
+    echo "Building battery monitor..."
+    ( cd "$PROJECT_DIR/rpi/battery" && make 32 && make 64 )
+    cp "$PROJECT_DIR/rpi/battery/bin/32bit/battery_monitor" "$DRIVERS_BIN_DIR/battery_monitor_32"
+    cp "$PROJECT_DIR/rpi/battery/bin/64bit/battery_monitor" "$DRIVERS_BIN_DIR/battery_monitor_64"
+
+    echo "Building rtc..."
+    ( cd "$PROJECT_DIR/rpi/rtc" && make 32 && make 64 )
+    cp "$PROJECT_DIR/rpi/rtc/bin/32bit/rtc"                 "$DRIVERS_BIN_DIR/rtc_32"
+    cp "$PROJECT_DIR/rpi/rtc/bin/64bit/rtc"                 "$DRIVERS_BIN_DIR/rtc_64"
+
+    for overlay in audio lcd pcie; do
+        echo "Building $overlay overlay..."
+        ( cd "$PROJECT_DIR/rpi/$overlay" && make clean && make all )
+    done
+}
+
+download_image() {
+    local url="$1" sha256="$2" compressed="$3"
+    local cached="$CACHE_DIR/$compressed"
+    mkdir -p "$CACHE_DIR"
+
+    if [[ -f "$cached" ]]; then
+        if [[ -z "$sha256" ]]; then
+            echo "  Cached: $compressed (checksum skipped)"
+            return 0
+        fi
+        local actual_sha
+        actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
+        if [[ "$actual_sha" == "$sha256" ]]; then
+            echo "  Cached: $compressed"
+            return 0
+        fi
+        echo "  Checksum mismatch. Redownloading..."
+        rm -f "$cached"
+    fi
+
+    echo "  Downloading $compressed..."
+    wget -nv -O "$cached" "$url" || die "Failed to download $url"
+    if [[ -n "$sha256" ]]; then
+        local actual_sha
+        actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
+        [[ "$actual_sha" != "$sha256" ]] && die "Checksum mismatch: expected $sha256, got $actual_sha"
+        echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
+    else
+        echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1))"
+    fi
+}
+
+detect_boot_offset() {
+    local img_path="$1"
+    local json sector_size start
+    json=$(sfdisk --json "$img_path") || die "sfdisk failed on $img_path"
+    sector_size=$(echo "$json" | grep -o '"sectorsize": *[0-9]*' | grep -o '[0-9]*$')
+    start=$(echo "$json" | grep -o '"start": *[0-9]*' | head -1 | grep -o '[0-9]*$')
+    [[ -z "$sector_size" || -z "$start" ]] && die "Could not parse partition table from $img_path"
+    echo $(( start * sector_size ))
+}
+
+patch_image() {
+    local img_path="$1" work_dir="$2" device_config="$3" BIN="$4"
+
+    local boot_offset
+    boot_offset=$(detect_boot_offset "$img_path")
+    echo "  Boot partition offset: $boot_offset bytes ($(( boot_offset / 1024 / 1024 )) MiB)"
+
+    local stale_dev
+    while IFS= read -r stale_dev; do
+        echo "  Detaching stale loop device: $stale_dev"
+        losetup -d "$stale_dev" 2>/dev/null || true
+    done < <(losetup --associated "$img_path" --output NAME --noheadings 2>/dev/null)
+
+    local device_path=""
+    for dev in /dev/loop{0..7}; do
+        if losetup -o "$boot_offset" "$dev" "$img_path" 2>/dev/null; then
+            device_path="$dev"
+            break
+        fi
+    done
+    [[ -z "$device_path" ]] && die "No available loop device"
+
+    local mnt_boot="$work_dir/mnt-boot"
+    local mnt_squashfs="$work_dir/mnt-squashfs"
+    local overlay_upper="$work_dir/overlay-upper"
+    local overlay_work="$work_dir/overlay-work"
+    local overlay_target="$work_dir/overlay-target"
+    mkdir -p "$mnt_boot" "$mnt_squashfs" "$overlay_upper" "$overlay_work" "$overlay_target"
+
+    trap "(umount '$overlay_target' 2>/dev/null || true; \
+           umount '$mnt_squashfs' 2>/dev/null || true; \
+           umount '$mnt_boot' 2>/dev/null || true; \
+           losetup -d $device_path 2>/dev/null || true)" RETURN
+
+    mount "$device_path" "$mnt_boot" || die "Failed to mount boot partition"
+
+    # Append board-specific hardware config
+    local config_file="$CONFIG_DIR/${device_config}.txt"
+    [[ -f "$config_file" ]] || die "Device config file not found: $config_file"
+    cat "$config_file" >> "$mnt_boot/config.txt"
+
+    # Disable vc4 audio via distroconfig.txt if present
+    if [[ -f "$mnt_boot/distroconfig.txt" ]]; then
+        local vc4_line
+        vc4_line=$(grep "dtoverlay=vc4-kms-v3d" "$mnt_boot/distroconfig.txt" | head -1)
+        if [[ -n "$vc4_line" ]]; then
+            echo "$vc4_line,noaudio" >> "$mnt_boot/config.txt"
+        elif [[ "$VC4_REQUIRED" == "true" ]]; then
+            die "vc4-kms-v3d line not found in distroconfig.txt"
+        fi
+    elif [[ "$VC4_REQUIRED" == "true" ]]; then
+        die "distroconfig.txt not found but VC4_REQUIRED=true"
+    fi
+
+    # Copy PSPi runtime config and boot script
+    cp "$CONFIG_DIR/pspi.conf" "$mnt_boot/pspi.conf"
+    cp "$CONFIG_DIR/boot.sh"   "$mnt_boot/boot.sh"
+    chmod +x "$mnt_boot/boot.sh"
+
+    # Copy device tree overlays
+    mkdir -p "$mnt_boot/overlays"
+    if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
+        for overlay in audio lcd pcie; do
+            cp "$DRIVER_BINARIES_DIR/${overlay}_overlays/"*.dtbo "$mnt_boot/overlays/" 2>/dev/null || true
+        done
+    else
+        for overlay in audio lcd pcie; do
+            cp "$PROJECT_DIR/rpi/$overlay/"*.dtbo "$mnt_boot/overlays/" 2>/dev/null || true
+        done
+    fi
+
+    # Copy driver binaries
+    local bin_src="${DRIVER_BINARIES_DIR:-$DRIVERS_BIN_DIR}"
+    mkdir -p "$mnt_boot/drivers"
+    cp "$bin_src/gamepad_${BIN}"         "$mnt_boot/drivers/gamepad"
+    cp "$bin_src/battery_monitor_${BIN}" "$mnt_boot/drivers/battery_monitor"
+    cp "$bin_src/rtc_${BIN}"             "$mnt_boot/drivers/rtc"
+
+    # Mount squashfs and overlay
+    mount --type squashfs --options loop \
+        --source "$mnt_boot/$SQUASHFS_PATH" --target "$mnt_squashfs"
+    mount --type overlay \
+        --options "lowerdir=$mnt_squashfs,upperdir=$overlay_upper,workdir=$overlay_work" \
+        --source overlay --target "$overlay_target"
+
+    # Install startup entries based on the distro's init system
+    # Templates in config/ use __DRIVERS_BASE__ as a placeholder, substituted here
+    case "$INIT_SYSTEM" in
+        systemd)
+            mkdir -p "$overlay_target/usr/lib/systemd/system"
+
+            sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
+                "$CONFIG_DIR/pspi-rtc.service" \
+                > "$overlay_target/usr/lib/systemd/system/pspi-rtc.service"
+            mkdir -p "$overlay_target/usr/lib/systemd/system/sysinit.target.wants"
+            ln -sf ../system/pspi-rtc.service \
+                "$overlay_target/usr/lib/systemd/system/sysinit.target.wants/pspi-rtc.service"
+
+            sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
+                "$CONFIG_DIR/pspi.service" \
+                > "$overlay_target/usr/lib/systemd/system/pspi.service"
+            mkdir -p "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
+            ln -sf ../system/pspi.service \
+                "$overlay_target/usr/lib/systemd/system/multi-user.target.wants/pspi.service"
+            ;;
+        sysv)
+            mkdir -p "$overlay_target/etc/init.d"
+            sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
+                "$CONFIG_DIR/S99pspi-daemons" \
+                > "$overlay_target/etc/init.d/S99pspi-daemons"
+            chmod +x "$overlay_target/etc/init.d/S99pspi-daemons"
+            ;;
+        *)
+            die "Unknown INIT_SYSTEM: $INIT_SYSTEM (expected systemd or sysv)"
+            ;;
+    esac
+
+    # Distro-specific rootfs edits (retroarch config, extra init scripts, etc.)
+    if declare -f distro_post_patch > /dev/null; then
+        distro_post_patch "$overlay_target" "$mnt_boot" "$work_dir" "$BIN"
+    fi
+
+    echo "  Repacking squashfs..."
+    local temp_squashfs="$work_dir/filesystem.squashfs"
+    # shellcheck disable=SC2086
+    mksquashfs "$overlay_target" "$temp_squashfs" -noappend -quiet $SQUASHFS_COMP_ARGS \
+        || die "Failed to repack rootfs"
+
+    echo "  Unmounting overlay and squashfs..."
+    umount "$overlay_target"
+    umount "$mnt_squashfs"
+
+    echo "  Zeroing free space in boot partition..."
+    dd if=/dev/zero of="$mnt_boot/$SQUASHFS_PATH" bs=1M status=progress || true
+    sync
+    rm "$mnt_boot/$SQUASHFS_PATH"
+
+    echo "  Copying repacked squashfs back to image..."
+    cp "$temp_squashfs" "$mnt_boot/$SQUASHFS_PATH"
+
+    # Distro-specific post-write steps (checksums, board marker files, etc.)
+    if declare -f distro_post_write > /dev/null; then
+        distro_post_write "$mnt_boot" "$BIN"
+    fi
+}
+
+build_image() {
+    local label="$1"
+
+    [[ -n "${TARGET_URL[$label]+x}" ]] || die "Unknown target: $label (check ALL_TARGETS in $DISTRO_FILE)"
+    local T_URL="${TARGET_URL[$label]}"
+    local T_SHA256="${TARGET_SHA256[$label]}"
+    local T_PSPI_NAME="${TARGET_PSPI_PREFIX[$label]}-v${VERSION}.img.gz"
+    local T_BIN="${TARGET_BIN[$label]}"
+    local T_COMPRESSED="${T_URL##*/}"
+
+    echo "Building $label..."
+    local work_dir
+    work_dir="$(mktemp -d /tmp/pspi-build-XXXXXX)"
+    mkdir -p "$OUTPUT_DIR"
+
+    download_image "$T_URL" "$T_SHA256" "$T_COMPRESSED"
+
+    local ext="${T_COMPRESSED##*.}"
+    local img_path="$work_dir/${T_COMPRESSED%.$ext}"
+    case "$ext" in
+        gz)  gunzip -c "$CACHE_DIR/$T_COMPRESSED" > "$img_path" ;;
+        xz)  xz -dc   "$CACHE_DIR/$T_COMPRESSED" > "$img_path" ;;
+        *)   die "Unknown compression extension: $ext (expected gz or xz)" ;;
+    esac
+    echo "  Decompressed: $(du -h "$img_path" | cut -f1)"
+
+    patch_image "$img_path" "$work_dir" "$label" "$T_BIN"
+
+    gzip -9c "$img_path" > "$OUTPUT_DIR/$T_PSPI_NAME"
+    echo "  Compressed: $T_PSPI_NAME ($(du -h "$OUTPUT_DIR/$T_PSPI_NAME" | cut -f1))"
+
+    ls -lh "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.7z.* 2>/dev/null || true
+    rm -rf "$work_dir"
+}
+
+# --- Main ---
+
+cleanup
+echo "PSPi Version 6 | distro=$DISTRO version=$VERSION output=$OUTPUT_DIR"
+
+if [[ -z "$DRIVER_BINARIES_DIR" ]]; then
+    DRIVERS_BIN_DIR="$(mktemp -d /tmp/pspi-drivers-XXXXXX)"
+    build_drivers
+fi
+
+if [[ -z "$TARGET" ]]; then
+    for t in "${ALL_TARGETS[@]}"; do
+        build_image "$t"
+    done
+else
+    build_image "$TARGET"
+fi
+
+[[ -n "$DRIVERS_BIN_DIR" ]] && rm -rf "$DRIVERS_BIN_DIR"
+echo "Done. Artifacts in: $OUTPUT_DIR"

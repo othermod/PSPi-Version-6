@@ -1,0 +1,4 @@
+#!/bin/sh
+case "$1" in
+    start) cd __DRIVERS_BASE__ && ./boot.sh ;;
+esac
