@@ -119,7 +119,7 @@ static int bl_write_page(const uint8_t *data)
     int     elapsed_us = 0;
 
     buf[0] = CMD_WRITE_PAGE;
-    memcpy(buf + 1, data, SPM_PAGESIZE);
+    memcpy(buf + 1, data, sizeof(buf) - 1);
     if (i2c_write(BL_ADDR, buf, sizeof(buf)) < 0)
         return -1;
 
