@@ -271,16 +271,6 @@ build_image() {
     gzip -9c "$img_path" > "$OUTPUT_DIR/$pspi_name"
     echo "  Compressed: $pspi_name ($(du -h "$OUTPUT_DIR/$pspi_name" | cut -f1))"
 
-    local file_size
-    file_size="$(stat -c%s "$OUTPUT_DIR/$pspi_name")"
-    if [[ $file_size -gt $((2 * 1024 * 1024 * 1024)) ]]; then
-        echo "  Image > 2GB, splitting with 7z..."
-        cd "$OUTPUT_DIR"
-        7z a "${pspi_name}.7z" "$pspi_name" -v1500M 2>/dev/null || true
-        rm -f "$OUTPUT_DIR/$pspi_name"
-        cd /
-    fi
-
     ls -lh "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.7z.* 2>/dev/null || true
     rm -rf "$work_dir"
 }
