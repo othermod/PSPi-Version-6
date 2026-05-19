@@ -132,10 +132,14 @@ patch_batocera_image() {
     [[ -z "$device_path" ]] && die "No available loop device"
 
     local mnt_boot="$work_dir/mnt-boot"
+    local mnt_squashfs="$work_dir/mnt-squashfs"
+    local overlay_upper="$work_dir/overlay-upper"
+    local overlay_work="$work_dir/overlay-work"
+    local overlay_target="$work_dir/overlay-target"
+    mkdir -p "$mnt_boot" "$mnt_squashfs" "$overlay_upper" "$overlay_work" "$overlay_target"
 
-    trap "(umount '$mnt_boot' 2>/dev/null || true; losetup -d $device_path 2>/dev/null || true; rm -rf '$work_dir/rootfs')" RETURN
+    trap "(umount '$overlay_target' 2>/dev/null || true; umount '$mnt_squashfs' 2>/dev/null || true; umount '$mnt_boot' 2>/dev/null || true; losetup -d $device_path 2>/dev/null || true; rm -rf '$work_dir/rootfs' '$work_dir/overlay-upper' '$work_dir/overlay-work' '$work_dir/overlay-target' '$work_dir/mnt-squashfs')" RETURN
 
-    mkdir -p "$mnt_boot"
     mount "$device_path" "$mnt_boot" || die "Failed to mount boot partition"
 
     local device_config
@@ -184,10 +188,14 @@ patch_batocera_image() {
     cp "$bin_src/rtc_${BIN}"             "$mnt_boot/drivers/rtc"
 
     local batocera_squashfs="$mnt_boot/boot/batocera"
-    mkdir -p "$work_dir/rootfs"
-    unsquashfs -f -d "$work_dir/rootfs" "$batocera_squashfs" || die "Failed to extract rootfs"
 
-    cat << 'SVCEOF' > "$work_dir/rootfs/usr/lib/systemd/system/pspi-rtc.service"
+    mount --type squashfs --options loop \
+        --source "$batocera_squashfs" --target "$mnt_squashfs"
+    mount --type overlay \
+        --options "lowerdir=$mnt_squashfs,upperdir=$overlay_upper,workdir=$overlay_work" \
+        --source overlay --target "$overlay_target"
+
+    cat << 'SVCEOF' > "$overlay_target/usr/lib/systemd/system/pspi-rtc.service"
 [Unit]
 Description=PSPi RTC daemon (PCF8563)
 After=dev-i2c-1.device
@@ -203,11 +211,11 @@ RestartSec=5
 [Install]
 WantedBy=sysinit.target
 SVCEOF
-    mkdir -p "$work_dir/rootfs/usr/lib/systemd/system/sysinit.target.wants"
+    mkdir -p "$overlay_target/usr/lib/systemd/system/sysinit.target.wants"
     ln -sf ../system/pspi-rtc.service \
-        "$work_dir/rootfs/usr/lib/systemd/system/sysinit.target.wants/pspi-rtc.service"
+        "$overlay_target/usr/lib/systemd/system/sysinit.target.wants/pspi-rtc.service"
 
-    cat << 'SVCEOF' > "$work_dir/rootfs/usr/lib/systemd/system/pspi.service"
+    cat << 'SVCEOF' > "$overlay_target/usr/lib/systemd/system/pspi.service"
 [Unit]
 Description=PSPi gamepad and battery monitor
 After=sys-subsystem-net-devices-wlan0.device
@@ -222,36 +230,36 @@ RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 SVCEOF
-    mkdir -p "$work_dir/rootfs/usr/lib/systemd/system/multi-user.target.wants"
+    mkdir -p "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
     ln -sf ../system/pspi.service \
-        "$work_dir/rootfs/usr/lib/systemd/system/multi-user.target.wants/pspi.service"
+        "$overlay_target/usr/lib/systemd/system/multi-user.target.wants/pspi.service"
 
-    cat << 'EOF' > "$work_dir/rootfs/etc/init.d/S99pspi-daemons"
+    cat << 'EOF' > "$overlay_target/etc/init.d/S99pspi-daemons"
 #!/bin/sh
 case "$1" in
     start) cd /boot && ./boot.sh ;;
 esac
 EOF
-    chmod +x "$work_dir/rootfs/etc/init.d/S99pspi-daemons"
+    chmod +x "$overlay_target/etc/init.d/S99pspi-daemons"
 
     echo "  Repacking squashfs..."
-    local orig_size
-    orig_size=$(stat -c%s "$batocera_squashfs")
-    mksquashfs "$work_dir/rootfs" "$batocera_squashfs" -noappend -quiet -b 131072 || die "Failed to repack rootfs"
-    local new_size diff
-    new_size=$(stat -c%s "$batocera_squashfs")
-    diff=$((orig_size - new_size))
-    if [[ $diff -gt 0 ]]; then
-        echo "  Padding squashfs ($((diff / 1048576)) MB)..."
-        dd if=/dev/zero bs=1M count=$((diff / 1048576)) conv=notrunc >> "$batocera_squashfs"
-    fi
+    local temp_squashfs="$work_dir/filesystem.squashfs"
+    mksquashfs "$overlay_target" "$temp_squashfs" -noappend -quiet -comp zstd || die "Failed to repack rootfs"
 
-    # Zero out free space in the boot partition to improve compression
+    # Unmount overlay and squashfs before zeroing to prevent corruption
+    echo "  Unmounting overlay and squashfs..."
+    umount "$overlay_target"
+    umount "$mnt_squashfs"
+
+    # Zero out free space in the boot partition
     echo "  Zeroing out free space in boot partition..."
     dd if=/dev/zero of="$mnt_boot/boot/batocera" bs=1M status=progress || true
     sync
     rm "$mnt_boot/boot/batocera"
 
+    # Copy the repacked squashfs back to the image
+    echo "  Copying repacked squashfs back to image..."
+    cp "$temp_squashfs" "$mnt_boot/boot/batocera"
     echo "batocera-${BIN}" > "$mnt_boot/batocera.board"
 }
 
