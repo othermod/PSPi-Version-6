@@ -246,6 +246,12 @@ EOF
         dd if=/dev/zero bs=1M count=$((diff / 1048576)) conv=notrunc >> "$batocera_squashfs"
     fi
 
+    # Zero out free space in the boot partition to improve compression
+    echo "  Zeroing out free space in boot partition..."
+    dd if=/dev/zero of="$mnt_boot/boot/batocera" bs=1M status=progress || true
+    sync
+    rm "$mnt_boot/boot/batocera"
+
     echo "batocera-${BIN}" > "$mnt_boot/batocera.board"
 }
 
@@ -278,16 +284,6 @@ build_image() {
     echo "  Decompressed: $(du -h "$img_path" | cut -f1)"
 
     patch_batocera_image "$img_path" "$work_dir" "$label"
-
-    # Pad image to original size for optimal gzip compression
-    local orig_img_size=6980370432
-    local cur_size pad_bytes
-    cur_size=$(stat -c%s "$img_path")
-    pad_bytes=$((orig_img_size - cur_size))
-    if [[ $pad_bytes -gt 0 ]]; then
-        echo "  Padding image ($((pad_bytes / 1048576)) MB)..."
-        dd if=/dev/zero bs=1M count=$((pad_bytes / 1048576)) conv=notrunc >> "$img_path"
-    fi
 
     gzip -9c "$img_path" > "$OUTPUT_DIR/$pspi_name"
     echo "  Compressed: $pspi_name ($(du -h "$OUTPUT_DIR/$pspi_name" | cut -f1))"
