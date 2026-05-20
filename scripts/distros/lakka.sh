@@ -1,16 +1,8 @@
-# Lakka distro config for buildroot.sh
-# Sourced by buildroot.sh; not run directly.
-#
-# To build all targets:   sudo ./scripts/buildroot.sh --distro lakka
-# To build one target:    sudo ./scripts/buildroot.sh --distro lakka --target cm4
-
-# --- Partition and filesystem layout ---
-
-SQUASHFS_PATH="SYSTEM"    # path to squashfs within the mounted boot partition
-DRIVERS_BASE="/flash"     # runtime path where drivers/ and boot.sh live on the device
-VC4_REQUIRED=true         # distroconfig.txt must contain dtoverlay=vc4-kms-v3d
+SQUASHFS_PATH="SYSTEM"
+DRIVERS_BASE="/flash"
+VC4_REQUIRED=true
 INIT_SYSTEM=systemd
-SQUASHFS_COMP_ARGS=""     # no explicit compression; mksquashfs uses its default
+SQUASHFS_COMP_ARGS=""
 
 # --- Targets ---
 
@@ -38,10 +30,6 @@ TARGET_BIN[cm5]=64
 TARGET_BIN[zero2]=64
 TARGET_BIN[zero1]=32
 
-# --- Hooks ---
-
-# distro_post_patch: called after systemd services are written, before squashfs repack.
-# Patches RetroArch defaults to match PSPi button layout and display.
 distro_post_patch() {
     local overlay_target="$1"
     # mnt_boot="$2"  work_dir="$3"  BIN="$4" -- not needed here
@@ -55,8 +43,6 @@ distro_post_patch() {
     sed -i 's/input_volume_down = "subtract"/input_volume_down = "volumedown"/'             "$cfg"
 }
 
-# distro_post_write: called after the repacked squashfs is copied back into the image.
-# Writes the SYSTEM.md5 checksum that LibreELEC/Lakka uses to verify the rootfs.
 distro_post_write() {
     local mnt_boot="$1"
     # BIN="$2" -- not needed here
