@@ -37,35 +37,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: '*'
-          path: artifacts
-
-      - name: Flatten structure
-        run: |
-          mkdir -p drivers-bin
-
-          # Gamepad
-          mv artifacts/pspi-gamepad-bin/32bit/gamepad drivers-bin/gamepad_32
-          mv artifacts/pspi-gamepad-bin/64bit/gamepad drivers-bin/gamepad_64
-
-          # Battery
-          mv artifacts/pspi-battery-bin/32bit/battery_monitor drivers-bin/battery_monitor_32
-          mv artifacts/pspi-battery-bin/64bit/battery_monitor drivers-bin/battery_monitor_64
-
-          # RTC
-          mv artifacts/pspi-rtc-bin/32bit/rtc drivers-bin/rtc_32
-          mv artifacts/pspi-rtc-bin/64bit/rtc drivers-bin/rtc_64
-
-          # Audio overlays
-          mkdir -p drivers-bin/audio_overlays
-          mv artifacts/pspi-audio-overlays/*.dtbo drivers-bin/audio_overlays/
-
-          # LCD overlays
-          mkdir -p drivers-bin/lcd_overlays
-          mv artifacts/pspi-lcd-overlays/*.dtbo drivers-bin/lcd_overlays/
-
-          # PCIe overlays
-          mkdir -p drivers-bin/pcie_overlays
-          mv artifacts/pspi-pcie-overlay/*.dtbo drivers-bin/pcie_overlays/
+          path: drivers-bin/
 
       - name: Upload combined artifacts
         uses: actions/upload-artifact@v4

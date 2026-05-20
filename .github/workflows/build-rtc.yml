@@ -32,5 +32,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pspi-rtc-bin
-          path: rpi/rtc/bin/
+          name: rtc
+          path: |
+            rpi/rtc/32
+            rpi/rtc/64

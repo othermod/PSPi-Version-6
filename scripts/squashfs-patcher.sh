@@ -35,7 +35,6 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/config"
 OUTPUT_DIR="$PROJECT_DIR/completed_images"
 CACHE_DIR="$PROJECT_DIR/cache"
-DRIVERS_BIN_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -85,22 +84,14 @@ cleanup() {
 }
 
 build_drivers() {
-    mkdir -p "$DRIVERS_BIN_DIR"
-
     echo "Building gamepad..."
     ( cd "$PROJECT_DIR/rpi/gamepad" && make 32 && make 64 )
-    cp "$PROJECT_DIR/rpi/gamepad/bin/32bit/gamepad"         "$DRIVERS_BIN_DIR/gamepad_32"
-    cp "$PROJECT_DIR/rpi/gamepad/bin/64bit/gamepad"         "$DRIVERS_BIN_DIR/gamepad_64"
 
     echo "Building battery monitor..."
     ( cd "$PROJECT_DIR/rpi/battery" && make 32 && make 64 )
-    cp "$PROJECT_DIR/rpi/battery/bin/32bit/battery_monitor" "$DRIVERS_BIN_DIR/battery_monitor_32"
-    cp "$PROJECT_DIR/rpi/battery/bin/64bit/battery_monitor" "$DRIVERS_BIN_DIR/battery_monitor_64"
 
     echo "Building rtc..."
     ( cd "$PROJECT_DIR/rpi/rtc" && make 32 && make 64 )
-    cp "$PROJECT_DIR/rpi/rtc/bin/32bit/rtc"                 "$DRIVERS_BIN_DIR/rtc_32"
-    cp "$PROJECT_DIR/rpi/rtc/bin/64bit/rtc"                 "$DRIVERS_BIN_DIR/rtc_64"
 
     for overlay in audio lcd pcie; do
         echo "Building $overlay overlay..."
@@ -209,24 +200,19 @@ patch_image() {
     cp "$CONFIG_DIR/boot.sh"   "$mnt_boot/boot.sh"
     chmod +x "$mnt_boot/boot.sh"
 
+    local base="${DRIVER_BINARIES_DIR:-$PROJECT_DIR/rpi}"
+
     # Copy device tree overlays
     mkdir -p "$mnt_boot/overlays"
-    if [[ -n "$DRIVER_BINARIES_DIR" ]]; then
-        for overlay in audio lcd pcie; do
-            cp "$DRIVER_BINARIES_DIR/${overlay}_overlays/"*.dtbo "$mnt_boot/overlays/" 2>/dev/null || true
-        done
-    else
-        for overlay in audio lcd pcie; do
-            cp "$PROJECT_DIR/rpi/$overlay/"*.dtbo "$mnt_boot/overlays/" 2>/dev/null || true
-        done
-    fi
+    for overlay in audio lcd pcie; do
+        cp "${base}/${overlay}/"*.dtbo "$mnt_boot/overlays/" 2>/dev/null || true
+    done
 
     # Copy driver binaries
-    local bin_src="${DRIVER_BINARIES_DIR:-$DRIVERS_BIN_DIR}"
     mkdir -p "$mnt_boot/drivers"
-    cp "$bin_src/gamepad_${BIN}"         "$mnt_boot/drivers/gamepad"
-    cp "$bin_src/battery_monitor_${BIN}" "$mnt_boot/drivers/battery_monitor"
-    cp "$bin_src/rtc_${BIN}"             "$mnt_boot/drivers/rtc"
+    cp "${base}/gamepad/${BIN}/gamepad"           "$mnt_boot/drivers/gamepad"
+    cp "${base}/battery/${BIN}/battery_monitor"   "$mnt_boot/drivers/battery_monitor"
+    cp "${base}/rtc/${BIN}/rtc"                   "$mnt_boot/drivers/rtc"
 
     # Mount squashfs and overlay
     mount --type squashfs --options loop \
@@ -337,7 +323,6 @@ cleanup
 echo "PSPi Version 6 | distro=$DISTRO version=$VERSION output=$OUTPUT_DIR"
 
 if [[ -z "$DRIVER_BINARIES_DIR" ]]; then
-    DRIVERS_BIN_DIR="$(mktemp -d /tmp/pspi-drivers-XXXXXX)"
     build_drivers
 fi
 
@@ -349,5 +334,4 @@ else
     build_image "$TARGET"
 fi
 
-[[ -n "$DRIVERS_BIN_DIR" ]] && rm -rf "$DRIVERS_BIN_DIR"
 echo "Done. Artifacts in: $OUTPUT_DIR"

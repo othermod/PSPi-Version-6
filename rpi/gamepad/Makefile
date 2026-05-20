@@ -11,23 +11,23 @@ CFLAGS_COMMON = -O3 -lrt -static
 # Build for 32-bit architecture
 32:
 	@echo "Building 32-bit..."
-	@mkdir -p bin/32bit
-	@rm -f src/*.o
-	$(CC_32) -o bin/32bit/gamepad src/gamepad.c $(CFLAGS_COMMON)
+	@mkdir -p 32
+	@rm -f *.o
+	$(CC_32) -o 32bit/gamepad gamepad.c $(CFLAGS_COMMON)
 	@echo "32-bit build complete."
 
 # Build for 64-bit architecture
 64:
 	@echo "Building 64-bit..."
-	@mkdir -p bin/64bit
-	@rm -f src/*.o
-	$(CC_64) -o bin/64bit/gamepad src/gamepad.c $(CFLAGS_COMMON)
+	@mkdir -p 64
+	@rm -f *.o
+	$(CC_64) -o 64bit/gamepad gamepad.c $(CFLAGS_COMMON)
 	@echo "64-bit build complete."
 
 # Clean build artifacts
 clean:
 	rm -rf bin
-	rm -f src/*.o
+	rm -f *.o
 	@echo "Clean complete."
 
 .PHONY: 32 64 clean

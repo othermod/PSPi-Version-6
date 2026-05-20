@@ -32,5 +32,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pspi-gamepad-bin
-          path: rpi/gamepad/bin/
+          name: gamepad
+          path: |
+            rpi/gamepad/32
+            rpi/gamepad/64

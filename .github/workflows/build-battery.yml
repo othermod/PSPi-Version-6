@@ -32,5 +32,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pspi-battery-bin
-          path: rpi/battery/bin/
+          name: battery
+          path: |
+            rpi/battery/32
+            rpi/battery/64
