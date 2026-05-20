@@ -18,11 +18,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install AVR toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-avr binutils-avr avr-libc curl
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sudo sh -s -- -b /usr/local/bin
+          sudo apt-get install -y --no-install-recommends gcc-avr binutils-avr avr-libc
+
+      - name: Install arduino-cli
+        uses: arduino/setup-arduino-cli@v2
 
       - name: Install Arduino AVR core
         run: arduino-cli core install arduino:avr
