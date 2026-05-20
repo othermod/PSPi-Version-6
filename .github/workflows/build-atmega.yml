@@ -1,0 +1,40 @@
+name: Build ATmega Firmware
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'atmega/firmware/**'
+  pull_request:
+    paths:
+      - 'atmega/firmware/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-avr binutils-avr avr-libc curl
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Install Arduino AVR core
+        run: arduino-cli core install arduino:avr
+
+      - name: Build
+        run: |
+          cd atmega/firmware
+          make all
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: atmega-firmware
+          path: atmega/firmware/firmware.hex

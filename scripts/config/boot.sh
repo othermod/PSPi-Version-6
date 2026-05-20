@@ -11,6 +11,7 @@ deadzone=20
 autocenter=false
 verbose=false
 extrabuttons=disabled
+update_firmware=false
 while IFS="=" read -r key value; do
     [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
     key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
@@ -26,8 +27,17 @@ while IFS="=" read -r key value; do
         autocenter) autocenter="$value" ;;
         verbose) verbose="$value" ;;
         extrabuttons) extrabuttons="$value" ;;
+        update_firmware) update_firmware="$value" ;;
     esac
 done < "$CONF"
+
+if [[ "$update_firmware" == "true" ]]; then
+    ./drivers/update_firmware ./drivers/firmware.hex
+    case $? in
+        1) poweroff ;;
+        2) echo "Firmware update failed, continuing boot." ;;
+    esac
+fi
 
 GAMEPAD_ARGS=""
 [[ "$enable_dim" == "true" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --dim $dim_seconds"

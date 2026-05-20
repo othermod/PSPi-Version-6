@@ -424,7 +424,7 @@ int main(int argc, char *argv[])
 {
     const char   *hex_file    = NULL;
     const char   *backup_file = NULL;
-    int           opt, ret    = 0;
+    int           opt, ret    = 2;
     uint8_t       sig0, sig1, sig2, version, fw_pages;
     flash_image_t image;
 
@@ -432,45 +432,45 @@ int main(int argc, char *argv[])
         switch (opt) {
             case 'b': backup_file = optarg; break;
             case 'h': usage(argv[0]); return 0;
-            default:  usage(argv[0]); return 1;
+            default:  usage(argv[0]); return 2;
         }
     }
 
     if (optind >= argc) {
         fprintf(stderr, "Error: no HEX file specified.\n\n");
         usage(argv[0]);
-        return 1;
+        return 2;
     }
 
     hex_file = argv[optind];
 
     printf("Parsing %s...\n\n", hex_file);
     if (parse_hex_file(hex_file, &image) < 0)
-        return 1;
+        return 2;
 
     if (i2c_open("/dev/i2c-1") < 0)
-        return 1;
+        return 2;
 
     printf("--- Enter Bootloader ---\n");
-    if (enter_bootloader() < 0) { ret = 1; goto done; }
+    if (enter_bootloader() < 0) { ret = 0; goto done; }
 
     if (bl_abort_timeout() < 0) {
         fprintf(stderr, "Failed to abort boot timeout.\n");
-        ret = 1;
+        ret = 2;
         goto done;
     }
     printf("Keeping Atmega in bootloader mode for flashing.\n");
 
     if (bl_read_info(&sig0, &sig1, &sig2, &version, &fw_pages) < 0) {
         fprintf(stderr, "Failed to read chip info.\n");
-        ret = 1;
+        ret = 2;
         goto done;
     }
     printf("Signature: 0x%02X 0x%02X 0x%02X\n", sig0, sig1, sig2);
     if (sig0 != EXPECTED_SIG_0 || sig1 != EXPECTED_SIG_1 || sig2 != EXPECTED_SIG_2) {
         fprintf(stderr, "Signature mismatch: expected 0x%02X 0x%02X 0x%02X. Aborting.\n",
                 EXPECTED_SIG_0, EXPECTED_SIG_1, EXPECTED_SIG_2);
-        ret = 1;
+        ret = 2;
         goto done;
     }
     printf("Bootloader version: 0x%02X\n", version);
@@ -484,32 +484,33 @@ int main(int argc, char *argv[])
         if (image.page_has_data[i]) {
             fprintf(stderr, "Error: firmware image exceeds available flash "
             "(data in page %d, max page is %d).\n", i, fw_pages - 1);
-            ret = 1;
+            ret = 2;
             goto done;
         }
     }
 
     if (backup_file) {
         printf("--- Backup ---\n");
-        if (backup_firmware(backup_file, fw_pages) < 0) { ret = 1; goto done; }
+        if (backup_firmware(backup_file, fw_pages) < 0) { ret = 2; goto done; }
     }
 
     printf("--- Flash ---\n");
-    if (flash_image(&image) < 0) { ret = 1; goto done; }
+    if (flash_image(&image) < 0) { ret = 2; goto done; }
     printf("\n");
 
 
     printf("--- Verify ---\n");
-    if (verify_image(&image) < 0) { ret = 1; goto done; }
+    if (verify_image(&image) < 0) { ret = 2; goto done; }
     printf("\n");
 
     printf("--- Finalize ---\n");
     if (bl_finalize() < 0) {
         fprintf(stderr, "Failed to send finalize command.\n");
-        ret = 1;
+        ret = 2;
         goto done;
     }
     printf("Finalize sent. Bootloader is writing metadata and launching firmware.\n");
+    ret = 1;
 
     done:
     close(i2c_fd);

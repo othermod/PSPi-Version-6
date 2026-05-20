@@ -20,6 +20,12 @@ jobs:
   build-rtc:
     uses: ./.github/workflows/build-rtc.yml
 
+  build-firmware:
+    uses: ./.github/workflows/build-firmware.yml
+
+  build-atmega:
+    uses: ./.github/workflows/build-atmega.yml
+
   build-audio:
     uses: ./.github/workflows/build-audio.yml
 
@@ -30,7 +36,7 @@ jobs:
     uses: ./.github/workflows/build-pcie.yml
 
   collect-artifacts:
-    needs: [build-gamepad, build-battery, build-rtc, build-audio, build-lcd, build-pcie]
+    needs: [build-gamepad, build-battery, build-rtc, build-firmware, build-audio, build-lcd, build-pcie]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -71,7 +77,7 @@ jobs:
           echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
 
   build-images:
-    needs: [collect-artifacts, generate-matrix]
+    needs: [collect-artifacts, generate-matrix, build-atmega]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -86,6 +92,12 @@ jobs:
         with:
           name: pspi-driver-binaries
           path: drivers-bin/
+
+      - name: Download ATmega firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: atmega-firmware
+          path: atmega/firmware/
 
       - name: Determine version
         id: version
