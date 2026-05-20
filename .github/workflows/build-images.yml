@@ -42,7 +42,7 @@ jobs:
     uses: ./.github/workflows/build-pcie.yml
 
   collect-artifacts:
-    needs: [build-gamepad, build-battery, build-rtc, build-firmware, build-audio, build-lcd, build-pcie]
+    needs: [build-gamepad, build-battery, build-rtc, build-firmware, build-atmega, build-audio, build-lcd, build-pcie]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -87,7 +87,7 @@ jobs:
           echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
 
   build-images:
-    needs: [collect-artifacts, generate-matrix, build-atmega]
+    needs: [collect-artifacts, generate-matrix]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -103,11 +103,6 @@ jobs:
           name: pspi-driver-binaries
           path: drivers-bin/
 
-      - name: Download ATmega firmware
-        uses: actions/download-artifact@v4
-        with:
-          name: atmega-firmware
-          path: atmega/firmware/
 
       - name: Determine version
         id: version
@@ -145,7 +140,7 @@ jobs:
           retention-days: 14
 
   package-binaries:
-    needs: [collect-artifacts, build-atmega]
+    needs: [collect-artifacts]
     runs-on: ubuntu-latest
     steps:
       - name: Download driver binaries
@@ -154,11 +149,6 @@ jobs:
           name: pspi-driver-binaries
           path: staging/
 
-      - name: Download ATmega firmware
-        uses: actions/download-artifact@v4
-        with:
-          name: atmega-firmware
-          path: staging/atmega/
 
       - name: Package
         run: tar -czf pspi-binaries.tar.gz -C staging .

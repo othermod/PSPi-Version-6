@@ -217,7 +217,7 @@ patch_image() {
     cp "${base}/battery/${BIN}/battery_monitor"   "$mnt_boot/drivers/battery_monitor"
     cp "${base}/rtc/${BIN}/rtc"                   "$mnt_boot/drivers/rtc"
     cp "${base}/firmware/${BIN}/update_firmware"  "$mnt_boot/drivers/update_firmware"
-    cp "$PROJECT_DIR/atmega/firmware/firmware.hex" "$mnt_boot/drivers/firmware.hex"
+    cp "${base}/atmega/firmware.hex"               "$mnt_boot/drivers/firmware.hex"
 
     # Mount squashfs and overlay
     mount --type squashfs --options loop \
