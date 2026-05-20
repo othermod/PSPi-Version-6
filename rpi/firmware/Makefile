@@ -1,28 +1,26 @@
-CC       = gcc
-CFLAGS   = -Wall -Wextra -Wshadow -O2
-TARGET   = update_firmware
-SRC      = update_firmware.c
-BINDIR   = bin
+# Cross-compilers
+CC_32 = arm-linux-gnueabi-gcc -march=armv6zk -mfloat-abi=softfp
+CC_64 = aarch64-linux-gnu-gcc
 
-all: cross
+CFLAGS_COMMON = -O3 -lrt -static
 
-cross: $(BINDIR)/$(TARGET)-armhf $(BINDIR)/$(TARGET)-arm64
+# Build for 32-bit architecture
+32:
+	@echo "Building 32-bit firmware updater..."
+	@mkdir -p 32
+	$(CC_32) -o 32/update_firmware update_firmware.c $(CFLAGS_COMMON)
+	@echo "32-bit build complete."
 
-$(BINDIR)/$(TARGET)-armhf: $(SRC) | $(BINDIR)
-	arm-linux-gnueabihf-gcc $(CFLAGS) -static -o $@ $<
+# Build for 64-bit architecture
+64:
+	@echo "Building 64-bit firmware updater..."
+	@mkdir -p 64
+	$(CC_64) -o 64/update_firmware update_firmware.c $(CFLAGS_COMMON)
+	@echo "64-bit build complete."
 
-$(BINDIR)/$(TARGET)-arm64: $(SRC) | $(BINDIR)
-	aarch64-linux-gnu-gcc $(CFLAGS) -static -o $@ $<
-
-$(BINDIR):
-	mkdir -p $@
-
-native: $(BINDIR)/$(TARGET)
-
-$(BINDIR)/$(TARGET): $(SRC) | $(BINDIR)
-	$(CC) $(CFLAGS) -o $@ $<
-
+# Clean build artifacts
 clean:
-	rm -rf $(BINDIR)
+	rm -rf bin
+	@echo "Clean complete."
 
-.PHONY: all native cross clean
+.PHONY: 32 64 clean

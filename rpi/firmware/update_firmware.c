@@ -411,9 +411,7 @@ static void usage(const char *prog)
             "Usage: %s [options] <firmware.hex>\n"
             "\n"
             "Options:\n"
-            "  -d <device>    I2C device node (default: /dev/i2c-1)\n"
             "  -b <file>      Backup current firmware to HEX file before flashing\n"
-            "  -n             Skip verify and finalize\n"
             "  -h             Show this help\n"
             "\n"
             "The device must be in bootloader mode before running this tool.\n"
@@ -424,19 +422,15 @@ static void usage(const char *prog)
 
 int main(int argc, char *argv[])
 {
-    const char   *device      = "/dev/i2c-1";
     const char   *hex_file    = NULL;
     const char   *backup_file = NULL;
-    int           skip_verify = 0;
     int           opt, ret    = 0;
     uint8_t       sig0, sig1, sig2, version, fw_pages;
     flash_image_t image;
 
-    while ((opt = getopt(argc, argv, "d:b:nh")) != -1) {
+    while ((opt = getopt(argc, argv, "b:h")) != -1) {
         switch (opt) {
-            case 'd': device = optarg;  break;
             case 'b': backup_file = optarg; break;
-            case 'n': skip_verify = 1;  break;
             case 'h': usage(argv[0]); return 0;
             default:  usage(argv[0]); return 1;
         }
@@ -454,7 +448,7 @@ int main(int argc, char *argv[])
     if (parse_hex_file(hex_file, &image) < 0)
         return 1;
 
-    if (i2c_open(device) < 0)
+    if (i2c_open("/dev/i2c-1") < 0)
         return 1;
 
     printf("--- Enter Bootloader ---\n");
@@ -504,12 +498,6 @@ int main(int argc, char *argv[])
     if (flash_image(&image) < 0) { ret = 1; goto done; }
     printf("\n");
 
-    if (skip_verify) {
-        printf("Skipping verification and finalize (-n).\n"
-        "Device remains in bootloader. Firmware will not boot until\n"
-        "a verified flash is completed and finalized.\n");
-        goto done;
-    }
 
     printf("--- Verify ---\n");
     if (verify_image(&image) < 0) { ret = 1; goto done; }
