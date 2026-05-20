@@ -134,8 +134,33 @@ jobs:
           path: completed_images/
           retention-days: 14
 
+  package-binaries:
+    needs: [collect-artifacts, build-atmega]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download driver binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-driver-binaries
+          path: staging/
+
+      - name: Download ATmega firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: atmega-firmware
+          path: staging/atmega/
+
+      - name: Package
+        run: tar -czf pspi-binaries.tar.gz -C staging .
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: pspi-binaries
+          path: pspi-binaries.tar.gz
+
   release:
-    needs: build-images
+    needs: [build-images, package-binaries]
     runs-on: ubuntu-latest
     steps:
       - name: Determine version
@@ -159,13 +184,21 @@ jobs:
           path: completed_images/
           merge-multiple: true
 
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: pspi-binaries
+          path: release-assets/
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           shopt -s nullglob
+          mv release-assets/pspi-binaries.tar.gz release-assets/pspi-binaries-v${VERSION}.tar.gz
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
             completed_images/*.img.gz \
+            release-assets/pspi-binaries-v${VERSION}.tar.gz \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
