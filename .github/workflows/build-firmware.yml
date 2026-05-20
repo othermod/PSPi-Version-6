@@ -21,20 +21,18 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gcc-arm-linux-gnueabihf \
-            gcc-aarch64-linux-gnu \
-            libc6-dev-armhf-cross \
-            libc6-dev-arm64-cross \
-            make
+          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
 
-      - name: Build cross-compiled binaries
+      - name: Build
         run: |
           cd rpi/firmware
-          make cross
+          make 32
+          make 64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pspi-firmware-tool
-          path: rpi/firmware/bin/
+          name: firmware
+          path: |
+            rpi/firmware/32
+            rpi/firmware/64

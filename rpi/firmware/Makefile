@@ -20,7 +20,7 @@ CFLAGS_COMMON = -O3 -lrt -static
 
 # Clean build artifacts
 clean:
-	rm -rf bin
+	rm -rf 32 64
 	@echo "Clean complete."
 
 .PHONY: 32 64 clean
