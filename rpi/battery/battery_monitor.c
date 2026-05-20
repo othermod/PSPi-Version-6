@@ -181,7 +181,7 @@ static void update_sysfs() {
     bool plugged_in = (battery.charge_state == CHARGING ||
     battery.charge_state == CHARGED);
 
-    snprintf(buf, sizeof(buf), "%d\n", battery.percent * 10000);
+    snprintf(buf, sizeof(buf), "%d\n", battery.percent * 20000);
     write_file(BAT_DIR "/charge_now",   buf);
 
     snprintf(buf, sizeof(buf), "%d\n", battery.percent);
