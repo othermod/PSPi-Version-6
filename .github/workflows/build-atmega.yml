@@ -22,8 +22,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends gcc-avr binutils-avr avr-libc curl
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          echo "$HOME/bin" >> $GITHUB_PATH
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sudo sh -s -- -b /usr/local/bin
 
       - name: Install Arduino AVR core
         run: arduino-cli core install arduino:avr
