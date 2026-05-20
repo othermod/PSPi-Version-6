@@ -1,4 +1,4 @@
-name: Release Lakka
+name: Release Images
 
 on:
   workflow_dispatch:
@@ -48,7 +48,6 @@ jobs:
           mv artifacts/pspi-gamepad-bin/64bit/gamepad drivers-bin/gamepad_64
 
           # Battery
-          mkdir -p drivers-bin/battery
           mv artifacts/pspi-battery-bin/32bit/battery_monitor drivers-bin/battery_monitor_32
           mv artifacts/pspi-battery-bin/64bit/battery_monitor drivers-bin/battery_monitor_64
 
@@ -64,9 +63,9 @@ jobs:
           mkdir -p drivers-bin/lcd_overlays
           mv artifacts/pspi-lcd-overlays/*.dtbo drivers-bin/lcd_overlays/
 
-          # PCIe overlay
+          # PCIe overlays
           mkdir -p drivers-bin/pcie_overlays
-          mv artifacts/pspi-pcie-overlay/*.dtbo drivers-bin/pcie_overlays
+          mv artifacts/pspi-pcie-overlay/*.dtbo drivers-bin/pcie_overlays/
 
       - name: Upload combined artifacts
         uses: actions/upload-artifact@v4
@@ -74,9 +73,38 @@ jobs:
           name: pspi-driver-binaries
           path: drivers-bin/
 
-  build-image-cm4:
-    needs: collect-artifacts
+  generate-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate build matrix
+        id: matrix
+        run: |
+          matrix='[]'
+          for distro_file in scripts/distros/*.sh; do
+            distro=$(basename "$distro_file" .sh)
+            targets=$(bash -c "source '$distro_file' 2>/dev/null && echo \"\${ALL_TARGETS[*]}\"")
+            if [[ -z "$targets" ]]; then
+              echo "ERROR: No ALL_TARGETS found in $distro_file" >&2
+              exit 1
+            fi
+            for target in $targets; do
+              matrix=$(echo "$matrix" | jq --arg d "$distro" --arg t "$target" '. += [{"distro": $d, "target": $t}]')
+            done
+          done
+          echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
+
+  build-images:
+    needs: [collect-artifacts, generate-matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -103,179 +131,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             squashfs-tools \
-            p7zip-full \
-            device-tree-compiler \
-            git \
             wget \
             util-linux
 
       - name: Build image
         run: |
-          sudo ./scripts/build-lakka.sh \
+          sudo ./scripts/squashfs-patcher.sh \
+            --distro "${{ matrix.distro }}" \
             --version "${{ steps.version.outputs.version }}" \
             --driver-binaries "$(pwd)/drivers-bin" \
-            --target cm4
+            --target "${{ matrix.target }}"
 
       - name: Upload build artifacts
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: pspi-images-${{ steps.version.outputs.version }}-cm4
-          path: completed_images/
-          retention-days: 14
-
-  build-image-cm5:
-    needs: collect-artifacts
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download driver binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: pspi-driver-binaries
-          path: drivers-bin/
-
-      - name: Determine version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            VERSION="${VERSION#[vV]}"
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            squashfs-tools \
-            p7zip-full \
-            device-tree-compiler \
-            git \
-            wget \
-            util-linux
-
-      - name: Build image
-        run: |
-          sudo ./scripts/build-lakka.sh \
-            --version "${{ steps.version.outputs.version }}" \
-            --driver-binaries "$(pwd)/drivers-bin" \
-            --target cm5
-
-      - name: Upload build artifacts
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pspi-images-${{ steps.version.outputs.version }}-cm5
-          path: completed_images/
-          retention-days: 14
-
-  build-image-zero:
-    needs: collect-artifacts
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download driver binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: pspi-driver-binaries
-          path: drivers-bin/
-
-      - name: Determine version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            VERSION="${VERSION#[vV]}"
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            squashfs-tools \
-            p7zip-full \
-            device-tree-compiler \
-            git \
-            wget \
-            util-linux
-
-      - name: Build image
-        run: |
-          sudo ./scripts/build-lakka.sh \
-            --version "${{ steps.version.outputs.version }}" \
-            --driver-binaries "$(pwd)/drivers-bin" \
-            --target zero
-
-      - name: Upload build artifacts
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pspi-images-${{ steps.version.outputs.version }}-zero
-          path: completed_images/
-          retention-days: 14
-
-  build-image-arm:
-    needs: collect-artifacts
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download driver binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: pspi-driver-binaries
-          path: drivers-bin/
-
-      - name: Determine version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            VERSION="${VERSION#[vV]}"
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            squashfs-tools \
-            p7zip-full \
-            device-tree-compiler \
-            git \
-            wget \
-            util-linux
-
-      - name: Build image
-        run: |
-          sudo ./scripts/build-lakka.sh \
-            --version "${{ steps.version.outputs.version }}" \
-            --driver-binaries "$(pwd)/drivers-bin" \
-            --target arm
-
-      - name: Upload build artifacts
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pspi-images-${{ steps.version.outputs.version }}-arm
+          name: pspi-images-${{ steps.version.outputs.version }}-${{ matrix.distro }}-${{ matrix.target }}
           path: completed_images/
           retention-days: 14
 
   release:
-    needs: [build-image-cm4, build-image-cm5, build-image-zero, build-image-arm]
+    needs: build-images
     runs-on: ubuntu-latest
     steps:
       - name: Determine version
@@ -289,7 +165,7 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Download build artifacts
@@ -306,6 +182,6 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           shopt -s nullglob
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            completed_images/*.img.gz completed_images/*.7z.* \
+            completed_images/*.img.gz \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
