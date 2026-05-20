@@ -6,6 +6,12 @@ on:
       version:
         description: 'Version string (e.g. 1.0.0)'
         required: true
+      distro:
+        description: 'Single distro to build (optional, for testing)'
+        required: false
+      target:
+        description: 'Single target to build (optional, for testing)'
+        required: false
 
 permissions:
   contents: write
@@ -62,18 +68,22 @@ jobs:
       - name: Generate build matrix
         id: matrix
         run: |
-          matrix='[]'
-          for distro_file in scripts/distros/*.sh; do
-            distro=$(basename "$distro_file" .sh)
-            targets=$(bash -c "source '$distro_file' 2>/dev/null && echo \"\${ALL_TARGETS[*]}\"")
-            if [[ -z "$targets" ]]; then
-              echo "ERROR: No ALL_TARGETS found in $distro_file" >&2
-              exit 1
-            fi
-            for target in $targets; do
-              matrix=$(echo "$matrix" | jq --arg d "$distro" --arg t "$target" '. += [{"distro": $d, "target": $t}]')
+          if [[ -n "${{ github.event.inputs.distro }}" && -n "${{ github.event.inputs.target }}" ]]; then
+            matrix=$(jq -cn --arg d "${{ github.event.inputs.distro }}" --arg t "${{ github.event.inputs.target }}" '[{"distro": $d, "target": $t}]')
+          else
+            matrix='[]'
+            for distro_file in scripts/distros/*.sh; do
+              distro=$(basename "$distro_file" .sh)
+              targets=$(bash -c "source '$distro_file' 2>/dev/null && echo \"\${ALL_TARGETS[*]}\"")
+              if [[ -z "$targets" ]]; then
+                echo "ERROR: No ALL_TARGETS found in $distro_file" >&2
+                exit 1
+              fi
+              for target in $targets; do
+                matrix=$(echo "$matrix" | jq --arg d "$distro" --arg t "$target" '. += [{"distro": $d, "target": $t}]')
+              done
             done
-          done
+          fi
           echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
 
   build-images:
