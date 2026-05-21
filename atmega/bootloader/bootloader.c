@@ -341,7 +341,7 @@ int main(void)
                 {
                     rpi_absent_ovf = 0;
                 }
-                else if (++rpi_absent_ovf >= (uint8_t)(5 * TIMER_OVF_PER_SEC))
+                else if (++rpi_absent_ovf >= (uint8_t)(2 * TIMER_OVF_PER_SEC))
                 {
                     PORTB &= ~EN_5V_PIN;
                     rpi_absent_ovf = 0;
