@@ -46,11 +46,23 @@
 #define LCD_CONTROL                 (1<<PB2)
 #define EN_5V_PIN                   (1<<PB6)
 #define LED_WIFI_PIN                ((1<<PB3) | (1<<PB7))
+#define RPI_DETECT                  (1<<PD1)
+#define BTN_DISP                    (1<<PB0)
 
-static uint8_t  bl_mode     = BL_HOLD;
-static uint8_t  blink_fast  = 0;
-static uint8_t  page_buf[SPM_PAGESIZE];
-static uint16_t flash_addr;
+static uint8_t          bl_mode            = BL_HOLD;
+static uint8_t          blink_fast         = 0;
+static uint8_t          page_buf[SPM_PAGESIZE];
+static uint16_t         flash_addr;
+static volatile uint8_t page_write_pending = 0;
+static volatile uint8_t page_load_pending  = 0;
+
+
+static void load_page_to_buf(uint16_t addr)
+{
+    uint8_t i;
+    for (i = 0; i < SPM_PAGESIZE; i++)
+        page_buf[i] = pgm_read_byte_near(addr + i);
+}
 
 
 static uint8_t flash_is_blank(void)
@@ -68,17 +80,17 @@ static uint8_t flash_is_blank(void)
 static void write_flash_page(void)
 {
     uint16_t pagestart = flash_addr;
+    uint16_t fill_addr = flash_addr;
     uint8_t  i;
 
     boot_page_erase(pagestart);
     boot_spm_busy_wait();
 
-    /* fill page buffer word by word; flash_addr advances as a side effect */
     for (i = 0; i < SPM_PAGESIZE; i += 2)
     {
         uint16_t word = page_buf[i] | ((uint16_t)page_buf[i + 1] << 8);
-        boot_page_fill(flash_addr, word);
-        flash_addr += 2;
+        boot_page_fill(fill_addr, word);
+        fill_addr += 2;
     }
 
     boot_page_write(pagestart);
@@ -92,7 +104,6 @@ static void twi_handle(void)
     static uint8_t cmd = 0;
     /* byte_cnt counts received bytes in the RX path and sent bytes in the TX path */
     static uint8_t byte_cnt;
-    static uint8_t page_write_pending;
 
     uint8_t twi_ctrl   = TWCR;
     uint8_t twi_status = TWSR & 0xF8;
@@ -171,19 +182,18 @@ static void twi_handle(void)
             case TWI_SR_STOP:
                 if (page_write_pending)
                 {
-                    page_write_pending = 0;
-                    byte_cnt = 0;
-                    /* hold off ACK while flash write is in progress */
+                    /* Flash write is deferred to the main loop to avoid holding
+                     * SCL low for the full 4.5ms erase+program cycle. Keep TWEA
+                     * cleared so the host's ACK poll sees NACK until we're done. */
                     TWI_CLEAR_ACK(twi_ctrl);
-                    TWCR = (1<<TWINT) | twi_ctrl;
-                    write_flash_page();
-                    /* re-enable ACK cleanly without touching TWINT, then return
-                     * to skip the TWCR write at the end of twi_handle() */
-                    TWCR = (1<<TWEN) | (1<<TWEA);
-                    return;
                 }
-                byte_cnt = 0;
-                TWI_SET_ACK(twi_ctrl);
+                else
+                {
+                    if (cmd == CMD_SET_PAGE)
+                        page_load_pending = 1;
+                    byte_cnt = 0;
+                    TWI_SET_ACK(twi_ctrl);
+                }
                 break;
 
             case TWI_ST_SLA_ACK:
@@ -209,7 +219,7 @@ static void twi_handle(void)
                             break;
 
                                 case CMD_READ_PAGE:
-                                    tx_data = pgm_read_byte_near(flash_addr++);
+                                    tx_data = page_buf[byte_cnt];
                                     if (byte_cnt >= SPM_PAGESIZE - 1)
                                         TWI_CLEAR_ACK(twi_ctrl);
                         break;
@@ -252,10 +262,10 @@ void init1(void)
 int main(void) __attribute__((OS_main, section(".init9")));
 int main(void)
 {
-    /* PB0: input with pull-up; PB1/2/3/4/5/6/7: output, initially low */
-    DDRB  = 0b11111110;
+    /* Outputs: PB2 (LCD_CONTROL), PB3/PB7 (LED_WIFI), PB6 (EN_5V); all others inputs with pull-ups */
+    DDRB  = 0b11001100;
     PORTB = 0b00000001;
-    DDRD  = 0b11111111;
+    DDRD  = 0b00000000;
     PORTD = 0b00000000;
 
     /* Timer0: F_CPU / 1024, free-running */
@@ -266,7 +276,7 @@ int main(void)
     TWCR  = (1<<TWEA) | (1<<TWEN);
 
     /* --- BOOT ENTRY LOGIC --- */
-    if (PINB & (1<<PB0))
+    if (PINB & BTN_DISP)
     {
         /* Button not pressed: boot app if flash is not blank */
         if (!flash_is_blank())
@@ -283,36 +293,60 @@ int main(void)
             TIFR = (1<<TOV0);
             ovf_count++;
 
-            if (PINB & (1<<PB0))
+            if (PINB & BTN_DISP)
             {
                 bl_mode = BL_JUMP_APP;
                 break;
             }
         }
-
-        if (bl_mode == BL_HOLD)
-            PORTB |= (LCD_CONTROL | EN_5V_PIN);
     }
 
     /* Blank flash always forces bootloader mode regardless of button state */
     if (flash_is_blank())
-    {
         bl_mode = BL_HOLD;
+
+    if (bl_mode == BL_HOLD)
         PORTB |= (LCD_CONTROL | EN_5V_PIN);
-    }
+
+    /* Pre-buffer page 0 so it is ready before the host issues CMD_SET_PAGE(0). */
+    load_page_to_buf(0);
 
     /* --- MAIN LOOP (I2C programming) --- */
     {
-        uint8_t blink_div = 0;
+        uint8_t blink_div        = 0;
+        uint8_t rpi_absent_ovf   = 0;
         while (bl_mode == BL_HOLD)
         {
             if (TWCR & (1<<TWINT))
                 twi_handle();
 
+            if (page_write_pending)
+            {
+                page_write_pending = 0;
+                write_flash_page();
+                TWCR = (1<<TWEN) | (1<<TWEA);
+            }
+
+            if (page_load_pending)
+            {
+                page_load_pending = 0;
+                load_page_to_buf(flash_addr);
+            }
+
             if (TIFR & (1<<TOV0))
             {
                 TIFR = (1<<TOV0);
-                /* Toggle every 16 overflows normally, 4 overflows when fast */
+
+                if (PIND & RPI_DETECT)
+                {
+                    rpi_absent_ovf = 0;
+                }
+                else if (++rpi_absent_ovf >= (uint8_t)(5 * TIMER_OVF_PER_SEC))
+                {
+                    PORTB &= ~EN_5V_PIN;
+                    rpi_absent_ovf = 0;
+                }
+
                 if (!(++blink_div & (blink_fast ? 0x03 : 0x0F)))
                     PORTB ^= LED_WIFI_PIN;
             }
