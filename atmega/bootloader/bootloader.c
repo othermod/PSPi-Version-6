@@ -38,6 +38,11 @@
 #define BL_HOLD                     0x00
 #define BL_JUMP_APP                 0x01
 
+/* Verification status codes (bit patterns with Hamming distance 8 from each other) */
+#define VERIFY_PENDING              0x00
+#define VERIFY_FAILED               0x55
+#define VERIFY_PASSED               0xAA
+
 /* TWI ACK control helpers */
 #define TWI_CLEAR_ACK(ctrl)         ((ctrl) &= ~(1<<TWEA))
 #define TWI_SET_ACK(ctrl)           ((ctrl) |=  (1<<TWEA))
@@ -49,12 +54,17 @@
 #define RPI_DETECT                  (1<<PD1)
 #define BTN_DISP                    (1<<PB0)
 
-static uint8_t          bl_mode            = BL_HOLD;
-static uint8_t          blink_fast         = 0;
+static uint8_t          bl_mode                  = BL_HOLD;
+static uint8_t          blink_fast               = 0;
 static uint8_t          page_buf[SPM_PAGESIZE];
 static uint16_t         flash_addr;
-static volatile uint8_t page_write_pending = 0;
-static volatile uint8_t page_load_pending  = 0;
+static volatile uint8_t page_write_pending       = 0;
+static volatile uint8_t page_load_pending        = 0;
+static uint8_t          checksum_buf[3];
+static volatile uint8_t checksum_verify_pending  = 0;
+static uint8_t          verify_status            = VERIFY_PENDING;
+static uint8_t          info_bytes[6];
+static uint8_t          info_checksum[3];
 
 
 static void load_page_to_buf(uint16_t addr)
@@ -99,6 +109,38 @@ static void write_flash_page(void)
 }
 
 
+static void update_info_checksum(void)
+{
+    uint8_t sum1 = 0, sum2 = 0, xor = 0, i;
+    for (i = 0; i < 6; i++)
+    {
+        sum1 += info_bytes[i];
+        sum2 += sum1;
+        xor  ^= info_bytes[i];
+    }
+    info_checksum[0] = sum1;
+    info_checksum[1] = sum2;
+    info_checksum[2] = xor;
+}
+
+
+static void compute_flash_checksum(uint8_t *f16_a, uint8_t *f16_b, uint8_t *xorsum)
+{
+    uint8_t  sum1 = 0, sum2 = 0, xor = 0;
+    uint16_t i;
+    for (i = 0; i < BOOTLOADER_START; i++)
+    {
+        uint8_t b = pgm_read_byte_near(i);
+        sum1 += b;
+        sum2 += sum1;
+        xor  ^= b;
+    }
+    *f16_a  = sum1;
+    *f16_b  = sum2;
+    *xorsum = xor;
+}
+
+
 static void twi_handle(void)
 {
     static uint8_t cmd = 0;
@@ -129,10 +171,7 @@ static void twi_handle(void)
                     case CMD_SET_PAGE:
                     case CMD_WRITE_PAGE:
                     case CMD_READ_PAGE:
-                        break;
-
                     case CMD_FINALIZE:
-                        blink_fast = 1;
                         break;
 
                     default:
@@ -166,6 +205,14 @@ static void twi_handle(void)
                         break;
                     }
 
+                    case CMD_FINALIZE:
+                        /* collect three checksum bytes: Fletcher-16 low, Fletcher-16 high, XOR */
+                        if (byte_cnt <= 3)
+                            checksum_buf[byte_cnt - 1] = rx_data;
+                        if (byte_cnt == 3)
+                            TWI_CLEAR_ACK(twi_ctrl);
+                        break;
+
                     default:
                         break;
                 }
@@ -191,6 +238,8 @@ static void twi_handle(void)
                 {
                     if (cmd == CMD_SET_PAGE)
                         page_load_pending = 1;
+                    else if (cmd == CMD_FINALIZE && byte_cnt >= 4)
+                        checksum_verify_pending = 1;
                     byte_cnt = 0;
                     TWI_SET_ACK(twi_ctrl);
                 }
@@ -207,15 +256,12 @@ static void twi_handle(void)
                     switch (cmd)
                     {
                         case CMD_READ_INFO:
-                            switch (byte_cnt)
-                            {
-                                case 0: tx_data = SIGNATURE_0;                     break;
-                                case 1: tx_data = SIGNATURE_1;                     break;
-                                case 2: tx_data = SIGNATURE_2;                     break;
-                                case 3: tx_data = BOOTLOADER_VERSION;              break;
-                                case 4: tx_data = BOOTLOADER_START / SPM_PAGESIZE; break;
-                                default: tx_data = 0xFF;                           break;
-                            }
+                            if (byte_cnt < 6)
+                                tx_data = info_bytes[byte_cnt];
+                            else if (byte_cnt < 9)
+                                tx_data = info_checksum[byte_cnt - 6];
+                            if (byte_cnt == 8)
+                                TWI_CLEAR_ACK(twi_ctrl);
                             break;
 
                                 case CMD_READ_PAGE:
@@ -310,6 +356,13 @@ int main(void)
 
     /* Pre-buffer page 0 so it is ready before the host issues CMD_SET_PAGE(0). */
     load_page_to_buf(0);
+    info_bytes[0] = SIGNATURE_0;
+    info_bytes[1] = SIGNATURE_1;
+    info_bytes[2] = SIGNATURE_2;
+    info_bytes[3] = BOOTLOADER_VERSION;
+    info_bytes[4] = (uint8_t)(BOOTLOADER_START / SPM_PAGESIZE);
+    info_bytes[5] = VERIFY_PENDING;
+    update_info_checksum();
 
     /* --- MAIN LOOP (I2C programming) --- */
     {
@@ -333,6 +386,24 @@ int main(void)
                 load_page_to_buf(flash_addr);
             }
 
+            if (checksum_verify_pending)
+            {
+                checksum_verify_pending = 0;
+                uint8_t f16_a, f16_b, xorsum;
+                compute_flash_checksum(&f16_a, &f16_b, &xorsum);
+                if (f16_a == checksum_buf[0] && f16_b == checksum_buf[1] && xorsum == checksum_buf[2])
+                {
+                    verify_status = VERIFY_PASSED;
+                    blink_fast    = 1;
+                }
+                else
+                {
+                    verify_status = VERIFY_FAILED;
+                }
+                info_bytes[5] = verify_status;
+                update_info_checksum();
+            }
+
             if (TIFR & (1<<TOV0))
             {
                 TIFR = (1<<TOV0);
@@ -347,7 +418,7 @@ int main(void)
                     rpi_absent_ovf = 0;
                 }
 
-                if (!(++blink_div & (blink_fast ? 0x03 : 0x0F)))
+                if (!(++blink_div & (blink_fast ? 0x01 : 0x0F)))
                     PORTB ^= LED_WIFI_PIN;
             }
         }

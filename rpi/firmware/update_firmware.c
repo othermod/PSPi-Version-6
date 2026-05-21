@@ -11,7 +11,6 @@
 
 #define BL_ADDR                 0x29
 
-#define CMD_ABORT_TIMEOUT       0x00
 #define CMD_READ_INFO           0x01
 #define CMD_SET_PAGE            0x02
 #define CMD_WRITE_PAGE          0x03
@@ -27,11 +26,22 @@
 
 #define SPM_PAGESIZE            64
 #define FLASH_SIZE              8192
+#define BOOTLOADER_START        0x1C00
 #define NUM_PAGES               (FLASH_SIZE / SPM_PAGESIZE)
 
-/* ATmega8 datasheet: max flash write time 4.5ms. 25ms gives ample margin. */
-#define FLASH_WRITE_WAIT_US     25000
-#define FLASH_WRITE_MAX_RETRIES 3
+/* ATmega8 max flash write time is 4.5ms. Sleep 10x that for safety. */
+#define FLASH_WRITE_SLEEP_US    45000
+
+/* Verification status codes, must match bootloader */
+#define VERIFY_PENDING          0x00
+#define VERIFY_FAILED           0x55
+#define VERIFY_PASSED           0xAA
+
+/* How many times to retry a corrupt CMD_READ_INFO response */
+#define INFO_READ_RETRIES       10
+
+/* How many times to retry a failed page write */
+#define PAGE_WRITE_RETRIES      10
 
 typedef struct {
     uint8_t  data[FLASH_SIZE];
@@ -39,7 +49,16 @@ typedef struct {
     uint16_t num_pages;
 } flash_image_t;
 
+typedef struct {
+    uint8_t sig[3];
+    uint8_t version;
+    uint8_t fw_pages;
+    uint8_t verify_status;
+} bl_info_t;
+
 static int i2c_fd = -1;
+
+/* --- I2C layer --- */
 
 static int i2c_open(const char *device)
 {
@@ -84,82 +103,109 @@ static int i2c_probe(uint8_t addr)
     return read(i2c_fd, &dummy, 1) == 1 ? 0 : -1;
 }
 
-static int bl_abort_timeout(void)
+/* --- Checksum --- */
+
+/* Matches the bootloader algorithm exactly: uint8_t accumulators, natural overflow. */
+static void compute_fletcher_xor(const uint8_t *data, uint16_t len,
+                                  uint8_t *f_a, uint8_t *f_b, uint8_t *xorsum)
 {
-    uint8_t cmd = CMD_ABORT_TIMEOUT;
-    return i2c_write(BL_ADDR, &cmd, 1);
+    uint8_t  sum1 = 0, sum2 = 0, xor = 0;
+    uint16_t i;
+    for (i = 0; i < len; i++) {
+        sum1 += data[i];
+        sum2 += sum1;
+        xor  ^= data[i];
+    }
+    *f_a   = sum1;
+    *f_b   = sum2;
+    *xorsum = xor;
 }
 
-static int bl_read_info(uint8_t *sig0, uint8_t *sig1, uint8_t *sig2, uint8_t *version, uint8_t *fw_pages)
+/* --- Bootloader commands --- */
+
+/*
+ * Reads all 9 CMD_READ_INFO bytes and validates the trailing 3-byte
+ * Fletcher+XOR checksum over the first 6 info bytes. Retries on a
+ * corrupt read to mitigate RPi I2C read unreliability.
+ */
+static int bl_read_info(bl_info_t *info)
 {
     uint8_t cmd = CMD_READ_INFO;
-    uint8_t buf[5];
-    if (i2c_write_then_read(BL_ADDR, &cmd, 1, buf, 5) < 0)
-        return -1;
-    *sig0      = buf[0];
-    *sig1      = buf[1];
-    *sig2      = buf[2];
-    *version   = buf[3];
-    *fw_pages = buf[4];
-    return 0;
+    uint8_t buf[9];
+    uint8_t f_a, f_b, xor;
+    int     attempt;
+
+    for (attempt = 0; attempt < INFO_READ_RETRIES; attempt++) {
+        if (attempt > 0)
+            usleep(10000);
+
+        if (i2c_write_then_read(BL_ADDR, &cmd, 1, buf, 9) < 0)
+            continue;
+
+        /* Validate checksum over bytes 0-5 */
+        compute_fletcher_xor(buf, 6, &f_a, &f_b, &xor);
+        if (f_a != buf[6] || f_b != buf[7] || xor != buf[8]) {
+            fprintf(stderr, "  CMD_READ_INFO checksum mismatch (attempt %d/%d), retrying...\n",
+                    attempt + 1, INFO_READ_RETRIES);
+            continue;
+        }
+
+        info->sig[0]        = buf[0];
+        info->sig[1]        = buf[1];
+        info->sig[2]        = buf[2];
+        info->version       = buf[3];
+        info->fw_pages      = buf[4];
+        info->verify_status = buf[5];
+        usleep(10000); /* allow bus to settle after read */
+        return 0;
+    }
+
+    fprintf(stderr, "Failed to read valid info after %d attempts.\n", INFO_READ_RETRIES);
+    return -1;
 }
 
 static int bl_set_page(uint8_t page)
 {
     uint8_t buf[2] = { CMD_SET_PAGE, page };
-    return i2c_write(BL_ADDR, buf, 2);
+    if (i2c_write(BL_ADDR, buf, 2) < 0)
+        return -1;
+    usleep(1000); /* 10x time for load_page_to_buf to complete */
+    return 0;
 }
 
-/* Bootloader commits the page to flash on STOP after the 64th byte.
- * It clears TWEA (NACKs) during the write and restores it when done,
- * so poll for ACK rather than sleeping a fixed worst-case duration. */
+/*
+ * Sends CMD_WRITE_PAGE followed by 64 data bytes, then sleeps 10x the
+ * ATmega8 max flash write time (4.5ms) to ensure the write completes
+ * before the next transaction.
+ */
 static int bl_write_page(const uint8_t *data)
 {
     uint8_t buf[1 + SPM_PAGESIZE];
-    int     elapsed_us = 0;
-
     buf[0] = CMD_WRITE_PAGE;
     memcpy(buf + 1, data, SPM_PAGESIZE);
     if (i2c_write(BL_ADDR, buf, sizeof(buf)) < 0)
         return -1;
-
-    while (elapsed_us < FLASH_WRITE_WAIT_US) {
-        usleep(1000);
-        elapsed_us += 1000;
-        if (i2c_probe(BL_ADDR) == 0)
-            return 0;
-    }
-
-    fprintf(stderr, "Timed out waiting for bootloader after flash write.\n");
-    return -1;
+    usleep(FLASH_WRITE_SLEEP_US);
+    return 0;
 }
 
-static int bl_read_page(uint8_t *buf, size_t len)
+/*
+ * Sends CMD_FINALIZE with the 3-byte Fletcher+XOR checksum computed
+ * over the full application flash region. The bootloader will verify
+ * this against what it finds in flash and update its verify_status.
+ */
+static int bl_finalize(uint8_t f_a, uint8_t f_b, uint8_t xor)
 {
-    uint8_t cmd = CMD_READ_PAGE;
-    return i2c_write_then_read(BL_ADDR, &cmd, 1, buf, len);
+    uint8_t buf[4] = { CMD_FINALIZE, f_a, f_b, xor };
+    if (i2c_write(BL_ADDR, buf, sizeof(buf)) < 0)
+        return -1;
+    usleep(100000); /* 10x time for compute_flash_checksum to complete */
+    return 0;
 }
 
-static int bl_finalize(void)
-{
-    uint8_t cmd = CMD_FINALIZE;
-    return i2c_write(BL_ADDR, &cmd, 1);
-}
 
-static int enter_bootloader(void)
-{
-    if (i2c_probe(BL_ADDR) == 0) {
-        printf("Bootloader detected at 0x%02X.\n", BL_ADDR);
-        return 0;
-    }
 
-    fprintf(stderr,
-            "Bootloader not found at 0x%02X.\n"
-            "To enter bootloader mode: fully shut down the device, then\n"
-            "hold the power button at power-on. Then re-run this tool.\n",
-            BL_ADDR);
-    return -1;
-}
+/* --- Flash image --- */
 
 static int parse_hex_file(const char *path, flash_image_t *image)
 {
@@ -240,78 +286,19 @@ static int parse_hex_file(const char *path, flash_image_t *image)
     return ret;
 }
 
-static int backup_firmware(const char *path, uint8_t fw_pages)
+static int flash_image(const flash_image_t *image, uint8_t fw_pages)
 {
-    FILE    *f;
-    uint8_t  buf[SPM_PAGESIZE];
-    int      page;
+    int page;
 
-    f = fopen(path, "w");
-    if (!f) {
-        fprintf(stderr, "Failed to open backup file %s: %s\n", path, strerror(errno));
-        return -1;
-    }
-
-    printf("Backing up %d page(s) to %s...\n", fw_pages, path);
+    printf("Flashing %d page(s)...\n", fw_pages);
 
     for (page = 0; page < fw_pages; page++) {
-        uint16_t addr = (uint16_t)page * SPM_PAGESIZE;
-        uint8_t  checksum;
-        int      i;
-
-        if (bl_set_page((uint8_t)page) < 0) {
-            fprintf(stderr, "Failed to set address for page %d.\n", page);
-            fclose(f);
-            return -1;
-        }
-        if (bl_read_page(buf, SPM_PAGESIZE) < 0) {
-            fprintf(stderr, "Failed to read page %d.\n", page);
-            fclose(f);
-            return -1;
-        }
-
-        /* Intel HEX data record: :LLAAAATT[DD...]CC */
-        checksum = SPM_PAGESIZE
-        + ((addr >> 8) & 0xFF)
-        + (addr & 0xFF)
-        + 0x00; /* record type */
-        for (i = 0; i < SPM_PAGESIZE; i++)
-            checksum += buf[i];
-        checksum = (~checksum + 1) & 0xFF;
-
-        fprintf(f, ":%02X%04X00", SPM_PAGESIZE, addr);
-        for (i = 0; i < SPM_PAGESIZE; i++)
-            fprintf(f, "%02X", buf[i]);
-        fprintf(f, "%02X\n", checksum);
-
-        printf("\r  [%d/%d] read", page + 1, fw_pages);
-        fflush(stdout);
-    }
-
-    fprintf(f, ":00000001FF\n"); /* EOF record */
-    fclose(f);
-    printf("\nBackup complete.\n\n");
-    return 0;
-}
-
-
-static int flash_image(const flash_image_t *image)
-{
-    int page, written = 0;
-
-    printf("Flashing %u page(s)...\n", image->num_pages);
-
-    for (page = 0; page < NUM_PAGES; page++) {
         int attempt, ok = 0;
-
-        if (!image->page_has_data[page])
-            continue;
-
-        for (attempt = 0; attempt < FLASH_WRITE_MAX_RETRIES; attempt++) {
+        for (attempt = 0; attempt < PAGE_WRITE_RETRIES; attempt++) {
             if (attempt > 0) {
-                fprintf(stderr, "\n  page %d: I2C error, retrying (%d/%d)...\n",
-                        page, attempt, FLASH_WRITE_MAX_RETRIES - 1);
-                usleep(FLASH_WRITE_WAIT_US);
+                fprintf(stderr, "\n  page %d: retrying (%d/%d)...\n",
+                        page, attempt, PAGE_WRITE_RETRIES - 1);
+                usleep(FLASH_WRITE_SLEEP_US);
             }
             if (bl_set_page((uint8_t)page) < 0)
                 continue;
@@ -322,12 +309,12 @@ static int flash_image(const flash_image_t *image)
         }
 
         if (!ok) {
-            fprintf(stderr, "Failed to write page %d after %d attempts.\n",
-                    page, FLASH_WRITE_MAX_RETRIES);
+            fprintf(stderr, "\n  page %d: failed after %d attempts.\n",
+                    page, PAGE_WRITE_RETRIES);
             return -1;
         }
 
-        printf("\r  [%d/%d] written", ++written, image->num_pages);
+        printf("\r  [%d/%d] written", page + 1, fw_pages);
         fflush(stdout);
     }
 
@@ -335,184 +322,107 @@ static int flash_image(const flash_image_t *image)
     return 0;
 }
 
-static int read_page_reliable(uint8_t page, uint8_t *buf)
-{
-    int attempt;
-    for (attempt = 0; attempt < FLASH_WRITE_MAX_RETRIES; attempt++) {
-        if (attempt > 0)
-            usleep(FLASH_WRITE_WAIT_US);
-        if (bl_set_page(page) < 0)
-            continue;
-        if (bl_read_page(buf, SPM_PAGESIZE) < 0)
-            continue;
-        return 0;
-    }
-    return -1;
-}
-
-static int count_mismatches(const uint8_t *expected, const uint8_t *actual)
-{
-    int i, errs = 0;
-    for (i = 0; i < SPM_PAGESIZE; i++)
-        if (expected[i] != actual[i])
-            errs++;
-    return errs;
-}
-
-static int verify_image(const flash_image_t *image)
-{
-    int page, verified = 0, total_errs = 0;
-
-    printf("Verifying %u page(s)...\n", image->num_pages);
-
-    for (page = 0; page < NUM_PAGES; page++) {
-        uint8_t actual[SPM_PAGESIZE];
-        int     pass, page_errs = 0;
-
-        if (!image->page_has_data[page])
-            continue;
-
-        /* Retry the read up to FLASH_WRITE_MAX_RETRIES times before giving up. */
-        for (pass = 0; pass < FLASH_WRITE_MAX_RETRIES; pass++) {
-            if (read_page_reliable((uint8_t)page, actual) < 0) {
-                fprintf(stderr, "\n  page %d: I2C error reading back, aborting.\n", page);
-                return -1;
-            }
-            page_errs = count_mismatches(image->data + page * SPM_PAGESIZE, actual);
-            if (page_errs == 0)
-                break;
-            fprintf(stderr, "\n  page %d: mismatch (%d byte(s)), retrying read (%d/%d)...\n",
-                    page, page_errs, pass + 1, FLASH_WRITE_MAX_RETRIES);
-        }
-
-        if (page_errs > 0) {
-            fprintf(stderr, "\n  page %d: MISMATCH (%d byte(s)) after %d read attempt(s).\n",
-                    page, page_errs, FLASH_WRITE_MAX_RETRIES);
-            total_errs += page_errs;
-        } else {
-            printf("\r  [%d/%d] OK", ++verified, image->num_pages);
-            fflush(stdout);
-        }
-    }
-
-    if (total_errs > 0) {
-        fprintf(stderr, "\nVerification failed: %d byte(s) mismatched.\n"
-        "Device remains in bootloader. Re-run to retry.\n", total_errs);
-        return -1;
-    }
-
-    printf("\nVerification successful.\n");
-    return 0;
-}
+/* --- Entry point --- */
 
 static void usage(const char *prog)
 {
-    fprintf(stderr,
-            "Usage: %s [options] <firmware.hex>\n"
-            "\n"
-            "Options:\n"
-            "  -b <file>      Backup current firmware to HEX file before flashing\n"
-            "  -h             Show this help\n"
-            "\n"
-            "The device must be in bootloader mode before running this tool.\n"
-            "To enter bootloader mode: fully shut down the device, then hold\n"
-            "the power button at power-on.\n",
-            prog);
+    fprintf(stderr, "Usage: %s <firmware.hex>\n", prog);
 }
 
 int main(int argc, char *argv[])
 {
-    const char   *hex_file    = NULL;
-    const char   *backup_file = NULL;
-    int           opt, ret    = 2;
-    uint8_t       sig0, sig1, sig2, version, fw_pages;
+    const char   *hex_file = NULL;
+    int           ret      = 2;
+    bl_info_t     info;
     flash_image_t image;
+    uint8_t       f_a, f_b, xor, verify_status = VERIFY_PENDING;
 
-    while ((opt = getopt(argc, argv, "b:h")) != -1) {
-        switch (opt) {
-            case 'b': backup_file = optarg; break;
-            case 'h': usage(argv[0]); return 0;
-            default:  usage(argv[0]); return 2;
-        }
-    }
-
-    if (optind >= argc) {
-        fprintf(stderr, "Error: no HEX file specified.\n\n");
+    if (argc < 2 || strcmp(argv[1], "-h") == 0) {
         usage(argv[0]);
-        return 2;
+        return argc < 2 ? 2 : 0;
     }
 
-    hex_file = argv[optind];
+    hex_file = argv[1];
 
-    printf("Parsing %s...\n\n", hex_file);
+    printf("Parsing %s...\n", hex_file);
     if (parse_hex_file(hex_file, &image) < 0)
         return 2;
+    printf("  %u page(s) with data.\n\n", image.num_pages);
 
     if (i2c_open("/dev/i2c-1") < 0)
         return 2;
 
-    printf("--- Enter Bootloader ---\n");
-    if (enter_bootloader() < 0) { ret = 0; goto done; }
-
-    if (bl_abort_timeout() < 0) {
-        fprintf(stderr, "Failed to abort boot timeout.\n");
-        ret = 2;
+    printf("--- Bootloader ---\n");
+    if (i2c_probe(BL_ADDR) < 0) {
+        fprintf(stderr,
+                "Bootloader not found at 0x%02X.\n"
+                "To enter bootloader mode: fully shut down the device, then\n"
+                "hold the display button at power-on. Then re-run this tool.\n",
+                BL_ADDR);
+        ret = 1;
         goto done;
     }
-    printf("Keeping Atmega in bootloader mode for flashing.\n");
+    printf("Bootloader detected at 0x%02X.\n", BL_ADDR);
 
-    if (bl_read_info(&sig0, &sig1, &sig2, &version, &fw_pages) < 0) {
-        fprintf(stderr, "Failed to read chip info.\n");
-        ret = 2;
+    if (bl_read_info(&info) < 0)
         goto done;
-    }
-    printf("Signature: 0x%02X 0x%02X 0x%02X\n", sig0, sig1, sig2);
-    if (sig0 != EXPECTED_SIG_0 || sig1 != EXPECTED_SIG_1 || sig2 != EXPECTED_SIG_2) {
+
+    printf("Signature:          0x%02X 0x%02X 0x%02X\n",
+           info.sig[0], info.sig[1], info.sig[2]);
+    printf("Bootloader version: 0x%02X\n", info.version);
+    printf("App flash pages:    %d\n\n", info.fw_pages);
+
+    if (info.sig[0] != EXPECTED_SIG_0 ||
+        info.sig[1] != EXPECTED_SIG_1 ||
+        info.sig[2] != EXPECTED_SIG_2) {
         fprintf(stderr, "Signature mismatch: expected 0x%02X 0x%02X 0x%02X. Aborting.\n",
                 EXPECTED_SIG_0, EXPECTED_SIG_1, EXPECTED_SIG_2);
-        ret = 2;
         goto done;
     }
-    printf("Bootloader version: 0x%02X\n", version);
-    if (version != EXPECTED_BL_VERSION)
-        fprintf(stderr, "Warning: unexpected bootloader version 0x%02X (expected 0x%02X). "
-        "Proceeding anyway.\n", version, EXPECTED_BL_VERSION);
-    printf("Firmware flash: %d pages available\n", fw_pages);
-    printf("Preparing to flash %u pages with data.\n\n", image.num_pages);
 
-    for (int i = fw_pages; i < NUM_PAGES; i++) {
+    if (info.version != EXPECTED_BL_VERSION)
+        fprintf(stderr, "Warning: unexpected bootloader version 0x%02X (expected 0x%02X). "
+                "Proceeding anyway.\n\n", info.version, EXPECTED_BL_VERSION);
+
+    for (int i = info.fw_pages; i < NUM_PAGES; i++) {
         if (image.page_has_data[i]) {
-            fprintf(stderr, "Error: firmware image exceeds available flash "
-            "(data in page %d, max page is %d).\n", i, fw_pages - 1);
-            ret = 2;
+            fprintf(stderr, "Error: firmware image has data in page %d, "
+                    "but app flash only has %d page(s). Aborting.\n", i, info.fw_pages);
             goto done;
         }
     }
 
-    if (backup_file) {
-        printf("--- Backup ---\n");
-        if (backup_firmware(backup_file, fw_pages) < 0) { ret = 2; goto done; }
-    }
-
     printf("--- Flash ---\n");
-    if (flash_image(&image) < 0) { ret = 2; goto done; }
-    printf("\n");
-
-
-    printf("--- Verify ---\n");
-    if (verify_image(&image) < 0) { ret = 2; goto done; }
+    if (flash_image(&image, info.fw_pages) < 0)
+        goto done;
     printf("\n");
 
     printf("--- Finalize ---\n");
-    if (bl_finalize() < 0) {
-        fprintf(stderr, "Failed to send finalize command.\n");
-        ret = 2;
+    compute_fletcher_xor(image.data, BOOTLOADER_START, &f_a, &f_b, &xor);
+    if (bl_finalize(f_a, f_b, xor) < 0) {
+        fprintf(stderr, "Failed to send CMD_FINALIZE.\n");
         goto done;
     }
-    printf("Finalize sent. Bootloader is writing metadata and launching firmware.\n");
-    ret = 1;
+    printf("Checksum sent (0x%02X 0x%02X 0x%02X). Waiting for verification...\n",
+           f_a, f_b, xor);
 
-    done:
+    {
+        bl_info_t verify_info;
+        if (bl_read_info(&verify_info) < 0)
+            goto done;
+        verify_status = verify_info.verify_status;
+    }
+
+    if (verify_status == VERIFY_PASSED) {
+        printf("Verification passed. Firmware update complete.\n");
+        ret = 0;
+    } else {
+        fprintf(stderr, "Verification FAILED (status 0x%02X). "
+                "Flash may be corrupt. Re-run to retry.\n", verify_status);
+        ret = 2;
+    }
+
+done:
     close(i2c_fd);
     return ret;
 }
