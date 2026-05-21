@@ -18,6 +18,7 @@
 #define DEFAULT_POLLING_DELAY_MS 16000
 #define FAST_POLLING_DELAY_MS 8000
 #define DEFAULT_DIMMING_TIMEOUT_SEC 120
+#define I2C_DEVICE_ADDRESS 0x10
 
 // Append one input_event to an array and advance the count.
 #define EMIT(ev, cnt, t, c, v) \
@@ -379,7 +380,6 @@ void cleanup_resources(void) {
         return true;
     }
 
-    #define I2C_DEVICE_ADDRESS 0x10
     #define CMD_BRIGHTNESS 0x22
 
     static inline void write_i2c_command(int fd, uint8_t cmd, uint8_t value) {
