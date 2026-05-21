@@ -346,8 +346,14 @@ void cleanup_resources(void) {
             cleanup_resources();
             exit(1);
         }
-        if (ioctl(controller_board_fd, I2C_SLAVE, 0x10) < 0) {
+        if (ioctl(controller_board_fd, I2C_SLAVE, I2C_DEVICE_ADDRESS) < 0) {
             perror("Failed to set i2c slave");
+            cleanup_resources();
+            exit(1);
+        }
+        uint8_t probe;
+        if (read(controller_board_fd, &probe, 1) < 0) {
+            fprintf(stderr, "No I2C device found at address 0x10\n");
             cleanup_resources();
             exit(1);
         }
@@ -373,6 +379,7 @@ void cleanup_resources(void) {
         return true;
     }
 
+    #define I2C_DEVICE_ADDRESS 0x10
     #define CMD_BRIGHTNESS 0x22
 
     static inline void write_i2c_command(int fd, uint8_t cmd, uint8_t value) {
