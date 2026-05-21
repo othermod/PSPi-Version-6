@@ -40,8 +40,11 @@
 /* How many times to retry a corrupt CMD_READ_INFO response */
 #define INFO_READ_RETRIES       10
 
-/* How many times to retry a failed page write */
-#define PAGE_WRITE_RETRIES      10
+/* How many full restart attempts before giving up */
+#define FLASH_MAX_ATTEMPTS      5
+
+/* Sleep between full restart attempts (1 second) */
+#define FLASH_RETRY_SLEEP_US    1000000
 
 typedef struct {
     uint8_t  data[FLASH_SIZE];
@@ -293,24 +296,12 @@ static int flash_image(const flash_image_t *image, uint8_t fw_pages)
     printf("Flashing %d page(s)...\n", fw_pages);
 
     for (page = 0; page < fw_pages; page++) {
-        int attempt, ok = 0;
-        for (attempt = 0; attempt < PAGE_WRITE_RETRIES; attempt++) {
-            if (attempt > 0) {
-                fprintf(stderr, "\n  page %d: retrying (%d/%d)...\n",
-                        page, attempt, PAGE_WRITE_RETRIES - 1);
-                usleep(FLASH_WRITE_SLEEP_US);
-            }
-            if (bl_set_page((uint8_t)page) < 0)
-                continue;
-            if (bl_write_page(image->data + page * SPM_PAGESIZE) < 0)
-                continue;
-            ok = 1;
-            break;
+        if (bl_set_page((uint8_t)page) < 0) {
+            fprintf(stderr, "\n  page %d: bl_set_page failed.\n", page);
+            return -1;
         }
-
-        if (!ok) {
-            fprintf(stderr, "\n  page %d: failed after %d attempts.\n",
-                    page, PAGE_WRITE_RETRIES);
+        if (bl_write_page(image->data + page * SPM_PAGESIZE) < 0) {
+            fprintf(stderr, "\n  page %d: bl_write_page failed.\n", page);
             return -1;
         }
 
@@ -329,13 +320,92 @@ static void usage(const char *prog)
     fprintf(stderr, "Usage: %s <firmware.hex>\n", prog);
 }
 
+/*
+ * Runs one full probe -> read_info -> flash -> finalize -> verify sequence.
+ *
+ * Returns:
+ *   0   success
+ *  -1   recoverable bus error (caller should sleep and retry)
+ *  -2   unrecoverable error (bad signature, image out of range, etc.)
+ */
+static int run_flash_sequence(const flash_image_t *image)
+{
+    bl_info_t info;
+    uint8_t   f_a, f_b, xor;
+    bl_info_t verify_info;
+
+    printf("--- Bootloader ---\n");
+    if (i2c_probe(BL_ADDR) < 0) {
+        fprintf(stderr,
+                "Bootloader not found at 0x%02X.\n"
+                "To enter bootloader mode: fully shut down the device, then\n"
+                "hold the display button at power-on. Then re-run this tool.\n",
+                BL_ADDR);
+        return -2;
+    }
+    printf("Bootloader detected at 0x%02X.\n", BL_ADDR);
+
+    if (bl_read_info(&info) < 0)
+        return -1;
+
+    printf("Signature:          0x%02X 0x%02X 0x%02X\n",
+           info.sig[0], info.sig[1], info.sig[2]);
+    printf("Bootloader version: 0x%02X\n", info.version);
+    printf("App flash pages:    %d\n\n", info.fw_pages);
+
+    if (info.sig[0] != EXPECTED_SIG_0 ||
+        info.sig[1] != EXPECTED_SIG_1 ||
+        info.sig[2] != EXPECTED_SIG_2) {
+        fprintf(stderr, "Signature mismatch: expected 0x%02X 0x%02X 0x%02X. Aborting.\n",
+                EXPECTED_SIG_0, EXPECTED_SIG_1, EXPECTED_SIG_2);
+        return -2;
+    }
+
+    if (info.version != EXPECTED_BL_VERSION)
+        fprintf(stderr, "Warning: unexpected bootloader version 0x%02X (expected 0x%02X). "
+                "Proceeding anyway.\n\n", info.version, EXPECTED_BL_VERSION);
+
+    for (int i = info.fw_pages; i < NUM_PAGES; i++) {
+        if (image->page_has_data[i]) {
+            fprintf(stderr, "Error: firmware image has data in page %d, "
+                    "but app flash only has %d page(s). Aborting.\n", i, info.fw_pages);
+            return -2;
+        }
+    }
+
+    printf("--- Flash ---\n");
+    if (flash_image(image, info.fw_pages) < 0)
+        return -1;
+    printf("\n");
+
+    printf("--- Finalize ---\n");
+    compute_fletcher_xor(image->data, BOOTLOADER_START, &f_a, &f_b, &xor);
+    if (bl_finalize(f_a, f_b, xor) < 0) {
+        fprintf(stderr, "Failed to send CMD_FINALIZE.\n");
+        return -1;
+    }
+    printf("Checksum sent (0x%02X 0x%02X 0x%02X). Waiting for verification...\n",
+           f_a, f_b, xor);
+
+    if (bl_read_info(&verify_info) < 0)
+        return -1;
+
+    if (verify_info.verify_status == VERIFY_PASSED) {
+        printf("Verification passed. Firmware update complete.\n");
+        return 0;
+    }
+
+    fprintf(stderr, "Verification FAILED (status 0x%02X). Flash may be corrupt.\n",
+            verify_info.verify_status);
+    return -1;
+}
+
 int main(int argc, char *argv[])
 {
     const char   *hex_file = NULL;
-    int           ret      = 2;
-    bl_info_t     info;
     flash_image_t image;
-    uint8_t       f_a, f_b, xor, verify_status = VERIFY_PENDING;
+    int           attempt;
+    int           ret = 2;
 
     if (argc < 2 || strcmp(argv[1], "-h") == 0) {
         usage(argv[0]);
@@ -352,77 +422,31 @@ int main(int argc, char *argv[])
     if (i2c_open("/dev/i2c-1") < 0)
         return 2;
 
-    printf("--- Bootloader ---\n");
-    if (i2c_probe(BL_ADDR) < 0) {
-        fprintf(stderr,
-                "Bootloader not found at 0x%02X.\n"
-                "To enter bootloader mode: fully shut down the device, then\n"
-                "hold the display button at power-on. Then re-run this tool.\n",
-                BL_ADDR);
-        ret = 1;
-        goto done;
-    }
-    printf("Bootloader detected at 0x%02X.\n", BL_ADDR);
-
-    if (bl_read_info(&info) < 0)
-        goto done;
-
-    printf("Signature:          0x%02X 0x%02X 0x%02X\n",
-           info.sig[0], info.sig[1], info.sig[2]);
-    printf("Bootloader version: 0x%02X\n", info.version);
-    printf("App flash pages:    %d\n\n", info.fw_pages);
-
-    if (info.sig[0] != EXPECTED_SIG_0 ||
-        info.sig[1] != EXPECTED_SIG_1 ||
-        info.sig[2] != EXPECTED_SIG_2) {
-        fprintf(stderr, "Signature mismatch: expected 0x%02X 0x%02X 0x%02X. Aborting.\n",
-                EXPECTED_SIG_0, EXPECTED_SIG_1, EXPECTED_SIG_2);
-        goto done;
-    }
-
-    if (info.version != EXPECTED_BL_VERSION)
-        fprintf(stderr, "Warning: unexpected bootloader version 0x%02X (expected 0x%02X). "
-                "Proceeding anyway.\n\n", info.version, EXPECTED_BL_VERSION);
-
-    for (int i = info.fw_pages; i < NUM_PAGES; i++) {
-        if (image.page_has_data[i]) {
-            fprintf(stderr, "Error: firmware image has data in page %d, "
-                    "but app flash only has %d page(s). Aborting.\n", i, info.fw_pages);
-            goto done;
+    for (attempt = 1; attempt <= FLASH_MAX_ATTEMPTS; attempt++) {
+        if (attempt > 1) {
+            fprintf(stderr, "Sleeping 1 second before restart (attempt %d/%d)...\n\n",
+                    attempt, FLASH_MAX_ATTEMPTS);
+            usleep(FLASH_RETRY_SLEEP_US);
         }
+
+        int result = run_flash_sequence(&image);
+        if (result == 0) {
+            ret = 0;
+            break;
+        }
+        if (result == -2) {
+            /* Unrecoverable: wrong chip, image too large, etc. No point retrying. */
+            ret = 2;
+            break;
+        }
+
+        /* result == -1: bus error, will retry after sleep */
+        fprintf(stderr, "Flash sequence failed.\n");
     }
 
-    printf("--- Flash ---\n");
-    if (flash_image(&image, info.fw_pages) < 0)
-        goto done;
-    printf("\n");
+    if (ret != 0 && attempt > FLASH_MAX_ATTEMPTS)
+        fprintf(stderr, "Giving up after %d attempts.\n", FLASH_MAX_ATTEMPTS);
 
-    printf("--- Finalize ---\n");
-    compute_fletcher_xor(image.data, BOOTLOADER_START, &f_a, &f_b, &xor);
-    if (bl_finalize(f_a, f_b, xor) < 0) {
-        fprintf(stderr, "Failed to send CMD_FINALIZE.\n");
-        goto done;
-    }
-    printf("Checksum sent (0x%02X 0x%02X 0x%02X). Waiting for verification...\n",
-           f_a, f_b, xor);
-
-    {
-        bl_info_t verify_info;
-        if (bl_read_info(&verify_info) < 0)
-            goto done;
-        verify_status = verify_info.verify_status;
-    }
-
-    if (verify_status == VERIFY_PASSED) {
-        printf("Verification passed. Firmware update complete.\n");
-        ret = 0;
-    } else {
-        fprintf(stderr, "Verification FAILED (status 0x%02X). "
-                "Flash may be corrupt. Re-run to retry.\n", verify_status);
-        ret = 2;
-    }
-
-done:
     close(i2c_fd);
     return ret;
 }
