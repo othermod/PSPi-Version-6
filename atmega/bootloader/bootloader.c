@@ -17,9 +17,7 @@
 
 /* I2C protocol commands */
 #define CMD_READ_INFO               0x01
-#define CMD_SET_PAGE                0x02
-#define CMD_WRITE_PAGE              0x03
-#define CMD_READ_PAGE               0x04
+#define CMD_WRITE_PAGE              0x03  /* page number byte precedes the 64 data bytes */
 #define CMD_FINALIZE                0x05
 
 /* TWI slave receiver status codes (ATmega8 datasheet table 22-2) */
@@ -59,20 +57,12 @@ static uint8_t          blink_fast               = 0;
 static uint8_t          page_buf[SPM_PAGESIZE];
 static uint16_t         flash_addr;
 static volatile uint8_t page_write_pending       = 0;
-static volatile uint8_t page_load_pending        = 0;
+static volatile uint8_t page_write_ready         = 0;
 static uint8_t          checksum_buf[3];
 static volatile uint8_t checksum_verify_pending  = 0;
 static uint8_t          verify_status            = VERIFY_PENDING;
 static uint8_t          info_bytes[6];
 static uint8_t          info_checksum[3];
-
-
-static void load_page_to_buf(uint16_t addr)
-{
-    uint8_t i;
-    for (i = 0; i < SPM_PAGESIZE; i++)
-        page_buf[i] = pgm_read_byte_near(addr + i);
-}
 
 
 static uint8_t flash_is_blank(void)
@@ -155,6 +145,7 @@ static void twi_handle(void)
         case TWI_SR_SLA_ACK:
             byte_cnt           = 0;
             page_write_pending = 0;
+            page_write_ready   = 0;
             break;
 
         case TWI_SR_DATA_ACK:
@@ -168,9 +159,7 @@ static void twi_handle(void)
                 {
                     /* valid commands; no immediate action on receipt of command byte */
                     case CMD_READ_INFO:
-                    case CMD_SET_PAGE:
                     case CMD_WRITE_PAGE:
-                    case CMD_READ_PAGE:
                     case CMD_FINALIZE:
                         break;
 
@@ -183,27 +172,26 @@ static void twi_handle(void)
             {
                 switch (cmd)
                 {
-                    case CMD_SET_PAGE:
+                    case CMD_WRITE_PAGE:
                         if (byte_cnt == 1)
                         {
+                            /* first byte after command is the page number */
                             if (rx_data >= (BOOTLOADER_START / SPM_PAGESIZE))
                                 TWI_CLEAR_ACK(twi_ctrl);
                             else
                                 flash_addr = (uint16_t)rx_data * SPM_PAGESIZE;
                         }
-                        break;
-
-                    case CMD_WRITE_PAGE:
-                    {
-                        uint8_t buf_pos = byte_cnt - 1;
-                        page_buf[buf_pos] = rx_data;
-                        if (buf_pos >= (SPM_PAGESIZE - 1))
+                        else
                         {
-                            page_write_pending = 1;
-                            TWI_CLEAR_ACK(twi_ctrl);
+                            uint8_t buf_pos = byte_cnt - 2;
+                            page_buf[buf_pos] = rx_data;
+                            if (buf_pos >= (SPM_PAGESIZE - 1))
+                            {
+                                page_write_pending = 1;
+                                TWI_CLEAR_ACK(twi_ctrl);
+                            }
                         }
                         break;
-                    }
 
                     case CMD_FINALIZE:
                         /* collect three checksum bytes: Fletcher-16 low, Fletcher-16 high, XOR */
@@ -229,19 +217,25 @@ static void twi_handle(void)
             case TWI_SR_STOP:
                 if (page_write_pending)
                 {
-                    /* Flash write is deferred to the main loop to avoid holding
-                     * SCL low for the full 4.5ms erase+program cycle. Keep TWEA
-                     * cleared so the host's ACK poll sees NACK until we're done. */
+                    /* STOP received with a pending write: set page_write_ready so the
+                     * main loop starts the flash write only AFTER this TWINT is cleared.
+                     * This prevents the ATmega from holding SCL during the 4.5ms
+                     * erase+program cycle, which triggers the BCM2835 clock-stretch bug. */
                     TWI_CLEAR_ACK(twi_ctrl);
+                    page_write_ready = 1;
                 }
                 else
                 {
-                    if (cmd == CMD_SET_PAGE)
-                        page_load_pending = 1;
-                    else if (cmd == CMD_FINALIZE && byte_cnt >= 4)
+                    if (cmd == CMD_FINALIZE && byte_cnt >= 4)
+                    {
                         checksum_verify_pending = 1;
+                        /* Keep TWEA cleared while compute_flash_checksum runs (~7ms)
+                         * in the main loop, for the same reason as above. */
+                        TWI_CLEAR_ACK(twi_ctrl);
+                    }
                     byte_cnt = 0;
-                    TWI_SET_ACK(twi_ctrl);
+                    if (!checksum_verify_pending)
+                        TWI_SET_ACK(twi_ctrl);
                 }
                 break;
 
@@ -263,12 +257,6 @@ static void twi_handle(void)
                             if (byte_cnt == 8)
                                 TWI_CLEAR_ACK(twi_ctrl);
                             break;
-
-                                case CMD_READ_PAGE:
-                                    tx_data = page_buf[byte_cnt];
-                                    if (byte_cnt >= SPM_PAGESIZE - 1)
-                                        TWI_CLEAR_ACK(twi_ctrl);
-                        break;
 
                                 default:
                                     break;
@@ -354,8 +342,6 @@ int main(void)
     if (bl_mode == BL_HOLD)
         PORTB |= (LCD_CONTROL | EN_5V_PIN);
 
-    /* Pre-buffer page 0 so it is ready before the host issues CMD_SET_PAGE(0). */
-    load_page_to_buf(0);
     info_bytes[0] = SIGNATURE_0;
     info_bytes[1] = SIGNATURE_1;
     info_bytes[2] = SIGNATURE_2;
@@ -373,17 +359,12 @@ int main(void)
             if (TWCR & (1<<TWINT))
                 twi_handle();
 
-            if (page_write_pending)
+            if (page_write_ready)
             {
+                page_write_ready   = 0;
                 page_write_pending = 0;
                 write_flash_page();
                 TWCR = (1<<TWEN) | (1<<TWEA);
-            }
-
-            if (page_load_pending)
-            {
-                page_load_pending = 0;
-                load_page_to_buf(flash_addr);
             }
 
             if (checksum_verify_pending)
@@ -402,6 +383,7 @@ int main(void)
                 }
                 info_bytes[5] = verify_status;
                 update_info_checksum();
+                TWCR = (1<<TWEN) | (1<<TWEA);
             }
 
             if (TIFR & (1<<TOV0))

@@ -12,9 +12,7 @@
 #define BL_ADDR                 0x29
 
 #define CMD_READ_INFO           0x01
-#define CMD_SET_PAGE            0x02
-#define CMD_WRITE_PAGE          0x03
-#define CMD_READ_PAGE           0x04
+#define CMD_WRITE_PAGE          0x03  /* page number byte precedes the 64 data bytes */
 #define CMD_FINALIZE            0x05
 
 #define EXPECTED_BL_VERSION     0x01
@@ -40,11 +38,8 @@
 /* How many times to retry a corrupt CMD_READ_INFO response */
 #define INFO_READ_RETRIES       10
 
-/* How many full restart attempts before giving up */
-#define FLASH_MAX_ATTEMPTS      5
-
-/* Sleep between full restart attempts (1 second) */
-#define FLASH_RETRY_SLEEP_US    1000000
+/* How many times to retry a single page write before giving up on the sequence */
+#define PAGE_WRITE_RETRIES      3
 
 typedef struct {
     uint8_t  data[FLASH_SIZE];
@@ -167,25 +162,17 @@ static int bl_read_info(bl_info_t *info)
     return -1;
 }
 
-static int bl_set_page(uint8_t page)
-{
-    uint8_t buf[2] = { CMD_SET_PAGE, page };
-    if (i2c_write(BL_ADDR, buf, 2) < 0)
-        return -1;
-    usleep(1000); /* 10x time for load_page_to_buf to complete */
-    return 0;
-}
-
 /*
- * Sends CMD_WRITE_PAGE followed by 64 data bytes, then sleeps 10x the
- * ATmega8 max flash write time (4.5ms) to ensure the write completes
- * before the next transaction.
+ * Sends CMD_WRITE_PAGE followed by the page number and 64 data bytes,
+ * then sleeps 10x the ATmega8 max flash write time (4.5ms) to ensure
+ * the write completes before the next transaction.
  */
-static int bl_write_page(const uint8_t *data)
+static int bl_write_page(uint8_t page, const uint8_t *data)
 {
-    uint8_t buf[1 + SPM_PAGESIZE];
+    uint8_t buf[2 + SPM_PAGESIZE];
     buf[0] = CMD_WRITE_PAGE;
-    memcpy(buf + 1, data, SPM_PAGESIZE);
+    buf[1] = page;
+    memcpy(buf + 2, data, SPM_PAGESIZE);
     if (i2c_write(BL_ADDR, buf, sizeof(buf)) < 0)
         return -1;
     usleep(FLASH_WRITE_SLEEP_US);
@@ -296,12 +283,30 @@ static int flash_image(const flash_image_t *image, uint8_t fw_pages)
     printf("Flashing %d page(s)...\n", fw_pages);
 
     for (page = 0; page < fw_pages; page++) {
-        if (bl_set_page((uint8_t)page) < 0) {
-            fprintf(stderr, "\n  page %d: bl_set_page failed.\n", page);
-            return -1;
+        int retry;
+        int ok = 0;
+
+        for (retry = 0; retry <= PAGE_WRITE_RETRIES; retry++) {
+            if (retry > 0) {
+                usleep(FLASH_WRITE_SLEEP_US);
+                if (i2c_probe(BL_ADDR) < 0) {
+                    fprintf(stderr, "\n  page %d: device not responding after write failure.\n",
+                            page);
+                    return -1;
+                }
+                fprintf(stderr, "\n  page %d: device still responding, retrying write "
+                        "(%d/%d)...\n", page, retry, PAGE_WRITE_RETRIES);
+            }
+
+            if (bl_write_page((uint8_t)page, image->data + page * SPM_PAGESIZE) == 0) {
+                ok = 1;
+                break;
+            }
         }
-        if (bl_write_page(image->data + page * SPM_PAGESIZE) < 0) {
-            fprintf(stderr, "\n  page %d: bl_write_page failed.\n", page);
+
+        if (!ok) {
+            fprintf(stderr, "\n  page %d: bl_write_page failed after %d attempts.\n",
+                    page, PAGE_WRITE_RETRIES + 1);
             return -1;
         }
 
@@ -325,7 +330,7 @@ static void usage(const char *prog)
  *
  * Returns:
  *   0   success
- *  -1   recoverable bus error (caller should sleep and retry)
+ *  -1   I/O or verification failure
  *  -2   unrecoverable error (bad signature, image out of range, etc.)
  */
 static int run_flash_sequence(const flash_image_t *image)
@@ -404,8 +409,7 @@ int main(int argc, char *argv[])
 {
     const char   *hex_file = NULL;
     flash_image_t image;
-    int           attempt;
-    int           ret = 2;
+    int           ret;
 
     if (argc < 2 || strcmp(argv[1], "-h") == 0) {
         usage(argv[0]);
@@ -422,31 +426,8 @@ int main(int argc, char *argv[])
     if (i2c_open("/dev/i2c-1") < 0)
         return 2;
 
-    for (attempt = 1; attempt <= FLASH_MAX_ATTEMPTS; attempt++) {
-        if (attempt > 1) {
-            fprintf(stderr, "Sleeping 1 second before restart (attempt %d/%d)...\n\n",
-                    attempt, FLASH_MAX_ATTEMPTS);
-            usleep(FLASH_RETRY_SLEEP_US);
-        }
-
-        int result = run_flash_sequence(&image);
-        if (result == 0) {
-            ret = 0;
-            break;
-        }
-        if (result == -2) {
-            /* Unrecoverable: wrong chip, image too large, etc. No point retrying. */
-            ret = 2;
-            break;
-        }
-
-        /* result == -1: bus error, will retry after sleep */
-        fprintf(stderr, "Flash sequence failed.\n");
-    }
-
-    if (ret != 0 && attempt > FLASH_MAX_ATTEMPTS)
-        fprintf(stderr, "Giving up after %d attempts.\n", FLASH_MAX_ATTEMPTS);
+    ret = run_flash_sequence(&image);
 
     close(i2c_fd);
-    return ret;
+    return ret == 0 ? 0 : 1;
 }
