@@ -1,18 +1,8 @@
-# Recalbox distro config for buildroot.sh
-# Sourced by buildroot.sh; not run directly.
-#
-# To build all targets:   sudo ./scripts/buildroot.sh --distro recalbox
-# To build one target:    sudo ./scripts/buildroot.sh --distro recalbox --target cm4
-
-# --- Partition and filesystem layout ---
-
-SQUASHFS_PATH="boot/recalbox"  # path to squashfs within the mounted boot partition
-DRIVERS_BASE="/boot"           # runtime path where drivers/ and boot.sh live on the device
-VC4_REQUIRED=false             # distroconfig.txt may not exist on all Recalbox builds
+SQUASHFS_PATH="boot/recalbox"
+DRIVERS_BASE="/boot"
+VC4_REQUIRED=false
 INIT_SYSTEM=sysv
 SQUASHFS_COMP_ARGS=""
-
-# --- Targets ---
 
 ALL_TARGETS=(cm4)
 
