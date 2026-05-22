@@ -353,7 +353,7 @@ void cleanup_resources(void) {
             exit(1);
         }
         uint8_t probe;
-        if (read(controller_board_fd, &probe, 1) < 0) {
+        if (read(controller_board_fd, &probe, 1) < 1) {
             fprintf(stderr, "No I2C device found at address 0x10\n");
             cleanup_resources();
             exit(1);
