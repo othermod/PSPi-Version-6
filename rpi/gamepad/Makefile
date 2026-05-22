@@ -26,7 +26,7 @@ CFLAGS_COMMON = -O3 -lrt -static
 
 # Clean build artifacts
 clean:
-	rm -rf bin
+	rm -rf 32 64
 	rm -f *.o
 	@echo "Clean complete."
 
