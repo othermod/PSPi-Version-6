@@ -249,6 +249,14 @@ patch_image() {
             mkdir -p "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
             ln -sf ../system/pspi.service \
                 "$overlay_target/usr/lib/systemd/system/multi-user.target.wants/pspi.service"
+
+            # Firmware updater -- runs once, very late in boot
+            sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
+                "$CONFIG_DIR/pspi-firmware-update.service" \
+                > "$overlay_target/usr/lib/systemd/system/pspi-firmware-update.service"
+            mkdir -p "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
+            ln -sf ../system/pspi-firmware-update.service \
+                "$overlay_target/usr/lib/systemd/system/multi-user.target.wants/pspi-firmware-update.service"
             ;;
         sysv)
             mkdir -p "$overlay_target/etc/init.d"
