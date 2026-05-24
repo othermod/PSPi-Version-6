@@ -96,6 +96,9 @@ build_drivers() {
     echo "Building firmware updater..."
     ( cd "$PROJECT_DIR/rpi/firmware" && make 32 && make 64 )
 
+    echo "Building atmega firmware..."
+    ( cd "$PROJECT_DIR/atmega/firmware" && make all )
+
     for overlay in audio lcd pcie; do
         echo "Building $overlay overlay..."
         ( cd "$PROJECT_DIR/rpi/$overlay" && make clean && make all )
