@@ -1,6 +1,7 @@
 [Unit]
 Description=PSPi gamepad and battery monitor
 After=sys-subsystem-net-devices-wlan0.device
+Wants=sys-subsystem-net-devices-wlan0.device
 
 [Service]
 Type=simple
