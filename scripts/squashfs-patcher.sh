@@ -237,29 +237,14 @@ patch_image() {
     # Templates in config/ use __DRIVERS_BASE__ as a placeholder, substituted here
     case "$INIT_SYSTEM" in
         systemd)
-            mkdir -p "$overlay_target/usr/lib/systemd/system"
-
-            sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
-                "$CONFIG_DIR/pspi-rtc.service" \
-                > "$overlay_target/usr/lib/systemd/system/pspi-rtc.service"
-            mkdir -p "$overlay_target/usr/lib/systemd/system/sysinit.target.wants"
-            ln -sf ../system/pspi-rtc.service \
-                "$overlay_target/usr/lib/systemd/system/sysinit.target.wants/pspi-rtc.service"
+            mkdir -p "$overlay_target/usr/lib/systemd/system" \
+                     "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
 
             sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
                 "$CONFIG_DIR/pspi.service" \
                 > "$overlay_target/usr/lib/systemd/system/pspi.service"
-            mkdir -p "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
-            ln -sf ../system/pspi.service \
+            ln -sf ../pspi.service \
                 "$overlay_target/usr/lib/systemd/system/multi-user.target.wants/pspi.service"
-
-            # Firmware updater -- runs once, very late in boot
-            sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
-                "$CONFIG_DIR/pspi-firmware-update.service" \
-                > "$overlay_target/usr/lib/systemd/system/pspi-firmware-update.service"
-            mkdir -p "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
-            ln -sf ../system/pspi-firmware-update.service \
-                "$overlay_target/usr/lib/systemd/system/multi-user.target.wants/pspi-firmware-update.service"
             ;;
         sysv)
             mkdir -p "$overlay_target/etc/init.d"
