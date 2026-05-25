@@ -84,24 +84,29 @@ cleanup() {
 }
 
 build_drivers() {
+    # Drop back to the invoking user so builds use their toolchain/PATH.
+    # Falls back to running as-is if SUDO_USER is unset (e.g. root running directly).
+    local -a as_user=()
+    [[ -n "${SUDO_USER:-}" ]] && as_user=(sudo -u "$SUDO_USER")
+
     echo "Building gamepad..."
-    ( cd "$PROJECT_DIR/rpi/gamepad" && make 32 && make 64 )
+    ( cd "$PROJECT_DIR/rpi/gamepad" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
 
     echo "Building battery monitor..."
-    ( cd "$PROJECT_DIR/rpi/battery" && make 32 && make 64 )
+    ( cd "$PROJECT_DIR/rpi/battery" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
 
     echo "Building rtc..."
-    ( cd "$PROJECT_DIR/rpi/rtc" && make 32 && make 64 )
+    ( cd "$PROJECT_DIR/rpi/rtc" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
 
     echo "Building firmware updater..."
-    ( cd "$PROJECT_DIR/rpi/firmware" && make 32 && make 64 )
+    ( cd "$PROJECT_DIR/rpi/firmware" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
 
     echo "Building atmega firmware..."
-    ( cd "$PROJECT_DIR/atmega/firmware" && make all )
+    ( cd "$PROJECT_DIR/atmega/firmware" && "${as_user[@]}" make all )
 
     for overlay in audio lcd pcie; do
         echo "Building $overlay overlay..."
-        ( cd "$PROJECT_DIR/rpi/$overlay" && make clean && make all )
+        ( cd "$PROJECT_DIR/rpi/$overlay" && "${as_user[@]}" make clean && "${as_user[@]}" make all )
     done
 }
 
