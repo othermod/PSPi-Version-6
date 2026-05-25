@@ -30,6 +30,11 @@ TARGET_BIN[zero1]=32
 
 distro_post_patch() {
     local overlay_target="$1"
+    local mnt_boot="$2"
+
+    echo "  [batocera] Removing boot partition files..."
+    rm -f "$mnt_boot/boot/rufomaculata"
+    echo "  [batocera] Removed boot partition files"
 
     echo "  [batocera] Applying bcm2835 audio fix..."
 
