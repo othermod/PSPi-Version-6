@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 CONF="./pspi.conf"
 
+modprobe i2c-dev
+
+./drivers/battery_monitor &
+
 # Wait for the I2C bus before starting anything that depends on it
 until [ -e /dev/i2c-1 ]; do sleep 1; done
 
@@ -54,5 +58,4 @@ GAMEPAD_ARGS=""
 [[ "$extrabuttons"  != "disabled" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --extrabuttons $extrabuttons"
 
 ./drivers/gamepad $GAMEPAD_ARGS &
-./drivers/battery_monitor &
 wait
