@@ -3,6 +3,7 @@ CONF="./pspi.conf"
 
 modprobe i2c-dev
 
+# Start the battery monitor early so the OS sees the battery
 ./drivers/battery_monitor &
 
 # Wait for the I2C bus before starting anything that depends on it
@@ -10,13 +11,6 @@ until [ -e /dev/i2c-1 ]; do sleep 1; done
 
 # Start the RTC daemon
 ./drivers/rtc &
-
-# If firmware update binaries are present, schedule the update in the background.
-# The rest of the system starts normally; the device powers off when the update
-# completes, matching the original one-shot service behaviour.
-if [[ -f ./drivers/update_firmware && -f ./drivers/firmware.hex ]]; then
-    ( sleep 20 && ./drivers/update_firmware ./drivers/firmware.hex && /sbin/poweroff ) &
-fi
 
 enable_dim=false
 dim_seconds=120
@@ -57,5 +51,6 @@ GAMEPAD_ARGS=""
 [[ "$verbose"       == "true" ]]     && GAMEPAD_ARGS="$GAMEPAD_ARGS --verbose"
 [[ "$extrabuttons"  != "disabled" ]] && GAMEPAD_ARGS="$GAMEPAD_ARGS --extrabuttons $extrabuttons"
 
+# Start the gamepad with arguments
 ./drivers/gamepad $GAMEPAD_ARGS &
 wait

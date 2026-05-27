@@ -215,12 +215,6 @@ patch_image() {
     cp "${base}/gamepad/${BIN}/gamepad"           "$mnt_boot/drivers/gamepad"
     cp "${base}/battery/${BIN}/battery_monitor"   "$mnt_boot/drivers/battery_monitor"
     cp "${base}/rtc/${BIN}/rtc"                   "$mnt_boot/drivers/rtc"
-    cp "${base}/firmware/${BIN}/update_firmware"  "$mnt_boot/drivers/update_firmware"
-    local hex_src
-    [[ -n "$DRIVER_BINARIES_DIR" ]] \
-        && hex_src="$DRIVER_BINARIES_DIR/atmega-firmware/firmware.hex" \
-        || hex_src="$PROJECT_DIR/atmega/firmware/firmware.hex"
-    cp "$hex_src" "$mnt_boot/drivers/firmware.hex"
 
     # Method-specific: set up the editable rootfs and register the cleanup trap
     local rootfs_target
@@ -304,7 +298,7 @@ patch_image() {
         umount "$mnt_squashfs"
 
         echo "  Zeroing free space in boot partition..."
-        dd if=/dev/zero of="$mnt_boot/$SQUASHFS_PATH" bs=1M status=progress || true
+        dd if=/dev/zero of="$mnt_boot/$SQUASHFS_PATH" bs=1M status=progress 2>&1 | sed "/No space left on device/d" || true
         sync
         rm "$mnt_boot/$SQUASHFS_PATH"
 
