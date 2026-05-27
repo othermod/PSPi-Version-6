@@ -3,8 +3,7 @@ GCC = gcc
 
 KDIR ?= $(dir $(lastword $(MAKEFILE_LIST)))linux
 
-SRCS = pspi-lcd-zero.dts \
-       pspi-lcd-compute.dts
+SRCS = pspi-lcd-overlay.dts
 
 OBJS = $(patsubst %.dts,%.dtbo,$(SRCS))
 

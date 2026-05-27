@@ -29,7 +29,7 @@ arm_freq_min=100
 # Set minimum core frequency to 100
 core_freq_min=100
 
-dtoverlay=pspi-lcd-compute
+dtoverlay=pspi-lcd-overlay
 
 over_voltage_min=-8
 
