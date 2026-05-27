@@ -11,7 +11,7 @@ set -euo pipefail
 #   DRIVERS_BASE                 - runtime path where drivers/boot.sh live on the device
 #   VC4_REQUIRED                 - true|false, whether missing vc4-kms-v3d line is fatal
 #   INIT_SYSTEM                  - systemd or sysv
-#   ALL_TARGETS                  - bash array of target names; each must match a config/<name>.txt
+#   ALL_TARGETS                  - bash array of target names
 #   TARGET_URL[<target>]         - download URL; compression detected from file extension
 #   TARGET_SHA256[<target>]      - SHA256 of the download, or empty to skip verification
 #   TARGET_PSPI_PREFIX[<target>] - output filename prefix; -v<version>.img.gz appended automatically
@@ -171,7 +171,7 @@ detect_rootfs_offset() {
 }
 
 patch_image() {
-    local img_path="$1" work_dir="$2" device_config="$3" BIN="$4"
+    local img_path="$1" work_dir="$2" BIN="$3"
 
     local boot_offset
     boot_offset=$(detect_boot_offset "$img_path")
@@ -196,10 +196,8 @@ patch_image() {
     mkdir -p "$mnt_boot"
     mount "$device_path" "$mnt_boot" || die "Failed to mount boot partition"
 
-    # Append board-specific hardware config
-    local config_file="$CONFIG_DIR/${device_config}.txt"
-    [[ -f "$config_file" ]] || die "Device config file not found: $config_file"
-    cat "$config_file" >> "$mnt_boot/config.txt"
+    # Append PSPi hardware config (conditional filter tags handle per-board settings)
+    cat "$CONFIG_DIR/config.txt" >> "$mnt_boot/config.txt"
 
     # Disable vc4 audio via distroconfig.txt if present
     if [[ -f "$mnt_boot/distroconfig.txt" ]]; then
@@ -361,7 +359,7 @@ build_image() {
     esac
     echo "  Decompressed: $(du -h "$img_path" | cut -f1)"
 
-    patch_image "$img_path" "$work_dir" "$label" "$T_BIN"
+    patch_image "$img_path" "$work_dir" "$T_BIN"
 
     gzip -9c "$img_path" > "$OUTPUT_DIR/$T_PSPI_NAME"
     echo "  Compressed: $T_PSPI_NAME ($(du -h "$OUTPUT_DIR/$T_PSPI_NAME" | cut -f1))"
