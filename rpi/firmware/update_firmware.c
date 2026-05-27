@@ -411,6 +411,11 @@ int main(int argc, char *argv[])
     flash_image_t image;
     int           ret;
 
+    if (geteuid() != 0) {
+        fprintf(stderr, "Error: firmware update requires root privileges.\n");
+        return 2;
+    }
+
     if (argc < 2 || strcmp(argv[1], "-h") == 0) {
         usage(argv[0]);
         return argc < 2 ? 2 : 0;
