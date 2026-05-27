@@ -58,23 +58,10 @@ static uint8_t          page_buf[SPM_PAGESIZE];
 static uint16_t         flash_addr;
 static volatile uint8_t page_write_pending       = 0;
 static volatile uint8_t page_write_ready         = 0;
-static uint8_t          checksum_buf[3];
 static volatile uint8_t checksum_verify_pending  = 0;
 static uint8_t          verify_status            = VERIFY_PENDING;
 static uint8_t          info_bytes[6];
 static uint8_t          info_checksum[3];
-
-
-static uint8_t flash_is_blank(void)
-{
-    uint16_t i;
-    for (i = 0; i < BOOTLOADER_START; i++)
-    {
-        if (pgm_read_byte_near(i) != 0xFF)
-            return 0;
-    }
-    return 1;
-}
 
 
 static void write_flash_page(void)
@@ -114,11 +101,12 @@ static void update_info_checksum(void)
 }
 
 
+/* Checksum covers all app flash bytes except the final 3, which store the checksum itself. */
 static void compute_flash_checksum(uint8_t *f16_a, uint8_t *f16_b, uint8_t *xorsum)
 {
     uint8_t  sum1 = 0, sum2 = 0, xor = 0;
     uint16_t i;
-    for (i = 0; i < BOOTLOADER_START; i++)
+    for (i = 0; i < BOOTLOADER_START - 3; i++)
     {
         uint8_t b = pgm_read_byte_near(i);
         sum1 += b;
@@ -128,6 +116,17 @@ static void compute_flash_checksum(uint8_t *f16_a, uint8_t *f16_b, uint8_t *xors
     *f16_a  = sum1;
     *f16_b  = sum2;
     *xorsum = xor;
+}
+
+
+/* Returns 1 if the embedded checksum at the top of app flash matches the computed value. */
+static uint8_t flash_verify_checksum(void)
+{
+    uint8_t f16_a, f16_b, xorsum;
+    compute_flash_checksum(&f16_a, &f16_b, &xorsum);
+    return (f16_a  == pgm_read_byte_near(BOOTLOADER_START - 3) &&
+            f16_b  == pgm_read_byte_near(BOOTLOADER_START - 2) &&
+            xorsum == pgm_read_byte_near(BOOTLOADER_START - 1));
 }
 
 
@@ -194,11 +193,8 @@ static void twi_handle(void)
                         break;
 
                     case CMD_FINALIZE:
-                        /* collect three checksum bytes: Fletcher-16 low, Fletcher-16 high, XOR */
-                        if (byte_cnt <= 3)
-                            checksum_buf[byte_cnt - 1] = rx_data;
-                        if (byte_cnt == 3)
-                            TWI_CLEAR_ACK(twi_ctrl);
+                        /* no data bytes expected; NACK any extra */
+                        TWI_CLEAR_ACK(twi_ctrl);
                         break;
 
                     default:
@@ -226,7 +222,7 @@ static void twi_handle(void)
                 }
                 else
                 {
-                    if (cmd == CMD_FINALIZE && byte_cnt >= 4)
+                    if (cmd == CMD_FINALIZE && byte_cnt >= 1)
                     {
                         checksum_verify_pending = 1;
                         /* Keep TWEA cleared while compute_flash_checksum runs (~7ms)
@@ -312,14 +308,14 @@ int main(void)
     /* --- BOOT ENTRY LOGIC --- */
     if (PINB & BTN_DISP)
     {
-        /* Button not pressed: boot app if flash is not blank */
-        if (!flash_is_blank())
+        /* Button not pressed: boot app only if embedded checksum is valid */
+        if (flash_verify_checksum())
             bl_mode = BL_JUMP_APP;
     }
     else
     {
         /* Button pressed: wait up to 1 second for release.
-         * Releasing early boots the app; holding the full second stays in bootloader. */
+         * Releasing early boots the app (if checksum valid); holding the full second stays in bootloader. */
         uint8_t ovf_count = 0;
         while (ovf_count < (uint8_t)TIMER_OVF_PER_SEC)
         {
@@ -329,15 +325,12 @@ int main(void)
 
             if (PINB & BTN_DISP)
             {
-                bl_mode = BL_JUMP_APP;
+                if (flash_verify_checksum())
+                    bl_mode = BL_JUMP_APP;
                 break;
             }
         }
     }
-
-    /* Blank flash always forces bootloader mode regardless of button state */
-    if (flash_is_blank())
-        bl_mode = BL_HOLD;
 
     if (bl_mode == BL_HOLD)
         PORTB |= (LCD_CONTROL | EN_5V_PIN);
@@ -370,9 +363,7 @@ int main(void)
             if (checksum_verify_pending)
             {
                 checksum_verify_pending = 0;
-                uint8_t f16_a, f16_b, xorsum;
-                compute_flash_checksum(&f16_a, &f16_b, &xorsum);
-                if (f16_a == checksum_buf[0] && f16_b == checksum_buf[1] && xorsum == checksum_buf[2])
+                if (flash_verify_checksum())
                 {
                     verify_status = VERIFY_PASSED;
                     blink_fast    = 1;

@@ -180,14 +180,13 @@ static int bl_write_page(uint8_t page, const uint8_t *data)
 }
 
 /*
- * Sends CMD_FINALIZE with the 3-byte Fletcher+XOR checksum computed
- * over the full application flash region. The bootloader will verify
- * this against what it finds in flash and update its verify_status.
+ * Sends CMD_FINALIZE, prompting the bootloader to verify the checksum
+ * already embedded in the final 3 bytes of the app flash region.
  */
-static int bl_finalize(uint8_t f_a, uint8_t f_b, uint8_t xor)
+static int bl_finalize(void)
 {
-    uint8_t buf[4] = { CMD_FINALIZE, f_a, f_b, xor };
-    if (i2c_write(BL_ADDR, buf, sizeof(buf)) < 0)
+    uint8_t cmd = CMD_FINALIZE;
+    if (i2c_write(BL_ADDR, &cmd, 1) < 0)
         return -1;
     usleep(100000); /* 10x time for compute_flash_checksum to complete */
     return 0;
@@ -333,7 +332,7 @@ static void usage(const char *prog)
  *  -1   I/O or verification failure
  *  -2   unrecoverable error (bad signature, image out of range, etc.)
  */
-static int run_flash_sequence(const flash_image_t *image)
+static int run_flash_sequence(flash_image_t *image)
 {
     bl_info_t info;
     uint8_t   f_a, f_b, xor;
@@ -379,18 +378,39 @@ static int run_flash_sequence(const flash_image_t *image)
     }
 
     printf("--- Flash ---\n");
+
+    /* Ensure the final 3 bytes of the app region are unprogrammed (0xFF).
+     * Those bytes are reserved for the embedded checksum; if the firmware
+     * has placed code or data there the image is incompatible with this bootloader. */
+    if (image->data[BOOTLOADER_START - 3] != 0xFF ||
+        image->data[BOOTLOADER_START - 2] != 0xFF ||
+        image->data[BOOTLOADER_START - 1] != 0xFF) {
+        fprintf(stderr, "Error: firmware has data in the checksum region "
+                "(0x%04X-0x%04X). Aborting.\n",
+                BOOTLOADER_START - 3, BOOTLOADER_START - 1);
+        return -2;
+    }
+
+    /* Embed the checksum into the image before writing.
+     * Covers bytes [0 .. BOOTLOADER_START-4]; the result goes into the final 3 bytes
+     * of the app region so the bootloader can verify at every boot. */
+    compute_fletcher_xor(image->data, BOOTLOADER_START - 3, &f_a, &f_b, &xor);
+    image->data[BOOTLOADER_START - 3] = f_a;
+    image->data[BOOTLOADER_START - 2] = f_b;
+    image->data[BOOTLOADER_START - 1] = xor;
+    image->page_has_data[(BOOTLOADER_START - 3) / SPM_PAGESIZE] = 1;
+    printf("Checksum embedded (0x%02X 0x%02X 0x%02X).\n\n", f_a, f_b, xor);
+
     if (flash_image(image, info.fw_pages) < 0)
         return -1;
     printf("\n");
 
     printf("--- Finalize ---\n");
-    compute_fletcher_xor(image->data, BOOTLOADER_START, &f_a, &f_b, &xor);
-    if (bl_finalize(f_a, f_b, xor) < 0) {
+    if (bl_finalize() < 0) {
         fprintf(stderr, "Failed to send CMD_FINALIZE.\n");
         return -1;
     }
-    printf("Checksum sent (0x%02X 0x%02X 0x%02X). Waiting for verification...\n",
-           f_a, f_b, xor);
+    printf("Waiting for bootloader verification...\n");
 
     if (bl_read_info(&verify_info) < 0)
         return -1;
