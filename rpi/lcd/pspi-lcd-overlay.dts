@@ -1,0 +1,122 @@
+/*
+ * pspi-lcd-overlay.dts
+ *
+ * Combined overlay for Compute Module and Pi Zero variants.
+ *
+ * Default (no params):  Compute Module pin layout
+ * For Pi Zero:          dtoverlay=pspi-lcd,zero
+ *
+ * Other params:
+ *   rgb_order    Override the RGB channel order (default "grb")
+ *
+ * Note: I2C1 on GPIOs 2/3 is omitted here.
+ * Enable it separately with: dtoverlay=i2c1
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/bcm2835.h>
+
+/ {
+    compatible = "brcm,bcm2835";
+
+    /* Enable DPI; defaults to compute pin layout */
+    fragment@0 {
+        target = <&dpi>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&dpi_pins_compute>;
+            rgb_order = "grb";
+        };
+    };
+
+    /* Compute Module: full 26-pin DPI bus (always active, default) */
+    fragment@1 {
+        target = <&gpio>;
+        __overlay__ {
+            dpi_pins_compute: dpi_pins_compute {
+                brcm,pins = <0 1 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27>;
+                brcm,function = <BCM2835_FSEL_ALT2>;
+                brcm,pull = <BCM2835_PUD_OFF>;
+            };
+        };
+    };
+
+    /* Pi Zero: define the zero pin group (dormant by default) */
+    fragment@2 {
+        target = <&gpio>;
+        __dormant__ {
+            dpi_pins_zero: dpi_pins_zero {
+                brcm,pins = <0 1 5 6 7 8 9 10 11 13 14 15 16 17 18 19 21 22 23 24 25 26 27>;
+                brcm,function = <BCM2835_FSEL_ALT2>;
+                brcm,pull = <BCM2835_PUD_OFF>;
+            };
+        };
+    };
+
+    /*
+     * Pi Zero: overwrite dpi's pinctrl-0 to point at the zero pin group.
+     * Fires after fragment@0 so it wins. Dormant by default.
+     */
+    fragment@3 {
+        target = <&dpi>;
+        __dormant__ {
+            pinctrl-0 = <&dpi_pins_zero>;
+        };
+    };
+
+    fragment@4 {
+        target-path = "/";
+        __overlay__ {
+            panel: panel {
+                compatible = "panel-dpi";
+                width-mm = <154>;
+                height-mm = <86>;
+                bus-format = <0x1013>; /* MEDIA_BUS_FMT_BGR888_1X24 */
+
+                panel-timing {
+                    clock-frequency = <29500000>;
+                    hactive = <800>;
+                    hfront-porch = <24>;
+                    hsync-len = <72>;
+                    hback-porch = <96>;
+                    hsync-active = <0>;
+                    vactive = <480>;
+                    vfront-porch = <3>;
+                    vsync-len = <10>;
+                    vback-porch = <7>;
+                    vsync-active = <0>;
+                    de-active = <1>;
+                    pixelclk-active = <1>;
+                };
+
+                port {
+                    panel_in: endpoint {
+                        remote-endpoint = <&dpi_out>;
+                    };
+                };
+            };
+        };
+    };
+
+    fragment@5 {
+        target = <&dpi>;
+        __overlay__ {
+            port {
+                dpi_out: endpoint {
+                    remote-endpoint = <&panel_in>;
+                };
+            };
+        };
+    };
+
+    __overrides__ {
+        /* Enable both the zero pin group and the pinctrl-0 override fragment */
+        zero      = <0>,"=2",
+                    <0>,"=3";
+        rgb_order = <&dpi>,"rgb_order";
+    };
+};
