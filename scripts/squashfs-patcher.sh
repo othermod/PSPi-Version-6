@@ -9,7 +9,6 @@ set -euo pipefail
 # Distro configs live in scripts/distros/<name>.sh and must define:
 #   PATCH_METHOD                 - "squashfs" or "copy"
 #   DRIVERS_BASE                 - runtime path where drivers/boot.sh live on the device
-#   VC4_REQUIRED                 - true|false, whether missing vc4-kms-v3d line is fatal
 #   INIT_SYSTEM                  - systemd or sysv
 #   ALL_TARGETS                  - bash array of target names
 #   TARGET_URL[<target>]         - download URL; compression detected from file extension
@@ -59,7 +58,6 @@ source "$DISTRO_FILE"
 # Validate required distro vars
 : "${PATCH_METHOD:?$DISTRO_FILE must set PATCH_METHOD (squashfs or copy)}"
 : "${DRIVERS_BASE:?$DISTRO_FILE must set DRIVERS_BASE}"
-: "${VC4_REQUIRED:?$DISTRO_FILE must set VC4_REQUIRED}"
 : "${INIT_SYSTEM:?$DISTRO_FILE must set INIT_SYSTEM (systemd or sysv)}"
 : "${ALL_TARGETS:?$DISTRO_FILE must set ALL_TARGETS}"
 [[ "$PATCH_METHOD" == "squashfs" || "$PATCH_METHOD" == "copy" ]] \
@@ -198,19 +196,6 @@ patch_image() {
 
     # Append PSPi hardware config (conditional filter tags handle per-board settings)
     cat "$CONFIG_DIR/config.txt" >> "$mnt_boot/config.txt"
-
-    # Disable vc4 audio via distroconfig.txt if present
-    if [[ -f "$mnt_boot/distroconfig.txt" ]]; then
-        local vc4_line
-        vc4_line=$(grep "dtoverlay=vc4-kms-v3d" "$mnt_boot/distroconfig.txt" | head -1)
-        if [[ -n "$vc4_line" ]]; then
-            echo "$vc4_line,noaudio" >> "$mnt_boot/config.txt"
-        elif [[ "$VC4_REQUIRED" == "true" ]]; then
-            die "vc4-kms-v3d line not found in distroconfig.txt"
-        fi
-    elif [[ "$VC4_REQUIRED" == "true" ]]; then
-        die "distroconfig.txt not found but VC4_REQUIRED=true"
-    fi
 
     # Copy PSPi runtime config and boot script
     cp "$CONFIG_DIR/pspi.conf" "$mnt_boot/pspi.conf"

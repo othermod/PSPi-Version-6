@@ -1,7 +1,6 @@
 PATCH_METHOD="squashfs"
 SQUASHFS_PATH="SYSTEM"
 DRIVERS_BASE="/flash"
-VC4_REQUIRED=true
 INIT_SYSTEM=systemd
 SQUASHFS_COMP_ARGS=""
 
@@ -33,7 +32,13 @@ TARGET_BIN[zero1]=32
 
 distro_post_patch() {
     local overlay_target="$1"
-    # mnt_boot="$2"  work_dir="$3"  BIN="$4" -- not needed here
+    local mnt_boot="$2"
+
+    # Append vc4-kms-v3d with noaudio -- required for Lakka's display pipeline
+    local vc4_line
+    vc4_line=$(grep "dtoverlay=vc4-kms-v3d" "$mnt_boot/distroconfig.txt" | head -1)
+    [[ -z "$vc4_line" ]] && die "vc4-kms-v3d line not found in distroconfig.txt"
+    echo "$vc4_line,noaudio" >> "$mnt_boot/config.txt"
 
     local cfg="$overlay_target/etc/retroarch.cfg"
     sed -i 's/menu_swap_ok_cancel_buttons = "false"/menu_swap_ok_cancel_buttons = "true"/'  "$cfg"
