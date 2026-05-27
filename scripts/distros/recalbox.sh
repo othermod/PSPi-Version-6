@@ -1,3 +1,4 @@
+PATCH_METHOD="squashfs"
 SQUASHFS_PATH="boot/recalbox"
 DRIVERS_BASE="/boot"
 VC4_REQUIRED=false

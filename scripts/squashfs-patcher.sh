@@ -7,22 +7,25 @@ set -euo pipefail
 #   ./scripts/buildroot.sh --distro <name> [--version X.Y.Z] [--driver-binaries PATH] [--target TARGET]
 #
 # Distro configs live in scripts/distros/<name>.sh and must define:
-#   SQUASHFS_PATH                - path to squashfs within the mounted boot partition
+#   PATCH_METHOD                 - "squashfs" or "copy"
 #   DRIVERS_BASE                 - runtime path where drivers/boot.sh live on the device
 #   VC4_REQUIRED                 - true|false, whether missing vc4-kms-v3d line is fatal
 #   INIT_SYSTEM                  - systemd or sysv
-#   SQUASHFS_COMP_ARGS           - extra args passed to mksquashfs (e.g. "-comp zstd"), can be empty
 #   ALL_TARGETS                  - bash array of target names; each must match a config/<name>.txt
 #   TARGET_URL[<target>]         - download URL; compression detected from file extension
 #   TARGET_SHA256[<target>]      - SHA256 of the download, or empty to skip verification
 #   TARGET_PSPI_PREFIX[<target>] - output filename prefix; -v<version>.img.gz appended automatically
 #   TARGET_BIN[<target>]         - 32 or 64
 #
+# For PATCH_METHOD=squashfs, also define:
+#   SQUASHFS_PATH                - path to squashfs within the mounted boot partition
+#   SQUASHFS_COMP_ARGS           - extra args passed to mksquashfs (e.g. "-comp zstd"), can be empty
+#
 # Optional hooks (define in distro config if needed):
-#   distro_post_patch() - called with (overlay_target, mnt_boot, work_dir, BIN)
-#                         before squashfs is repacked; use for rootfs edits
-#   distro_post_write() - called with (mnt_boot, BIN) after squashfs is copied
-#                         back; use for checksums, board marker files, etc.
+#   distro_post_patch() - called with (rootfs_target, mnt_boot, work_dir, BIN)
+#                         rootfs_target is overlay_target (squashfs) or mnt_rootfs (copy)
+#   distro_post_write() - called with (mnt_boot, BIN) after write is complete;
+#                         use for checksums, board marker files, etc.
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -54,12 +57,17 @@ DISTRO_FILE="$SCRIPT_DIR/distros/${DISTRO}.sh"
 source "$DISTRO_FILE"
 
 # Validate required distro vars
-: "${SQUASHFS_PATH:?$DISTRO_FILE must set SQUASHFS_PATH}"
+: "${PATCH_METHOD:?$DISTRO_FILE must set PATCH_METHOD (squashfs or copy)}"
 : "${DRIVERS_BASE:?$DISTRO_FILE must set DRIVERS_BASE}"
 : "${VC4_REQUIRED:?$DISTRO_FILE must set VC4_REQUIRED}"
 : "${INIT_SYSTEM:?$DISTRO_FILE must set INIT_SYSTEM (systemd or sysv)}"
 : "${ALL_TARGETS:?$DISTRO_FILE must set ALL_TARGETS}"
-SQUASHFS_COMP_ARGS="${SQUASHFS_COMP_ARGS:-}"
+[[ "$PATCH_METHOD" == "squashfs" || "$PATCH_METHOD" == "copy" ]] \
+    || die "PATCH_METHOD must be 'squashfs' or 'copy'"
+if [[ "$PATCH_METHOD" == "squashfs" ]]; then
+    : "${SQUASHFS_PATH:?$DISTRO_FILE must set SQUASHFS_PATH for squashfs method}"
+    SQUASHFS_COMP_ARGS="${SQUASHFS_COMP_ARGS:-}"
+fi
 
 if [[ -z "$VERSION" ]]; then
     LAST_TAG="$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null || true)"
@@ -152,6 +160,16 @@ detect_boot_offset() {
     echo $(( start * sector_size ))
 }
 
+detect_rootfs_offset() {
+    local img_path="$1"
+    local json sector_size start
+    json=$(sfdisk --json "$img_path") || die "sfdisk failed on $img_path"
+    sector_size=$(echo "$json" | grep -o '"sectorsize": *[0-9]*' | grep -o '[0-9]*$')
+    start=$(echo "$json" | grep -o '"start": *[0-9]*' | head -2 | tail -1 | grep -o '[0-9]*$')
+    [[ -z "$sector_size" || -z "$start" ]] && die "Could not parse rootfs partition from $img_path"
+    echo $(( start * sector_size ))
+}
+
 patch_image() {
     local img_path="$1" work_dir="$2" device_config="$3" BIN="$4"
 
@@ -175,17 +193,7 @@ patch_image() {
     [[ -z "$device_path" ]] && die "No available loop device"
 
     local mnt_boot="$work_dir/mnt-boot"
-    local mnt_squashfs="$work_dir/mnt-squashfs"
-    local overlay_upper="$work_dir/overlay-upper"
-    local overlay_work="$work_dir/overlay-work"
-    local overlay_target="$work_dir/overlay-target"
-    mkdir -p "$mnt_boot" "$mnt_squashfs" "$overlay_upper" "$overlay_work" "$overlay_target"
-
-    trap "(umount '$overlay_target' 2>/dev/null || true; \
-           umount '$mnt_squashfs' 2>/dev/null || true; \
-           umount '$mnt_boot' 2>/dev/null || true; \
-           losetup -d $device_path 2>/dev/null || true)" RETURN
-
+    mkdir -p "$mnt_boot"
     mount "$device_path" "$mnt_boot" || die "Failed to mount boot partition"
 
     # Append board-specific hardware config
@@ -231,32 +239,64 @@ patch_image() {
         || hex_src="$PROJECT_DIR/atmega/firmware/firmware.hex"
     cp "$hex_src" "$mnt_boot/drivers/firmware.hex"
 
-    # Mount squashfs and overlay
-    mount --type squashfs --options loop \
-        --source "$mnt_boot/$SQUASHFS_PATH" --target "$mnt_squashfs"
-    mount --type overlay \
-        --options "lowerdir=$mnt_squashfs,upperdir=$overlay_upper,workdir=$overlay_work" \
-        --source overlay --target "$overlay_target"
+    # Method-specific: set up the editable rootfs and register the cleanup trap
+    local rootfs_target
+    if [[ "$PATCH_METHOD" == "copy" ]]; then
+        local rootfs_offset rootfs_dev=""
+        rootfs_offset=$(detect_rootfs_offset "$img_path")
+        for dev in /dev/loop{0..7}; do
+            if [[ "$dev" == "$device_path" ]]; then continue; fi
+            if losetup -o "$rootfs_offset" "$dev" "$img_path" 2>/dev/null; then
+                rootfs_dev="$dev"
+                break
+            fi
+        done
+        [[ -z "$rootfs_dev" ]] && die "No available loop device for rootfs"
+        local mnt_rootfs="$work_dir/mnt-rootfs"
+        mkdir -p "$mnt_rootfs"
+        mount "$rootfs_dev" "$mnt_rootfs" || die "Failed to mount rootfs partition"
+        rootfs_target="$mnt_rootfs"
+        trap "(umount '$mnt_rootfs' 2>/dev/null || true; \
+               umount '$mnt_boot' 2>/dev/null || true; \
+               losetup -d $rootfs_dev 2>/dev/null || true; \
+               losetup -d $device_path 2>/dev/null || true)" RETURN
+    else
+        local mnt_squashfs="$work_dir/mnt-squashfs"
+        local overlay_upper="$work_dir/overlay-upper"
+        local overlay_work="$work_dir/overlay-work"
+        local overlay_target="$work_dir/overlay-target"
+        mkdir -p "$mnt_squashfs" "$overlay_upper" "$overlay_work" "$overlay_target"
+        mount --type squashfs --options loop \
+            --source "$mnt_boot/$SQUASHFS_PATH" --target "$mnt_squashfs"
+        mount --type overlay \
+            --options "lowerdir=$mnt_squashfs,upperdir=$overlay_upper,workdir=$overlay_work" \
+            --source overlay --target "$overlay_target"
+        rootfs_target="$overlay_target"
+        trap "(umount '$overlay_target' 2>/dev/null || true; \
+               umount '$mnt_squashfs' 2>/dev/null || true; \
+               umount '$mnt_boot' 2>/dev/null || true; \
+               losetup -d $device_path 2>/dev/null || true)" RETURN
+    fi
 
     # Install startup entries based on the distro's init system
     # Templates in config/ use __DRIVERS_BASE__ as a placeholder, substituted here
     case "$INIT_SYSTEM" in
         systemd)
-            mkdir -p "$overlay_target/usr/lib/systemd/system" \
-                     "$overlay_target/usr/lib/systemd/system/multi-user.target.wants"
+            mkdir -p "$rootfs_target/usr/lib/systemd/system" \
+                     "$rootfs_target/usr/lib/systemd/system/multi-user.target.wants"
 
             sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
                 "$CONFIG_DIR/pspi.service" \
-                > "$overlay_target/usr/lib/systemd/system/pspi.service"
+                > "$rootfs_target/usr/lib/systemd/system/pspi.service"
             ln -sf ../pspi.service \
-                "$overlay_target/usr/lib/systemd/system/multi-user.target.wants/pspi.service"
+                "$rootfs_target/usr/lib/systemd/system/multi-user.target.wants/pspi.service"
             ;;
         sysv)
-            mkdir -p "$overlay_target/etc/init.d"
+            mkdir -p "$rootfs_target/etc/init.d"
             sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
                 "$CONFIG_DIR/S99pspi-daemons" \
-                > "$overlay_target/etc/init.d/S99pspi-daemons"
-            chmod +x "$overlay_target/etc/init.d/S99pspi-daemons"
+                > "$rootfs_target/etc/init.d/S99pspi-daemons"
+            chmod +x "$rootfs_target/etc/init.d/S99pspi-daemons"
             ;;
         *)
             die "Unknown INIT_SYSTEM: $INIT_SYSTEM (expected systemd or sysv)"
@@ -265,26 +305,29 @@ patch_image() {
 
     # Distro-specific rootfs edits (retroarch config, extra init scripts, etc.)
     if declare -f distro_post_patch > /dev/null; then
-        distro_post_patch "$overlay_target" "$mnt_boot" "$work_dir" "$BIN"
+        distro_post_patch "$rootfs_target" "$mnt_boot" "$work_dir" "$BIN"
     fi
 
-    echo "  Repacking squashfs..."
-    local temp_squashfs="$work_dir/filesystem.squashfs"
-    # shellcheck disable=SC2086
-    mksquashfs "$overlay_target" "$temp_squashfs" -noappend -quiet $SQUASHFS_COMP_ARGS \
-        || die "Failed to repack rootfs"
+    # Method-specific: repack squashfs and swap it back into the image
+    if [[ "$PATCH_METHOD" == "squashfs" ]]; then
+        echo "  Repacking squashfs..."
+        local temp_squashfs="$work_dir/filesystem.squashfs"
+        # shellcheck disable=SC2086
+        mksquashfs "$overlay_target" "$temp_squashfs" -noappend -quiet $SQUASHFS_COMP_ARGS \
+            || die "Failed to repack rootfs"
 
-    echo "  Unmounting overlay and squashfs..."
-    umount "$overlay_target"
-    umount "$mnt_squashfs"
+        echo "  Unmounting overlay and squashfs..."
+        umount "$overlay_target"
+        umount "$mnt_squashfs"
 
-    echo "  Zeroing free space in boot partition..."
-    dd if=/dev/zero of="$mnt_boot/$SQUASHFS_PATH" bs=1M status=progress || true
-    sync
-    rm "$mnt_boot/$SQUASHFS_PATH"
+        echo "  Zeroing free space in boot partition..."
+        dd if=/dev/zero of="$mnt_boot/$SQUASHFS_PATH" bs=1M status=progress || true
+        sync
+        rm "$mnt_boot/$SQUASHFS_PATH"
 
-    echo "  Copying repacked squashfs back to image..."
-    cp "$temp_squashfs" "$mnt_boot/$SQUASHFS_PATH"
+        echo "  Copying repacked squashfs back to image..."
+        cp "$temp_squashfs" "$mnt_boot/$SQUASHFS_PATH"
+    fi
 
     # Distro-specific post-write steps (checksums, board marker files, etc.)
     if declare -f distro_post_write > /dev/null; then
@@ -330,7 +373,7 @@ build_image() {
 # --- Main ---
 
 cleanup
-echo "PSPi Version 6 | distro=$DISTRO version=$VERSION output=$OUTPUT_DIR"
+echo "PSPi Version 6 | distro=$DISTRO method=$PATCH_METHOD version=$VERSION output=$OUTPUT_DIR"
 
 if [[ -z "$DRIVER_BINARIES_DIR" ]]; then
     build_drivers
