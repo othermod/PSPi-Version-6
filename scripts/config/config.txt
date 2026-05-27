@@ -1,0 +1,83 @@
+# PSPi Version 6 hardware configuration
+# Appended to config.txt on the boot partition at image-build time.
+# Conditional filter tags ensure each section applies only to the correct board.
+
+[all]
+# Disable HDMI audio
+hdmi_ignore_edid_audio=1
+
+# Set framebuffer width and height for the LCD display
+framebuffer_width=800
+framebuffer_height=480
+
+# Enable the PCF8563 Real Time Clock module
+dtoverlay=i2c-rtc,pcf8563
+
+# Set minimum ARM frequency to 100
+arm_freq_min=100
+
+# Set minimum core frequency to 100
+core_freq_min=100
+
+[cm4]
+# Power off when GPIO pin 44 is triggered
+dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
+
+# Enable USB
+dtoverlay=dwc2,dr_mode=host
+
+# Disable pci-e link to prevent warning at boot
+dtoverlay=disable-pcie
+
+# Enable antenna
+dtparam=ant2
+
+dtoverlay=pspi-audio-cm4-kernel6+
+dtoverlay=pspi-lcd-overlay
+
+over_voltage_min=-8
+arm_boost=0
+
+[cm5]
+# Power off when GPIO pin 44 is triggered
+dtoverlay=gpio-poweroff,gpiopin=44,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
+
+# Enable USB
+dtoverlay=dwc2,dr_mode=host
+
+# Disable pci-e link to prevent warning at boot
+dtoverlay=disable-pcie
+
+# Enable antenna
+dtparam=ant2
+
+dtoverlay=pspi-audio-cm4-kernel6+
+dtoverlay=pspi-lcd-overlay
+
+[pi0]
+# Power off when GPIO pin 4 is triggered
+dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
+
+# Set activity LED GPIO pin to 20
+dtparam=act_led_gpio=20
+dtparam=act_led_activelow=no
+
+dtoverlay=pspi-audio-zero-kernel6+
+dtoverlay=pspi-lcd-overlay,zero
+
+over_voltage_min=-8
+
+[pi02]
+# Power off when GPIO pin 4 is triggered
+dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
+
+# Set activity LED GPIO pin to 20
+dtparam=act_led_gpio=20
+dtparam=act_led_activelow=no
+
+dtoverlay=pspi-audio-zero-kernel6+
+dtoverlay=pspi-lcd-overlay,zero
+
+over_voltage_min=-8
+
+[all]
