@@ -33,7 +33,7 @@ distro_post_patch() {
     local mnt_boot="$2"
 
     echo "  [batocera] Removing boot partition files..."
-    rm -f "$mnt_boot/boot/rufomaculata"
+    # rufomaculata contains libretro cores and user data - do not remove
     echo "  [batocera] Removed boot partition files"
 
     echo "  [batocera] Applying bcm2835 audio fix..."
@@ -52,6 +52,18 @@ distro_post_patch() {
     else
         echo "  [batocera] WARNING: S06audio not found, skipping"
     fi
+
+    echo "  [batocera] Disabling PipeWire ALSA plugins..."
+    if [[ -f "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pipewire-default.conf" ]]; then
+        mv "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pipewire-default.conf" \
+           "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pipewire-default.conf.disabled"
+        echo "  [batocera] Disabled 99-pipewire-default.conf"
+    fi
+    if [[ -L "${overlay_target}/etc/alsa/conf.d/99-pipewire-default.conf" ]]; then
+        rm "${overlay_target}/etc/alsa/conf.d/99-pipewire-default.conf"
+        echo "  [batocera] Removed pipewire symlink from etc/alsa/conf.d"
+    fi
+    echo "  [batocera] PipeWire ALSA plugins disabled"
 
     mkdir -p "${overlay_target}/usr/share/alsa/alsa.conf.d"
     cat > "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pspi-default.conf" << 'EOF'
