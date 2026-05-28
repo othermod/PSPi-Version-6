@@ -2,7 +2,7 @@ PATCH_METHOD="squashfs"
 SQUASHFS_PATH="boot/recalbox"
 DRIVERS_BASE="/boot"
 INIT_SYSTEM=sysv
-SQUASHFS_COMP_ARGS=""
+SQUASHFS_COMP_ARGS="-comp xz"
 
 ALL_TARGETS=(cm4 cm5 zero2 zero1)
 
