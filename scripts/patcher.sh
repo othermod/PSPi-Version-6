@@ -299,12 +299,8 @@ patch_image() {
         umount "$overlay_target"
         umount "$mnt_squashfs"
 
-        echo "  Zeroing free space in boot partition..."
-        dd if=/dev/zero of="$mnt_boot/$SQUASHFS_PATH" bs=1M status=progress 2>&1 | sed "/No space left on device/d" || true
-        sync
+        echo "  Swapping squashfs in boot partition..."
         rm "$mnt_boot/$SQUASHFS_PATH"
-
-        echo "  Copying repacked squashfs back to image..."
         cp "$temp_squashfs" "$mnt_boot/$SQUASHFS_PATH"
     fi
 
@@ -341,6 +337,13 @@ build_image() {
     echo "  Decompressed: $(du -h "$img_path" | cut -f1)"
 
     patch_image "$img_path" "$work_dir" "$T_BIN"
+
+    if [[ "$PATCH_METHOD" == "squashfs" ]]; then
+        echo "  Zeroing free space in boot partition..."
+        local boot_offset
+        boot_offset=$(detect_boot_offset "$img_path")
+        python3 "$SCRIPT_DIR/zero_fat32.py" "$img_path" "$boot_offset"
+    fi
 
     xz -9 -T0 "$img_path"
     mv "${img_path}.xz" "$OUTPUT_DIR/$T_PSPI_NAME"
