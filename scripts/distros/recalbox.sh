@@ -32,7 +32,22 @@ distro_post_patch() {
     local overlay_target="$1"
     local mnt_boot="$2"
 
-    echo "  [recalbox] Removing recalbox-gamepad-proxy overlay..."
+    # Remove the gamepad proxy overlay entirely - PSPi has its own gamepad driver
     rm -f "$mnt_boot/overlays/recalbox-gamepad-proxy.dtbo"
-    echo "  [recalbox] Overlay removed"
+
+    # Stub out all recalbox hardware detection and addon init scripts.
+    # PSPi has its own drivers for everything; these scripts probe GPIOs (e.g.
+    # DetectGPiCase2 claims GPIO18 via RPi.GPIO during hardware detection),
+    # load conflicting overlays, and start addon daemons that are not needed.
+    for script in \
+        S02earlyhardware \
+        S03recalbox-official-harware-detector \
+        S04rrgbjamma \
+        S05hardware \
+        S13hardware \
+        S13crt \
+        S92switch
+    do
+        printf '#!/bin/sh\nexit 0\n' > "$overlay_target/etc/init.d/$script"
+    done
 }
