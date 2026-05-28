@@ -320,7 +320,7 @@ build_image() {
     [[ -n "${TARGET_URL[$label]+x}" ]] || die "Unknown target: $label (check ALL_TARGETS in $DISTRO_FILE)"
     local T_URL="${TARGET_URL[$label]}"
     local T_SHA256="${TARGET_SHA256[$label]}"
-    local T_PSPI_NAME="${TARGET_PSPI_PREFIX[$label]}-v${VERSION}.img.gz"
+    local T_PSPI_NAME="${TARGET_PSPI_PREFIX[$label]}-v${VERSION}.img.xz"
     local T_BIN="${TARGET_BIN[$label]}"
     local T_COMPRESSED="${T_URL##*/}"
 
@@ -342,7 +342,8 @@ build_image() {
 
     patch_image "$img_path" "$work_dir" "$T_BIN"
 
-    gzip -9c "$img_path" > "$OUTPUT_DIR/$T_PSPI_NAME"
+    xz -9 -T0 "$img_path"
+    mv "${img_path}.xz" "$OUTPUT_DIR/$T_PSPI_NAME"
     echo "  Compressed: $T_PSPI_NAME ($(du -h "$OUTPUT_DIR/$T_PSPI_NAME" | cut -f1))"
 
     ls -lh "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.7z.* 2>/dev/null || true
