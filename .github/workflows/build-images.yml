@@ -50,7 +50,6 @@ jobs:
         with:
           pattern: '*'
           path: drivers-bin/
-          merge-multiple: true
 
       - name: Upload combined artifacts
         uses: actions/upload-artifact@v4
@@ -102,6 +101,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pspi-driver-binaries
+          path: drivers-bin/
 
       - name: Determine version
         id: version
@@ -128,16 +128,16 @@ jobs:
           # and $PROJECT_ROOT/atmega/firmware/ directly rather than using
           # --driver-binaries, so we copy the pre-built artifacts there.
           mkdir -p rpi/firmware/32 rpi/firmware/64 atmega/firmware
-          cp drivers-bin/rpi/firmware/32/update_firmware rpi/firmware/32/update_firmware
-          cp drivers-bin/rpi/firmware/64/update_firmware rpi/firmware/64/update_firmware
-          cp drivers-bin/atmega/firmware/firmware.hex    atmega/firmware/firmware.hex
+          cp drivers-bin/firmware/32/update_firmware    rpi/firmware/32/update_firmware
+          cp drivers-bin/firmware/64/update_firmware    rpi/firmware/64/update_firmware
+          cp drivers-bin/atmega-firmware/firmware.hex   atmega/firmware/firmware.hex
 
       - name: Build image
         run: |
           sudo ./scripts/patcher.sh \
             --distro "${{ matrix.distro }}" \
             --version "${{ steps.version.outputs.version }}" \
-            --driver-binaries "$(pwd)/drivers-bin/rpi" \
+            --driver-binaries "$(pwd)/drivers-bin" \
             --target "${{ matrix.target }}"
 
       - name: Upload build artifacts
@@ -156,10 +156,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pspi-driver-binaries
+          path: staging/
 
 
       - name: Package
-        run: tar -czf pspi-binaries.tar.gz -C drivers-bin .
+        run: tar -czf pspi-binaries.tar.gz -C staging .
 
       - name: Upload
         uses: actions/upload-artifact@v4
