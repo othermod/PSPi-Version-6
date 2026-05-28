@@ -50,6 +50,7 @@ jobs:
         with:
           pattern: '*'
           path: drivers-bin/
+          merge-multiple: true
 
       - name: Upload combined artifacts
         uses: actions/upload-artifact@v4
@@ -123,12 +124,22 @@ jobs:
             wget \
             util-linux
 
+      - name: Populate workspace with built binaries
+        run: |
+          # firmware.sh's distro_post_patch references $PROJECT_ROOT/rpi/firmware/
+          # and $PROJECT_ROOT/atmega/firmware/ directly rather than using
+          # --driver-binaries, so we copy the pre-built artifacts there.
+          mkdir -p rpi/firmware/32 rpi/firmware/64 atmega/firmware
+          cp drivers-bin/rpi/firmware/32/update_firmware rpi/firmware/32/update_firmware
+          cp drivers-bin/rpi/firmware/64/update_firmware rpi/firmware/64/update_firmware
+          cp drivers-bin/atmega/firmware/firmware.hex    atmega/firmware/firmware.hex
+
       - name: Build image
         run: |
-          sudo ./scripts/squashfs-patcher.sh \
+          sudo ./scripts/patcher.sh \
             --distro "${{ matrix.distro }}" \
             --version "${{ steps.version.outputs.version }}" \
-            --driver-binaries "$(pwd)/drivers-bin" \
+            --driver-binaries "$(pwd)/drivers-bin/rpi" \
             --target "${{ matrix.target }}"
 
       - name: Upload build artifacts
@@ -198,7 +209,7 @@ jobs:
           shopt -s nullglob
           mv release-assets/pspi-binaries.tar.gz release-assets/pspi-binaries-v${VERSION}.tar.gz
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            completed_images/*.img.gz \
+            completed_images/*.img.xz \
             release-assets/pspi-binaries-v${VERSION}.tar.gz \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
