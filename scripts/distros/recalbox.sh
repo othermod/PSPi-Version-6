@@ -25,7 +25,7 @@ TARGET_PSPI_PREFIX[zero1]="Recalbox9.2.3-Recalbox-Zero1"
 
 TARGET_BIN[cm4]=64
 TARGET_BIN[cm5]=64
-TARGET_BIN[zero2]=64
+TARGET_BIN[zero2]=32
 TARGET_BIN[zero1]=32
 
 distro_post_patch() {
