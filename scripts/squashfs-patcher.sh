@@ -150,22 +150,24 @@ download_image() {
 
 detect_boot_offset() {
     local img_path="$1"
-    local json sector_size start
-    json=$(sfdisk --json "$img_path") || die "sfdisk failed on $img_path"
-    sector_size=$(echo "$json" | grep -o '"sectorsize": *[0-9]*' | grep -o '[0-9]*$')
-    start=$(echo "$json" | grep -o '"start": *[0-9]*' | head -1 | grep -o '[0-9]*$')
-    [[ -z "$sector_size" || -z "$start" ]] && die "Could not parse partition table from $img_path"
-    echo $(( start * sector_size ))
+    python3 - "$img_path" <<'EOF'
+import struct, sys
+with open(sys.argv[1], 'rb') as f:
+    f.seek(446)          # first partition entry in MBR
+    lba_start, = struct.unpack_from('<I', f.read(16), 8)
+print(lba_start * 512)
+EOF
 }
 
 detect_rootfs_offset() {
     local img_path="$1"
-    local json sector_size start
-    json=$(sfdisk --json "$img_path") || die "sfdisk failed on $img_path"
-    sector_size=$(echo "$json" | grep -o '"sectorsize": *[0-9]*' | grep -o '[0-9]*$')
-    start=$(echo "$json" | grep -o '"start": *[0-9]*' | head -2 | tail -1 | grep -o '[0-9]*$')
-    [[ -z "$sector_size" || -z "$start" ]] && die "Could not parse rootfs partition from $img_path"
-    echo $(( start * sector_size ))
+    python3 - "$img_path" <<'EOF'
+import struct, sys
+with open(sys.argv[1], 'rb') as f:
+    f.seek(446 + 16)     # second partition entry in MBR
+    lba_start, = struct.unpack_from('<I', f.read(16), 8)
+print(lba_start * 512)
+EOF
 }
 
 patch_image() {
