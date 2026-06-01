@@ -335,7 +335,6 @@ static void usage(const char *prog)
 static int run_flash_sequence(flash_image_t *image)
 {
     bl_info_t info;
-    uint8_t   f_a, f_b, xor;
     bl_info_t verify_info;
 
     printf("--- Bootloader ---\n");
@@ -378,28 +377,6 @@ static int run_flash_sequence(flash_image_t *image)
     }
 
     printf("--- Flash ---\n");
-
-    /* Ensure the final 3 bytes of the app region are unprogrammed (0xFF).
-     * Those bytes are reserved for the embedded checksum; if the firmware
-     * has placed code or data there the image is incompatible with this bootloader. */
-    if (image->data[BOOTLOADER_START - 3] != 0xFF ||
-        image->data[BOOTLOADER_START - 2] != 0xFF ||
-        image->data[BOOTLOADER_START - 1] != 0xFF) {
-        fprintf(stderr, "Error: firmware has data in the checksum region "
-                "(0x%04X-0x%04X). Aborting.\n",
-                BOOTLOADER_START - 3, BOOTLOADER_START - 1);
-        return -2;
-    }
-
-    /* Embed the checksum into the image before writing.
-     * Covers bytes [0 .. BOOTLOADER_START-4]; the result goes into the final 3 bytes
-     * of the app region so the bootloader can verify at every boot. */
-    compute_fletcher_xor(image->data, BOOTLOADER_START - 3, &f_a, &f_b, &xor);
-    image->data[BOOTLOADER_START - 3] = f_a;
-    image->data[BOOTLOADER_START - 2] = f_b;
-    image->data[BOOTLOADER_START - 1] = xor;
-    image->page_has_data[(BOOTLOADER_START - 3) / SPM_PAGESIZE] = 1;
-    printf("Checksum embedded (0x%02X 0x%02X 0x%02X).\n\n", f_a, f_b, xor);
 
     if (flash_image(image, info.fw_pages) < 0)
         return -1;
