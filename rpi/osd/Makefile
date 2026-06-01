@@ -10,7 +10,6 @@ CFLAGS_COMMON = -O3 -lrt
 
 # Build for 32-bit architecture
 32:
-	@echo "Building 32-bit osd..."
 	@mkdir -p bin/32bit
 	@rm -f osd_toolkit/32bit/*.a
 	@rm -f src/*.o
@@ -22,11 +21,9 @@ CFLAGS_COMMON = -O3 -lrt
 		-Wl,-rpath,'$$ORIGIN' \
 		-lbcm_host -lasound \
 		osd_toolkit/32bit/libraspidmx-32bit.a osd_toolkit/32bit/libraspidmxPng-32bit.a
-	@echo "32-bit osd build complete."
 
 # Build for 64-bit architecture
 64:
-	@echo "Building 64-bit osd..."
 	@mkdir -p bin/64bit
 	@rm -f osd_toolkit/64bit/*.a
 	@rm -f src/*.o
@@ -38,7 +35,6 @@ CFLAGS_COMMON = -O3 -lrt
 		-Wl,-rpath,'$$ORIGIN' \
 		-lbcm_host -lasound \
 		osd_toolkit/64bit/libraspidmx-64bit.a osd_toolkit/64bit/libraspidmxPng-64bit.a
-	@echo "64-bit osd build complete."
 
 # Clean build artifacts
 clean:
@@ -47,6 +43,5 @@ clean:
 	rm -f osd_toolkit/src/*.o
 	rm -f osd_toolkit/osd_toolkit/32bit/*.a osd_toolkit/osd_toolkit/64bit/*.a
 	$(MAKE) -C osd_toolkit clean
-	@echo "Clean complete."
 
 .PHONY: 32 64 clean
