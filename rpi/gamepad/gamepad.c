@@ -8,9 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <net/if.h>
-#include <linux/rtnetlink.h>
-#include <sys/socket.h>
 #include <linux/uinput.h>
 #include <linux/input.h>
 #include <time.h>
@@ -30,17 +27,13 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
 
     unsigned int polling_delay = DEFAULT_POLLING_DELAY_MS;
 
-    #define INTERFACE_NAME "wlan0"
-
     // Configuration flags
     bool enable_crc = true;
     bool verbose = false;
     bool is_dim = false;
     bool is_idle = false;
     uint32_t previous_status;
-    bool wifi_connected = false;
     time_t time_at_last_change;
-    bool has_wifi = true;
     uint8_t brightness;
     #define DATASIZE 11
 
@@ -121,11 +114,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     int virtual_gamepad_fd = -1;
     int virtual_keyboard_fd = -1;
     int virtual_mouse_fd = -1;
-    int wifi_monitor_fd;
     int shared_memory_fd;
-
-    // Cached interface index for wlan0
-    int wlan0_ifindex = 0;
 
     #define BUTTON_CONFIG_STICK 0
     #define BUTTON_CONFIG_TRIGGER 1
@@ -325,9 +314,6 @@ void cleanup_resources(void) {
         if (virtual_mouse_fd >= 0) {
             ioctl(virtual_mouse_fd, UI_DEV_DESTROY);
             close(virtual_mouse_fd);
-        }
-        if (wifi_monitor_fd >= 0) {
-            close(wifi_monitor_fd);
         }
         if (controller_board_fd >= 0) {
             close(controller_board_fd);
@@ -681,106 +667,6 @@ void update_mouse_events(int uinput_fd) {
             }
         }
 
-        // ---- WiFi monitoring ----
-
-        void init_wifi_monitoring(void) {
-            wifi_monitor_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-            if (wifi_monitor_fd == -1) {
-                perror("Error creating netlink socket");
-                has_wifi = false;
-                return;
-            }
-
-            // Subscribe to RTMGRP_LINK so the kernel pushes RTM_NEWLINK messages
-            // to us whenever any interface changes state - no polling required.
-            struct sockaddr_nl local = {
-                .nl_family = AF_NETLINK,
-                .nl_pid    = getpid(),
-                .nl_groups = RTMGRP_LINK,
-            };
-            if (bind(wifi_monitor_fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
-                perror("Error binding netlink socket");
-                has_wifi = false;
-                close(wifi_monitor_fd);
-                wifi_monitor_fd = -1;
-                return;
-            }
-
-            wlan0_ifindex = if_nametoindex(INTERFACE_NAME);
-            if (wlan0_ifindex == 0) {
-                perror("Error getting interface index");
-                has_wifi = false;
-                close(wifi_monitor_fd);
-                wifi_monitor_fd = -1;
-                return;
-            }
-
-            // Bootstrap: do a one-shot RTM_GETLINK query to get the current state
-            // before any change events arrive. Without this, wifi_connected stays
-            // false until the next state change, even if we're already connected.
-            struct {
-                struct nlmsghdr nlh;
-                struct ifinfomsg ifi;
-            } req;
-            memset(&req, 0, sizeof(req));
-            req.nlh.nlmsg_len   = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-            req.nlh.nlmsg_flags = NLM_F_REQUEST;
-            req.nlh.nlmsg_type  = RTM_GETLINK;
-            req.nlh.nlmsg_seq   = 1;
-            req.ifi.ifi_family  = AF_UNSPEC;
-            req.ifi.ifi_index   = wlan0_ifindex;
-
-            struct sockaddr_nl kernel = { .nl_family = AF_NETLINK, .nl_pid = 0, .nl_groups = 0 };
-            if (sendto(wifi_monitor_fd, &req, req.nlh.nlmsg_len, 0,
-                (struct sockaddr *)&kernel, sizeof(kernel)) < 0) {
-                perror("Error sending initial netlink request");
-            return;
-                }
-
-                char buf[4096];
-                int len = recv(wifi_monitor_fd, buf, sizeof(buf), 0);
-                if (len < 0) {
-                    perror("Error receiving initial netlink response");
-                    return;
-                }
-                struct nlmsghdr *nh = (struct nlmsghdr *)buf;
-                if (NLMSG_OK(nh, len) && nh->nlmsg_type == RTM_NEWLINK) {
-                    struct ifinfomsg *ifi = NLMSG_DATA(nh);
-                    wifi_connected = ifi->ifi_flags & IFF_RUNNING;
-                    write(controller_board_fd, (uint8_t[]){0x20, wifi_connected, 0, 0}, 4);
-                }
-        }
-
-        void check_wifi_status(void) {
-            char buf[4096];
-            int len;
-
-            // MSG_DONTWAIT returns immediately if nothing is pending - no blocking.
-            // The while loop handles multiple batched messages in one recv buffer.
-            while ((len = recv(wifi_monitor_fd, buf, sizeof(buf), MSG_DONTWAIT)) > 0) {
-                for (struct nlmsghdr *nh = (struct nlmsghdr *)buf;
-                     NLMSG_OK(nh, len);
-                nh = NLMSG_NEXT(nh, len))
-                     {
-                         if (nh->nlmsg_type != RTM_NEWLINK)
-                             continue;
-
-                         struct ifinfomsg *ifi = NLMSG_DATA(nh);
-
-                         // Ignore events for interfaces other than wlan0
-                         if (ifi->ifi_index != wlan0_ifindex)
-                             continue;
-
-                         bool check_connection = ifi->ifi_flags & IFF_RUNNING;
-
-                         if (check_connection != wifi_connected) {
-                             wifi_connected = check_connection;
-                             write(controller_board_fd, (uint8_t[]){0x20, wifi_connected, 0, 0}, 4);
-                         }
-                     }
-            }
-        }
-
         // ---- Idle / dimming ----
 
         static inline time_t monotonic_seconds(void) {
@@ -866,20 +752,12 @@ void update_mouse_events(int uinput_fd) {
                     break;
             }
 
-            if (has_wifi) {
-                init_wifi_monitoring();
-            }
-
             while (1) {
                 if (!read_i2c_data()) {
                     continue;
                 }
 
                 check_for_shutdown_condition();
-
-                if (has_wifi) {
-                    check_wifi_status();
-                }
 
                 if (dimming_timeout) {
                     check_idle_state(controller_board_fd);
