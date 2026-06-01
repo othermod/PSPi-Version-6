@@ -1,28 +1,27 @@
 # Bootloader
 
-Compiles the ATmega8 bootloader firmware.
+Bootloader for the ATmega8 microcontroller. Sits at `0x1C00` (the top 1KB of flash) and handles firmware loading and checksum verification on startup.
 
-## Build
+## Prerequisites
 
+The AVR toolchain is the only requirement:
+
+```bash
+sudo apt install gcc-avr binutils-avr avr-libc
 ```
+
+## Building
+
+```bash
 make
 ```
 
-Outputs `bin/bootloader.hex`.
+This produces `bootloader.hex` in the current directory.
 
-## Flashing
+## Cleaning
 
-### Firmware
-
-```
-sudo apt install avrdude
-sudo avrdude -c linuxgpio -p m8 -U flash:w:bin/bootloader.hex:i
+```bash
+make clean
 ```
 
-### Fuses
-
-```
-sudo avrdude -c linuxgpio -p m8 -U lfuse:w:0xA4:m -U hfuse:w:0xDA:m
-```
-
-The `linuxgpio` programmer connects directly to the ATmega8 via Raspberry Pi GPIO pins. Use `sudo avrdude -c linuxgpio -p m8 -n` to read back fuses and verify they were programmed correctly.
+Removes `bootloader.elf` and `bootloader.hex`.
