@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
+          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
 
       - name: Build
         run: |
