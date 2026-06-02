@@ -41,8 +41,11 @@ jobs:
   build-pcie:
     uses: ./.github/workflows/build-pcie.yml
 
+  build-wifi:
+    uses: ./.github/workflows/build-wifi.yml
+
   collect-artifacts:
-    needs: [build-gamepad, build-battery, build-rtc, build-firmware, build-atmega, build-audio, build-lcd, build-pcie]
+    needs: [build-gamepad, build-battery, build-rtc, build-firmware, build-atmega, build-audio, build-lcd, build-pcie, build-wifi]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts

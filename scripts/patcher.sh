@@ -110,6 +110,9 @@ build_drivers() {
     echo "Building atmega firmware..."
     ( cd "$PROJECT_DIR/atmega/firmware" && "${as_user[@]}" make all )
 
+    echo "Building wifi monitor..."
+    ( cd "$PROJECT_DIR/rpi/wifi" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
+
     for overlay in audio lcd pcie; do
         echo "Building $overlay overlay..."
         ( cd "$PROJECT_DIR/rpi/$overlay" && "${as_user[@]}" make clean && "${as_user[@]}" make all )
@@ -217,6 +220,7 @@ patch_image() {
     cp "${base}/gamepad/${BIN}/gamepad"           "$mnt_boot/drivers/gamepad"
     cp "${base}/battery/${BIN}/battery_monitor"   "$mnt_boot/drivers/battery_monitor"
     cp "${base}/rtc/${BIN}/rtc"                   "$mnt_boot/drivers/rtc"
+    cp "${base}/wifi/${BIN}/wifi_monitor"   "$mnt_boot/drivers/wifi_monitor"
 
     # Method-specific: set up the editable rootfs and register the cleanup trap
     local rootfs_target

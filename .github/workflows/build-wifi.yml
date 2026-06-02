@@ -1,0 +1,38 @@
+name: Build Wifi Binary
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'rpi/wifi/**'
+  pull_request:
+    paths:
+      - 'rpi/wifi/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
+
+      - name: Build
+        run: |
+          cd rpi/wifi
+          make 32
+          make 64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wifi
+          path: |
+            rpi/wifi/32
+            rpi/wifi/64

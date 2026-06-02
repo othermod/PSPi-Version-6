@@ -53,4 +53,8 @@ GAMEPAD_ARGS=""
 
 # Start the gamepad with arguments
 ./drivers/gamepad $GAMEPAD_ARGS &
+
+# Start the WiFi Monitor
+./drivers/wifi_monitor &
+
 wait
