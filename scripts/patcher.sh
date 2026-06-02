@@ -35,7 +35,7 @@ TARGET=""
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/config"
-OUTPUT_DIR="$HOME/pspi/patched_images"
+OUTPUT_DIR="${GITHUB_WORKSPACE:-$HOME}/pspi/patched_images"
 CACHE_DIR="$HOME/pspi/stock_images"
 
 while [[ $# -gt 0 ]]; do
