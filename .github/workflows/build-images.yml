@@ -148,7 +148,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pspi-images-${{ steps.version.outputs.version }}-${{ matrix.distro }}-${{ matrix.target }}
-          path: ${{ github.workspace }}/pspi/patched_images/
+          path: /root/pspi/patched_images/
           retention-days: 14
 
   package-binaries:
@@ -193,7 +193,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: pspi-images-${{ steps.version.outputs.version }}-*
-          path: ${{ github.workspace }}/pspi/patched_images/
+          path: /root/pspi/patched_images/
           merge-multiple: true
 
       - name: Download binaries
@@ -210,7 +210,7 @@ jobs:
           shopt -s nullglob
           mv release-assets/pspi-binaries.tar.gz release-assets/pspi-binaries-v${VERSION}.tar.gz
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            ${{ github.workspace }}/pspi/patched_images/*.img.xz \
+            /root/pspi/patched_images/*.img.xz \
             release-assets/pspi-binaries-v${VERSION}.tar.gz \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
