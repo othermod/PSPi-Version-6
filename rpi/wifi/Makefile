@@ -2,7 +2,7 @@
 
 32:
 	@mkdir -p 32
-	arm-linux-gnueabihf-gcc -o 32/wifi_monitor wifi_monitor.c -O3 -lrt -static
+	arm-linux-gnueabi-gcc -o 32/wifi_monitor wifi_monitor.c -O3 -lrt -static
 
 64:
 	@mkdir -p 64
