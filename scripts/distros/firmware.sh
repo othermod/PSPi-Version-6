@@ -12,10 +12,6 @@ TARGET_SHA256[all]=""
 TARGET_PSPI_PREFIX[all]="Update-Firmware-PSPi6"
 TARGET_BIN[all]=32
 
-# Resolve project root from this file's location (scripts/distros/firmware.sh)
-_DISTRO_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$_DISTRO_DIR/.."
-
 distro_post_patch() {
     local rootfs_target="$1"
     local mnt_boot="$2"
@@ -45,7 +41,12 @@ BOOT
     echo "dtoverlay=i2c-gpio,i2c_gpio_sda=2,i2c_gpio_scl=3,bus=1" >> "$mnt_boot/config.txt"
 
     echo "  [firmware] Copying update_firmware and firmware.hex to boot partition..."
-    cp "$PROJECT_ROOT/rpi/firmware/${BIN}/update_firmware" "$mnt_boot/update_firmware/update_firmware"
-    cp "$PROJECT_ROOT/atmega/firmware/firmware.hex" "$mnt_boot/update_firmware/firmware.hex"
+    if [[ -n "${DRIVER_BINARIES_DIR:-}" ]]; then
+        cp "$DRIVER_BINARIES_DIR/firmware/${BIN}/update_firmware" "$mnt_boot/update_firmware/update_firmware"
+        cp "$DRIVER_BINARIES_DIR/atmega-firmware/firmware.hex"    "$mnt_boot/update_firmware/firmware.hex"
+    else
+        cp "$PROJECT_DIR/rpi/firmware/${BIN}/update_firmware" "$mnt_boot/update_firmware/update_firmware"
+        cp "$PROJECT_DIR/atmega/firmware/firmware.hex"         "$mnt_boot/update_firmware/firmware.hex"
+    fi
     echo "  [firmware] Copy complete"
 }

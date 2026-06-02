@@ -13,7 +13,7 @@ set -euo pipefail
 #   ALL_TARGETS                  - bash array of target names
 #   TARGET_URL[<target>]         - download URL; compression detected from file extension
 #   TARGET_SHA256[<target>]      - SHA256 of the download, or empty to skip verification
-#   TARGET_PSPI_PREFIX[<target>] - output filename prefix; -v<version>.img.gz appended automatically
+#   TARGET_PSPI_PREFIX[<target>] - output filename prefix; -v<version>.img.xz appended automatically
 #   TARGET_BIN[<target>]         - 32 or 64
 #
 # For PATCH_METHOD=squashfs, also define:
@@ -36,7 +36,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/config"
 OUTPUT_DIR="${GITHUB_WORKSPACE:-$HOME}/pspi/patched_images"
-CACHE_DIR="$HOME/pspi/stock_images"
+CACHE_DIR="${GITHUB_WORKSPACE:-$HOME}/pspi/stock_images"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -353,7 +353,6 @@ build_image() {
     mv "${img_path}.xz" "$OUTPUT_DIR/$T_PSPI_NAME"
     echo "  Compressed: $T_PSPI_NAME ($(du -h "$OUTPUT_DIR/$T_PSPI_NAME" | cut -f1))"
 
-    ls -lh "$OUTPUT_DIR"/*.img.gz "$OUTPUT_DIR"/*.7z.* 2>/dev/null || true
     rm -rf "$work_dir"
 }
 
