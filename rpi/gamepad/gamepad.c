@@ -282,6 +282,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         ioctl(virtual_keyboard_fd, UI_SET_EVBIT, EV_KEY);
         ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEUP);
         ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEDOWN);
+        ioctl(virtual_keyboard_fd, UI_SET_EVBIT, EV_SW);
+        ioctl(virtual_keyboard_fd, UI_SET_SWBIT, SW_MUTE_DEVICE);
 
         struct uinput_user_dev uidev = {0};
         snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi Keyboard");
@@ -613,6 +615,8 @@ void cleanup_resources(void) {
             EMIT(events, n, EV_KEY, KEY_VOLUMEUP, current_controller_data.buttons.bits.vol_plus);
         if (previous_controller_state.buttons.bits.vol_minus != current_controller_data.buttons.bits.vol_minus)
             EMIT(events, n, EV_KEY, KEY_VOLUMEDOWN, current_controller_data.buttons.bits.vol_minus);
+        if (previous_controller_state.status_flags.bits.muted != current_controller_data.status_flags.bits.muted)
+            EMIT(events, n, EV_SW, SW_MUTE_DEVICE, current_controller_data.status_flags.bits.muted);
 
         if (n > 0) {
             EMIT(events, n, EV_SYN, SYN_REPORT, 0);
@@ -766,7 +770,8 @@ void update_mouse_events(int uinput_fd) {
                 switch (input_type) {
                     case INPUT_GAMEPAD:
                         if (previous_controller_state.buttons.raw != current_controller_data.buttons.raw ||
-                            memcmp(&previous_controller_state.left_stick_x, &current_controller_data.left_stick_x, 4) != 0) {
+                            memcmp(&previous_controller_state.left_stick_x, &current_controller_data.left_stick_x, 4) != 0 ||
+                            previous_controller_state.status_flags.bits.muted != current_controller_data.status_flags.bits.muted) {
                             update_gamepad_events(virtual_gamepad_fd);
                             update_keyboard_events();
                         previous_controller_state = current_controller_data;
