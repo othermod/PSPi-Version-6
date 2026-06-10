@@ -9,7 +9,6 @@
 
 #define BOOTLOADER_VERSION          0x01
 #define TWI_ADDRESS                 0x29
-#define BOOTLOADER_START            0x1C00
 
 /* Timer0: F_CPU / 1024, free-running overflow period = 256 * 1024 / F_CPU */
 #define TIMER_DIVISOR               1024
@@ -210,75 +209,72 @@ static void twi_handle(void)
         case TWI_SR_DATA_NACK:
             /* fall through */
 
-            case TWI_SR_STOP:
-                if (page_write_pending)
+        case TWI_SR_STOP:
+            if (page_write_pending)
+            {
+                /* STOP received with a pending write: set page_write_ready so the
+                 * main loop starts the flash write only AFTER this TWINT is cleared.
+                 * This prevents the ATmega from holding SCL during the 4.5ms
+                 * erase+program cycle, which triggers the BCM2835 clock-stretch bug. */
+                TWI_CLEAR_ACK(twi_ctrl);
+                page_write_ready = 1;
+            }
+            else
+            {
+                if (cmd == CMD_FINALIZE && byte_cnt >= 1)
                 {
-                    /* STOP received with a pending write: set page_write_ready so the
-                     * main loop starts the flash write only AFTER this TWINT is cleared.
-                     * This prevents the ATmega from holding SCL during the 4.5ms
-                     * erase+program cycle, which triggers the BCM2835 clock-stretch bug. */
+                    checksum_verify_pending = 1;
+                    /* Keep TWEA cleared while compute_flash_checksum runs (~7ms)
+                     * in the main loop, for the same reason as above. */
                     TWI_CLEAR_ACK(twi_ctrl);
-                    page_write_ready = 1;
                 }
-                else
-                {
-                    if (cmd == CMD_FINALIZE && byte_cnt >= 1)
-                    {
-                        checksum_verify_pending = 1;
-                        /* Keep TWEA cleared while compute_flash_checksum runs (~7ms)
-                         * in the main loop, for the same reason as above. */
-                        TWI_CLEAR_ACK(twi_ctrl);
-                    }
-                    byte_cnt = 0;
-                    if (!checksum_verify_pending)
-                        TWI_SET_ACK(twi_ctrl);
-                }
-                break;
-
-            case TWI_ST_SLA_ACK:
                 byte_cnt = 0;
-                /* fall through */
+                if (!checksum_verify_pending)
+                    TWI_SET_ACK(twi_ctrl);
+            }
+            break;
 
-                case TWI_ST_DATA_ACK:
-                {
-                    uint8_t tx_data = 0xFF;
+        case TWI_ST_SLA_ACK:
+            byte_cnt = 0;
+            /* fall through */
 
-                    switch (cmd)
-                    {
-                        case CMD_READ_INFO:
-                            if (byte_cnt < 6)
-                                tx_data = info_bytes[byte_cnt];
-                            else if (byte_cnt < 9)
-                                tx_data = info_checksum[byte_cnt - 6];
-                            if (byte_cnt == 8)
-                                TWI_CLEAR_ACK(twi_ctrl);
-                            break;
+        case TWI_ST_DATA_ACK:
+        {
+            uint8_t tx_data = 0xFF;
 
-                                default:
-                                    break;
-                    }
-
-                    TWDR = tx_data;
-                    byte_cnt++;
+            switch (cmd)
+            {
+                case CMD_READ_INFO:
+                    if (byte_cnt < 6)
+                        tx_data = info_bytes[byte_cnt];
+                    else if (byte_cnt < 9)
+                        tx_data = info_checksum[byte_cnt - 6];
+                    if (byte_cnt == 8)
+                        TWI_CLEAR_ACK(twi_ctrl);
                     break;
-                }
 
-                                case TWI_ST_DATA_NACK:
-                                case TWI_ST_LAST_ACK:
-                                    TWI_SET_ACK(twi_ctrl);
-                                    break;
+                default:
+                    break;
+            }
 
-                                default:
-                                    /* unexpected TWI state; set TWSTO to reset the bus */
-                                    twi_ctrl |= (1<<TWSTO);
-                                    break;
+            TWDR = tx_data;
+            byte_cnt++;
+            break;
+        }
+
+        case TWI_ST_DATA_NACK:
+        case TWI_ST_LAST_ACK:
+            TWI_SET_ACK(twi_ctrl);
+            break;
+
+        default:
+            /* unexpected TWI state; set TWSTO to reset the bus */
+            twi_ctrl |= (1<<TWSTO);
+            break;
     }
 
     TWCR = (1<<TWINT) | twi_ctrl;
 }
-
-
-static void (*jump_to_app)(void) __attribute__((noreturn)) = (void *)0x0000;
 
 
 void init1(void) __attribute__((naked, section(".init1")));
@@ -292,8 +288,9 @@ void init1(void)
 int main(void) __attribute__((OS_main, section(".init9")));
 int main(void)
 {
-    /* -nostartfiles skips .bss zeroing; explicitly init critical state for warm resets */
+    /* explicitly re-init critical state rather than relying on .bss clearing */
     bl_mode            = BL_HOLD;
+    blink_fast         = 0;
     page_write_pending = 0;
     page_write_ready   = 0;
 
@@ -405,5 +402,6 @@ int main(void)
     TWCR  = 0x00;
     TCCR0 = 0x00;
 
-    jump_to_app();
+    ((void (*)(void))0x0000)();
+    __builtin_unreachable();
 }
