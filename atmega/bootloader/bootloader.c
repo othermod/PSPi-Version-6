@@ -292,6 +292,11 @@ void init1(void)
 int main(void) __attribute__((OS_main, section(".init9")));
 int main(void)
 {
+    /* -nostartfiles skips .bss zeroing; explicitly init critical state for warm resets */
+    bl_mode            = BL_HOLD;
+    page_write_pending = 0;
+    page_write_ready   = 0;
+
     /* Outputs: PB2 (LCD_CONTROL), PB3/PB7 (LED_WIFI), PB6 (EN_5V); all others inputs with pull-ups */
     DDRB  = 0b11001100;
     PORTB = 0b00000001;
