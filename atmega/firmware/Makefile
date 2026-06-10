@@ -79,7 +79,7 @@ $(BUILD_DIR)/$(TARGET).elf: $(BUILD_DIR)/$(TARGET).o $(BUILD_DIR)/libcore.a $(WI
 $(TARGET).hex: $(BUILD_DIR)/$(TARGET).elf
 	$(OBJCOPY) -O binary -R .eeprom --pad-to=$(DATA_SIZE) --gap-fill=0xFF $< $(BUILD_DIR)/$(TARGET).bin
 	od -An -tu1 -v $(BUILD_DIR)/$(TARGET).bin \
-	  | awk 'BEGIN{s1=0;s2=0;x=0} \
+	  | LC_ALL=C awk 'BEGIN{s1=0;s2=0;x=0} \
 	         function xorb(a,b,  r,i){r=0;for(i=0;i<8;i++)r+=(int(a/2^i)%2!=int(b/2^i)%2)*2^i;return r} \
 	         {for(i=1;i<=NF;i++){b=$$i+0;s1=(s1+b)%256;s2=(s2+s1)%256;x=xorb(x,b)}} \
 	         END{printf "%c%c%c",s1,s2,x}' >> $(BUILD_DIR)/$(TARGET).bin
