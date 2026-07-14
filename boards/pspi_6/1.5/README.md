@@ -8,4 +8,7 @@
 
 ## Notes
 
-- No known bugs.
+- Testing in progress
+
+## Board Layout
+

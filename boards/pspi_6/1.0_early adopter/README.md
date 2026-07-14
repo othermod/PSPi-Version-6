@@ -17,3 +17,9 @@
 ### Bug 2: [Emergency Poweroff Too Early]
 - **Issue**: The supervisor IC is activating too early, and causing the board to power off when there's still 5% or so battery remaining.
 - **Fix**: Replace U11 with a 2.6v supervisor. ![Fix 2](fix2.jpg)
+
+## Board Layout
+
+![Top](top.png)
+![Bottom](bottom.png)
+
