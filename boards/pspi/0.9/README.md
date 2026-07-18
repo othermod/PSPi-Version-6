@@ -3,7 +3,7 @@
 
 ## Changes Since Previous PCB
 
-- Initial prototype.
+- Began fine-tuning the features initially tested in PCB 0.8.
 
 ## Notes
 
