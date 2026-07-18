@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.0 - Early Adopter Release
 
-> Early adopter release. Fixes several bugs from the 0.9 prototype but introduces two new issues.
 
 ## Changes Since Previous PCB
 

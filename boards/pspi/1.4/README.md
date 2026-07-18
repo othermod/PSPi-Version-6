@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.4
 
-> BOM update release. PCB unchanged from 1.3; BOM updated to include the corrected BAV70 diode.
 
 ## Changes Since Previous PCB
 

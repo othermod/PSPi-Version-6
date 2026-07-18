@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.1 - Main Release
 
-> Main release. Fixes the spontaneous power-on and emergency poweroff issues from 1.0. One known bug remains.
 
 ## Changes Since Previous PCB
 

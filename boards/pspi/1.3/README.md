@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.3
 
-> Minor refinement release. Improves joystick GND pad solderability.
 
 ## Changes Since Previous PCB
 

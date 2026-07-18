@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.5
 
-> Latest release. Fixes the spontaneous power-on issue in hardware. Testing in progress.
 
 ## Changes Since Previous PCB
 

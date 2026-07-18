@@ -1,6 +1,5 @@
 # PSPi 6 PCB 0.9 - Prototype (2023.08.12)
 
-> Prototype release dated 2023.08.12. This version has different manual components and several known bugs compared to later revisions.
 
 ## Changes Since Previous PCB
 

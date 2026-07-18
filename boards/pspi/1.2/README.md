@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.2
 
-> Refinement release. Adds custom through-hole joystick pad support and addresses component shortages.
 
 ## Changes Since Previous PCB
 
