@@ -1,5 +1,7 @@
 # PSPi 6 Boards
 
+> For version-specific notes, changes, and known bugs, see the `README.md` in each version's subfolder under `pspi/`.
+
 ## Ordering Boards from JLCPCB
 
 1. **Download Files**: Navigate to the folder and download the Gerber files for the board you want to order. If you want assembly, then also download the BOM and Pick and Place files.
