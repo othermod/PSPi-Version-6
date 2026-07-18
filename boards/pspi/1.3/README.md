@@ -1,13 +1,10 @@
 # PSPi 6 PCB 1.3
 
-
 ## Changes Since Previous PCB
 
 - Improved joystick GND pad for easier soldering.
 
 ## Notes
-
-- Headphone and Carrier boards received no change. Use version 1.1.
 
 ## Current Bugs
 

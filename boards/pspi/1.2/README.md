@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.2
 
-
 ## Changes Since Previous PCB
 
 - Made the headphone pads slightly larger.
@@ -9,8 +8,6 @@
 - Swapped components to deal with shortages.
 
 ## Notes
-
-- No changes to Headphone and Carrier boards. Use version 1.1.
 
 ## Current Bugs
 

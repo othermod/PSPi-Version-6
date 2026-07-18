@@ -1,12 +1,13 @@
 # PSPi 6 PCB 1.1 - Main Release
 
-
 ## Changes Since Previous PCB
 
 - Adjusted components leading to the power input mosfet so that the board doesn't power on when plugged in.
 - Swapped 3v supervisor for a 2.6v one, so poweroff doesn't trigger too early.
 - Switched to higher cost, lower resistance mosfets to reduce voltage drops on power rails.
 - Removed through-hole on joystick pads, so I can attempt different connection methods.
+
+## Notes
 
 ## Current Bugs
 

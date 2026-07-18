@@ -1,6 +1,5 @@
 # PSPi 6 PCB 1.0 - Early Adopter Release
 
-
 ## Changes Since Previous PCB
 
 - Adjusted audio filter to help deal with PWM audio bug on Raspberry Pi 4 and Compute Module 4.
@@ -8,6 +7,8 @@
 - Inverted activity LED function so it works with CM4.
 - USB muxing is no longer dependent on audio pins, and works regardless of whether audio is initialized.
 - Adjusted charge indicator so it is either fully orange or fully green, and not in between.
+
+## Notes
 
 ## Current Bugs
 
