@@ -1,9 +1,6 @@
 # PSPi 6 PCB 1.4
 
-
 ## Changes Since Previous PCB
-
-- None (BOM update only - see Notes).
 
 ## Notes
 
