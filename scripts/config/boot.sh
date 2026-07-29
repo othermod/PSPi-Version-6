@@ -10,7 +10,7 @@ modprobe i2c-dev
 until [ -e /dev/i2c-1 ]; do sleep 1; done
 
 # Start the RTC daemon
-./drivers/rtc &
+#./drivers/rtc &
 
 enable_dim=false
 dim_seconds=120
