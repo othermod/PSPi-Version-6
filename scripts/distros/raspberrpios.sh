@@ -26,3 +26,8 @@ TARGET_BIN[cm4]=64
 TARGET_BIN[cm5]=64
 TARGET_BIN[zero2]=64
 TARGET_BIN[zero1]=32
+
+distro_post_patch() {
+    local mnt_boot="$2"
+    sed -i 's/^input_type=gamepad$/input_type=mouse/' "$mnt_boot/pspi.conf"
+}
