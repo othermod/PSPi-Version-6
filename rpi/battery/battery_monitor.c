@@ -16,6 +16,7 @@
 #define RESISTOR_B_KOHM                             10
 #define BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM   210
 #define BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM  190
+#define BATTERY_CAPACITY_UAH  2000000  // full battery capacity in microamp-hours (uAh)
 #define DISCHARGING 0
 #define CHARGING    1
 #define CHARGED     2
@@ -154,6 +155,7 @@ static int write_file(const char *path, const char *value) {
 }
 
 static int setup_sysfs() {
+    char buf[32];
     if (mount("tmpfs", "/sys/class/power_supply/", "tmpfs", 0, NULL) != 0) {
         fprintf(stderr, "Failed to mount tmpfs: %s\n", strerror(errno));
         return -1;
@@ -170,7 +172,8 @@ static int setup_sysfs() {
     write_file(BAT_DIR "/technology",    "Li-ion\n");
     write_file(BAT_DIR "/present",       "1\n");
     write_file(BAT_DIR "/capacity_level","Normal\n");
-    write_file(BAT_DIR "/charge_full",   "1000000\n");
+    snprintf(buf, sizeof(buf), "%d\n", BATTERY_CAPACITY_UAH);
+    write_file(BAT_DIR "/charge_full",   buf);
 
     return 0;
 }
@@ -181,7 +184,7 @@ static void update_sysfs() {
     bool plugged_in = (battery.charge_state == CHARGING ||
     battery.charge_state == CHARGED);
 
-    snprintf(buf, sizeof(buf), "%d\n", battery.percent * 20000);
+    snprintf(buf, sizeof(buf), "%d\n", battery.percent * BATTERY_CAPACITY_UAH / 100);
     write_file(BAT_DIR "/charge_now",   buf);
 
     snprintf(buf, sizeof(buf), "%d\n", battery.percent);
