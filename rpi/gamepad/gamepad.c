@@ -604,6 +604,19 @@ void cleanup_resources(void) {
         #define AXIS_CENTER 127
         #define AXIS_THRESHOLD_LOW 112
         #define AXIS_THRESHOLD_HIGH 142
+        #define MOUSE_MAX_SPEED 8
+
+        // Scale a stick position to a pixel delta, using the configured axis range.
+        // Each side of center is scaled independently so an off-center rest point
+        // still reaches full speed in both directions.
+        static inline int scale_mouse_axis(int position, int center) {
+            int offset = position - center;
+            int range = (offset > 0) ? (axis_max - center) : (center - axis_min);
+            if (range <= 0) return 0;
+            if (offset > range) offset = range;
+            if (offset < -range) offset = -range;
+            return offset * MOUSE_MAX_SPEED / range;
+        }
 
             void update_keyboard_events(void) {
         if (virtual_keyboard_fd < 0) return;
@@ -635,11 +648,11 @@ void update_mouse_events(int uinput_fd) {
             current_controller_data.left_stick_y < AXIS_THRESHOLD_LOW;
 
             if (previous_mouse_data.left_stick_x != current_controller_data.left_stick_x || x_moving) {
-                EMIT(events, n, EV_REL, REL_X, (current_controller_data.left_stick_x - AXIS_CENTER) / 16);
+                EMIT(events, n, EV_REL, REL_X, scale_mouse_axis(current_controller_data.left_stick_x, axis_center_lx));
                 previous_mouse_data.left_stick_x = current_controller_data.left_stick_x;
             }
             if (previous_mouse_data.left_stick_y != current_controller_data.left_stick_y || y_moving) {
-                EMIT(events, n, EV_REL, REL_Y, (current_controller_data.left_stick_y - AXIS_CENTER) / 16);
+                EMIT(events, n, EV_REL, REL_Y, scale_mouse_axis(current_controller_data.left_stick_y, axis_center_ly));
                 previous_mouse_data.left_stick_y = current_controller_data.left_stick_y;
             }
 
