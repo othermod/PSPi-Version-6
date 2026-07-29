@@ -127,10 +127,14 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     int axis_max      = 215;
     int axis_flat     = 20;
     #define AXIS_FUZZ 4
-    int axis_center_lx = 127;
-    int axis_center_ly = 127;
-    int axis_center_rx = 127;
-    int axis_center_ry = 127;
+    #define AXIS_CENTER 127
+
+    // Applied to each raw ADC reading so everything downstream sees AXIS_CENTER
+    // as the resting position. Zero unless --autocenter samples them at startup.
+    int axis_offset_lx = 0;
+    int axis_offset_ly = 0;
+    int axis_offset_rx = 0;
+    int axis_offset_ry = 0;
 
     bool autocenter = false;
 
@@ -348,6 +352,14 @@ void cleanup_resources(void) {
         }
     }
 
+    // Offset one axis reading and clamp it to the field width.
+    static inline int adjust_axis(int value, int offset, int max) {
+        value += offset;
+        if (value < 0) return 0;
+        if (value > max) return max;
+        return value;
+    }
+
     bool read_i2c_data(void) {
         read(controller_board_fd, &current_controller_data, DATASIZE);
         if (enable_crc) {
@@ -364,6 +376,15 @@ void cleanup_resources(void) {
                 return false;
             }
         }
+        current_controller_data.left_stick_x =
+            adjust_axis(current_controller_data.left_stick_x, axis_offset_lx, 255);
+        current_controller_data.left_stick_y =
+            adjust_axis(current_controller_data.left_stick_y, axis_offset_ly, 255);
+        current_controller_data.right_stick_x.bits.position =
+            adjust_axis(current_controller_data.right_stick_x.bits.position, axis_offset_rx, 127);
+        current_controller_data.right_stick_y.bits.position =
+            adjust_axis(current_controller_data.right_stick_y.bits.position, axis_offset_ry, 127);
+
         *shared_memory_data = current_controller_data;
         return true;
     }
@@ -472,11 +493,11 @@ void cleanup_resources(void) {
             // Initialize axes: sticks to center, triggers to 0 (not pressed).
             struct input_event init_events[7];
             int n = 0;
-            EMIT(init_events, n, EV_ABS, ABS_X,  axis_center_lx);
-            EMIT(init_events, n, EV_ABS, ABS_Y,  axis_center_ly);
+            EMIT(init_events, n, EV_ABS, ABS_X,  AXIS_CENTER);
+            EMIT(init_events, n, EV_ABS, ABS_Y,  AXIS_CENTER);
             EMIT(init_events, n, EV_ABS, ABS_Z,  0);
-            EMIT(init_events, n, EV_ABS, ABS_RX, axis_center_rx);
-            EMIT(init_events, n, EV_ABS, ABS_RY, axis_center_ry);
+            EMIT(init_events, n, EV_ABS, ABS_RX, AXIS_CENTER);
+            EMIT(init_events, n, EV_ABS, ABS_RY, AXIS_CENTER);
             EMIT(init_events, n, EV_ABS, ABS_RZ, 0);
             EMIT(init_events, n, EV_SYN, SYN_REPORT, 0);
             write(uinput_fd, init_events, sizeof(struct input_event) * n);
@@ -606,12 +627,12 @@ void cleanup_resources(void) {
         // Scale a stick position to a pixel delta. Positions within axis_flat of
         // center are ignored. Past that, speed starts at 1 and ramps to
         // MOUSE_MAX_SPEED at the edge of the configured range.
-        static inline int scale_mouse_axis(int position, int center) {
-            int offset = position - center;
+        static inline int scale_mouse_axis(int position) {
+            int offset = position - AXIS_CENTER;
             int magnitude = (offset < 0) ? -offset : offset;
             if (magnitude <= axis_flat) return 0;
 
-            int range = ((offset > 0) ? (axis_max - center) : (center - axis_min)) - axis_flat;
+            int range = ((offset > 0) ? (axis_max - AXIS_CENTER) : (AXIS_CENTER - axis_min)) - axis_flat;
             if (range <= 0) return 0;
 
             magnitude -= axis_flat;
@@ -645,8 +666,8 @@ void update_mouse_events(int uinput_fd) {
             int n = 0;
 
             // Left stick -> relative mouse movement
-            int dx = scale_mouse_axis(current_controller_data.left_stick_x, axis_center_lx);
-            int dy = scale_mouse_axis(current_controller_data.left_stick_y, axis_center_ly);
+            int dx = scale_mouse_axis(current_controller_data.left_stick_x);
+            int dy = scale_mouse_axis(current_controller_data.left_stick_y);
 
             if (dx) EMIT(events, n, EV_REL, REL_X, dx);
             if (dy) EMIT(events, n, EV_REL, REL_Y, dy);
@@ -731,14 +752,14 @@ void update_mouse_events(int uinput_fd) {
             }
         }
 
-        void sample_axis_centers(void) {
+        void sample_axis_offsets(void) {
             read_i2c_data();
-            axis_center_lx = current_controller_data.left_stick_x;
-            axis_center_ly = current_controller_data.left_stick_y;
-            axis_center_rx = current_controller_data.right_stick_x.bits.position << 1;
-            axis_center_ry = current_controller_data.right_stick_y.bits.position << 1;
-            printf("Axis centers: lx=%d ly=%d rx=%d ry=%d\n",
-                   axis_center_lx, axis_center_ly, axis_center_rx, axis_center_ry);
+            axis_offset_lx = AXIS_CENTER - current_controller_data.left_stick_x;
+            axis_offset_ly = AXIS_CENTER - current_controller_data.left_stick_y;
+            axis_offset_rx = (AXIS_CENTER >> 1) - current_controller_data.right_stick_x.bits.position;
+            axis_offset_ry = (AXIS_CENTER >> 1) - current_controller_data.right_stick_y.bits.position;
+            printf("Axis offsets: lx=%d ly=%d rx=%d ry=%d\n",
+                   axis_offset_lx, axis_offset_ly, axis_offset_rx, axis_offset_ry);
         }
 
         // ---- Main ----
@@ -749,7 +770,7 @@ void update_mouse_events(int uinput_fd) {
             init_i2c();
             init_shared_memory();
             if (autocenter) {
-                sample_axis_centers();
+                sample_axis_offsets();
             }
 
             switch (input_type) {
