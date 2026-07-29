@@ -374,7 +374,11 @@ void cleanup_resources(void) {
         return value;
     }
 
+    #define MAX_CRC_FAILURES 10
+
     bool read_i2c_data(void) {
+        static int crc_failures = 0;
+
         read(controller_board_fd, &current_controller_data, DATASIZE);
         if (enable_crc) {
             uint16_t computed_crc = compute_crc16_ccitt((const uint8_t*)&current_controller_data, 9);
@@ -387,8 +391,14 @@ void cleanup_resources(void) {
                     for (int b = 0; b < DATASIZE; b++) printf("0x%02X ", d[b]);
                     printf("\n");
                 }
+                if (++crc_failures >= MAX_CRC_FAILURES) {
+                    fprintf(stderr, "Aborting after %d consecutive CRC failures\n", MAX_CRC_FAILURES);
+                    cleanup_resources();
+                    exit(1);
+                }
                 return false;
             }
+            crc_failures = 0;
         }
         current_controller_data.left_stick_x =
             adjust_axis(current_controller_data.left_stick_x, axis_offset_lx, 255);
