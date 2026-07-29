@@ -604,8 +604,8 @@ void cleanup_resources(void) {
         #define MOUSE_MAX_SPEED 8
 
         // Scale a stick position to a pixel delta. Positions within axis_flat of
-        // center are ignored; past that, speed ramps from the deadzone edge to the
-        // edge of the configured range, matching how absflat works in gamepad mode.
+        // center are ignored. Past that, speed starts at 1 and ramps to
+        // MOUSE_MAX_SPEED at the edge of the configured range.
         static inline int scale_mouse_axis(int position, int center) {
             int offset = position - center;
             int magnitude = (offset < 0) ? -offset : offset;
@@ -617,7 +617,7 @@ void cleanup_resources(void) {
             magnitude -= axis_flat;
             if (magnitude > range) magnitude = range;
 
-            int speed = magnitude * MOUSE_MAX_SPEED / range;
+            int speed = 1 + magnitude * (MOUSE_MAX_SPEED - 1) / range;
             return (offset < 0) ? -speed : speed;
         }
 
