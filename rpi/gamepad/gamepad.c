@@ -86,14 +86,12 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         union {
             struct RightX {
                 uint8_t button:1;    // Button data in bit 0
-                uint8_t position:7;  // Position data in bits 1-7
             } bits;
             uint8_t raw;
         } right_stick_x;
         union {
             struct RightY {
                 uint8_t button:1;    // Button data in bit 0
-                uint8_t position:7;  // Position data in bits 1-7
             } bits;
             uint8_t raw;
         } right_stick_y;
@@ -102,6 +100,11 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     } SharedData;
 
 
+
+    // Right stick position shares its byte with a button in bit 0. Mask that bit
+    // off so the value is an 8-bit reading on the same scale as the left stick.
+    #define STICK_MASK 0xFE
+    #define stick_position(u) ((u).raw & STICK_MASK)
 
     // Global structs for controller state
     SharedData *shared_memory_data;
@@ -380,10 +383,12 @@ void cleanup_resources(void) {
             adjust_axis(current_controller_data.left_stick_x, axis_offset_lx, 255);
         current_controller_data.left_stick_y =
             adjust_axis(current_controller_data.left_stick_y, axis_offset_ly, 255);
-        current_controller_data.right_stick_x.bits.position =
-            adjust_axis(current_controller_data.right_stick_x.bits.position, axis_offset_rx, 127);
-        current_controller_data.right_stick_y.bits.position =
-            adjust_axis(current_controller_data.right_stick_y.bits.position, axis_offset_ry, 127);
+        current_controller_data.right_stick_x.raw =
+            (adjust_axis(stick_position(current_controller_data.right_stick_x), axis_offset_rx, 255) & STICK_MASK) |
+            (current_controller_data.right_stick_x.raw & ~STICK_MASK);
+        current_controller_data.right_stick_y.raw =
+            (adjust_axis(stick_position(current_controller_data.right_stick_y), axis_offset_ry, 255) & STICK_MASK) |
+            (current_controller_data.right_stick_y.raw & ~STICK_MASK);
 
         *shared_memory_data = current_controller_data;
         return true;
@@ -589,9 +594,9 @@ void cleanup_resources(void) {
 
             if (joystick_count == 2) {
                 if (previous_controller_state.right_stick_x.raw != current_controller_data.right_stick_x.raw)
-                    EMIT(events, n, EV_ABS, ABS_RX, current_controller_data.right_stick_x.bits.position << 1);
+                    EMIT(events, n, EV_ABS, ABS_RX, stick_position(current_controller_data.right_stick_x));
                 if (previous_controller_state.right_stick_y.raw != current_controller_data.right_stick_y.raw)
-                    EMIT(events, n, EV_ABS, ABS_RY, current_controller_data.right_stick_y.bits.position << 1);
+                    EMIT(events, n, EV_ABS, ABS_RY, stick_position(current_controller_data.right_stick_y));
             }
 
             if (extra_buttons) {
@@ -756,8 +761,8 @@ void update_mouse_events(int uinput_fd) {
             read_i2c_data();
             axis_offset_lx = AXIS_CENTER - current_controller_data.left_stick_x;
             axis_offset_ly = AXIS_CENTER - current_controller_data.left_stick_y;
-            axis_offset_rx = (AXIS_CENTER >> 1) - current_controller_data.right_stick_x.bits.position;
-            axis_offset_ry = (AXIS_CENTER >> 1) - current_controller_data.right_stick_y.bits.position;
+            axis_offset_rx = AXIS_CENTER - stick_position(current_controller_data.right_stick_x);
+            axis_offset_ry = AXIS_CENTER - stick_position(current_controller_data.right_stick_y);
             printf("Axis offsets: lx=%d ly=%d rx=%d ry=%d\n",
                    axis_offset_lx, axis_offset_ly, axis_offset_rx, axis_offset_ry);
         }
