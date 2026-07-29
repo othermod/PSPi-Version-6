@@ -751,6 +751,7 @@ void update_mouse_events(int uinput_fd) {
                     break;
                 case INPUT_MOUSE:
                     init_virtual_mouse();
+                    init_virtual_keyboard();
                     break;
                 case INPUT_NONE:
                     break;
@@ -779,6 +780,8 @@ void update_mouse_events(int uinput_fd) {
                             break;
                     case INPUT_MOUSE:
                         update_mouse_events(virtual_mouse_fd);
+                        update_keyboard_events();
+                        previous_controller_state = current_controller_data;
                         break;
                     case INPUT_NONE:
                         break;
