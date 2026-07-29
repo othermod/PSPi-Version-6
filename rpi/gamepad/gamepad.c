@@ -126,9 +126,12 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     bool button_config = BUTTON_CONFIG_TRIGGER;
 
     // Axis calibration defaults (shared by left and right sticks)
-    int axis_min      = 40;
-    int axis_max      = 215;
+    // Total stick travel, split evenly either side of AXIS_CENTER.
+    int axis_range    = 175;
+    int axis_min;     // derived from axis_range
+    int axis_max;     // derived from axis_range
     int axis_flat     = 20;
+    #define MAX_DEADZONE 50
     #define AXIS_FUZZ 4
     #define AXIS_CENTER 127
 
@@ -148,8 +151,8 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 "  --input <gamepad|mouse|none>   Select input device type (default: gamepad)\n"
                 "  --nocrc                        Disable CRC checks\n"
                 "  --joysticks <num>              Set number of joysticks (0-2, gamepad only)\n"
-                "  --deadzone <value>             Set stick deadzone flat value (0-100, default: 20, gamepad only)\n"
-                "  --autocenter                   Use stick position at startup as center point (gamepad only)\n"
+                "  --deadzone <value>             Set stick deadzone flat value (0-50, default: 20)\n"
+                "  --autocenter                   Use stick position at startup as center point\n"
                 "  --dim <seconds>                Enable dimming after <seconds> idle (1-3600, default: 120)\n"
                 "  --fast                         Enable fast mode (double input polling rate)\n"
                 "  --verbose                      Show verbose output (e.g. CRC errors)\n"
@@ -211,12 +214,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 polling_delay = FAST_POLLING_DELAY_MS;
             } else if (strcmp(argv[i], "--deadzone") == 0) {
                 if (i + 1 < argc) {
-                    int dz = atoi(argv[++i]);
-                    if (dz < 0 || dz > 100) {
-                        printf("Invalid deadzone value. Must be between 0 and 100.\n");
-                        exit(1);
-                    }
-                    axis_flat = dz;
+                    axis_flat = atoi(argv[++i]);
                     printf("Deadzone: %d\n", axis_flat);
                 } else {
                     printf("No value specified for --deadzone\n");
@@ -255,6 +253,19 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
                 printf("Unknown argument '%s'\n", argv[i]);
                 exit(1);
             }
+        }
+
+        // Derived once all arguments are known, so flag order never matters.
+        axis_min = AXIS_CENTER - axis_range / 2;
+        axis_max = AXIS_CENTER + axis_range / 2;
+
+        int max_deadzone = axis_range / 2 - 1;
+        if (max_deadzone > MAX_DEADZONE) max_deadzone = MAX_DEADZONE;
+        if (axis_flat < 0) {
+            axis_flat = 0;
+        } else if (axis_flat > max_deadzone) {
+            printf("Deadzone %d too large, clamped to %d\n", axis_flat, max_deadzone);
+            axis_flat = max_deadzone;
         }
     }
 
@@ -637,7 +648,7 @@ void cleanup_resources(void) {
             int magnitude = (offset < 0) ? -offset : offset;
             if (magnitude <= axis_flat) return 0;
 
-            int range = ((offset > 0) ? (axis_max - AXIS_CENTER) : (AXIS_CENTER - axis_min)) - axis_flat;
+            int range = axis_range / 2 - axis_flat;
             if (range <= 0) return 0;
 
             magnitude -= axis_flat;
@@ -758,7 +769,9 @@ void update_mouse_events(int uinput_fd) {
         }
 
         void sample_axis_offsets(void) {
-            read_i2c_data();
+            while (!read_i2c_data()) {
+                usleep(polling_delay);
+            }
             axis_offset_lx = AXIS_CENTER - current_controller_data.left_stick_x;
             axis_offset_ly = AXIS_CENTER - current_controller_data.left_stick_y;
             axis_offset_rx = AXIS_CENTER - stick_position(current_controller_data.right_stick_x);
