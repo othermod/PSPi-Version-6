@@ -664,7 +664,7 @@ void cleanup_resources(void) {
             magnitude -= axis_flat;
             if (magnitude > range) magnitude = range;
 
-            int speed = 1 + magnitude * (MOUSE_MAX_SPEED - 1) / range;
+            int speed = 1 + (magnitude - 1) * MOUSE_MAX_SPEED / range;
             return (offset < 0) ? -speed : speed;
         }
 
