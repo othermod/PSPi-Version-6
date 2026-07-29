@@ -8,9 +8,9 @@ ALL_TARGETS=(cm4 cm5 zero2 zero1)
 
 declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN
 
-TARGET_URL[cm4]="https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-43-20260501.img.gz"
-TARGET_URL[cm5]="https://updates.batocera.org/bcm2712/stable/last/batocera-bcm2712-43-20260430.img.gz"
-TARGET_URL[zero2]="https://updates.batocera.org/bcm2837/stable/last/batocera-bcm2837-43-20260508.img.gz"
+TARGET_URL[cm4]="https://updates.batocera.org/bcm2711/stable/last/batocera-bcm2711-43.1-20260530.img.gz"
+TARGET_URL[cm5]="https://updates.batocera.org/bcm2712/stable/last/batocera-bcm2712-43.1-20260529.img.gz"
+TARGET_URL[zero2]="https://updates.batocera.org/bcm2837/stable/last/batocera-bcm2837-43.1-20260530.img.gz"
 TARGET_URL[zero1]="https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-43-20260507.img.gz"
 
 TARGET_SHA256[cm4]=""
@@ -18,9 +18,9 @@ TARGET_SHA256[cm5]=""
 TARGET_SHA256[zero2]=""
 TARGET_SHA256[zero1]=""
 
-TARGET_PSPI_PREFIX[cm4]="Batocera43-CM4-PSPi6"
-TARGET_PSPI_PREFIX[cm5]="Batocera43-CM5-PSPi6"
-TARGET_PSPI_PREFIX[zero2]="Batocera43-Zero2-PSPi6"
+TARGET_PSPI_PREFIX[cm4]="Batocera43.1-CM4-PSPi6"
+TARGET_PSPI_PREFIX[cm5]="Batocera43.1-CM5-PSPi6"
+TARGET_PSPI_PREFIX[zero2]="Batocera43.1-Zero2-PSPi6"
 TARGET_PSPI_PREFIX[zero1]="Batocera43-Zero1-PSPi6"
 
 TARGET_BIN[cm4]=64
