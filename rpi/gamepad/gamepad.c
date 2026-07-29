@@ -601,21 +601,24 @@ void cleanup_resources(void) {
 
         // ---- Mouse event emission ----
 
-        #define AXIS_CENTER 127
-        #define AXIS_THRESHOLD_LOW 112
-        #define AXIS_THRESHOLD_HIGH 142
         #define MOUSE_MAX_SPEED 8
 
-        // Scale a stick position to a pixel delta, using the configured axis range.
-        // Each side of center is scaled independently so an off-center rest point
-        // still reaches full speed in both directions.
+        // Scale a stick position to a pixel delta. Positions within axis_flat of
+        // center are ignored; past that, speed ramps from the deadzone edge to the
+        // edge of the configured range, matching how absflat works in gamepad mode.
         static inline int scale_mouse_axis(int position, int center) {
             int offset = position - center;
-            int range = (offset > 0) ? (axis_max - center) : (center - axis_min);
+            int magnitude = (offset < 0) ? -offset : offset;
+            if (magnitude <= axis_flat) return 0;
+
+            int range = ((offset > 0) ? (axis_max - center) : (center - axis_min)) - axis_flat;
             if (range <= 0) return 0;
-            if (offset > range) offset = range;
-            if (offset < -range) offset = -range;
-            return offset * MOUSE_MAX_SPEED / range;
+
+            magnitude -= axis_flat;
+            if (magnitude > range) magnitude = range;
+
+            int speed = magnitude * MOUSE_MAX_SPEED / range;
+            return (offset < 0) ? -speed : speed;
         }
 
             void update_keyboard_events(void) {
@@ -642,19 +645,11 @@ void update_mouse_events(int uinput_fd) {
             int n = 0;
 
             // Left stick -> relative mouse movement
-            bool x_moving = current_controller_data.left_stick_x > AXIS_THRESHOLD_HIGH ||
-            current_controller_data.left_stick_x < AXIS_THRESHOLD_LOW;
-            bool y_moving = current_controller_data.left_stick_y > AXIS_THRESHOLD_HIGH ||
-            current_controller_data.left_stick_y < AXIS_THRESHOLD_LOW;
+            int dx = scale_mouse_axis(current_controller_data.left_stick_x, axis_center_lx);
+            int dy = scale_mouse_axis(current_controller_data.left_stick_y, axis_center_ly);
 
-            if (previous_mouse_data.left_stick_x != current_controller_data.left_stick_x || x_moving) {
-                EMIT(events, n, EV_REL, REL_X, scale_mouse_axis(current_controller_data.left_stick_x, axis_center_lx));
-                previous_mouse_data.left_stick_x = current_controller_data.left_stick_x;
-            }
-            if (previous_mouse_data.left_stick_y != current_controller_data.left_stick_y || y_moving) {
-                EMIT(events, n, EV_REL, REL_Y, scale_mouse_axis(current_controller_data.left_stick_y, axis_center_ly));
-                previous_mouse_data.left_stick_y = current_controller_data.left_stick_y;
-            }
+            if (dx) EMIT(events, n, EV_REL, REL_X, dx);
+            if (dy) EMIT(events, n, EV_REL, REL_Y, dy);
 
             // Buttons: hw bitmask -> key code table
             static const ButtonMap mouse_map[] = {
