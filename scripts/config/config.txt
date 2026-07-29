@@ -14,10 +14,10 @@ framebuffer_height=480
 dtoverlay=i2c-rtc,pcf8563
 
 # Set minimum ARM frequency to 100
-arm_freq_min=100
+#arm_freq_min=100
 
 # Set minimum core frequency to 100
-core_freq_min=100
+#core_freq_min=100
 
 [cm4]
 # Power off when GPIO pin 44 is triggered
@@ -35,7 +35,6 @@ dtparam=ant2
 dtoverlay=pspi-audio-cm4-kernel6+
 dtoverlay=pspi-lcd-overlay
 
-over_voltage_min=-8
 arm_boost=0
 
 [cm5]
@@ -65,8 +64,6 @@ dtparam=act_led_activelow=no
 dtoverlay=pspi-audio-zero-kernel6+
 dtoverlay=pspi-lcd-overlay,zero
 
-over_voltage_min=-8
-
 [pi02]
 # Power off when GPIO pin 4 is triggered
 dtoverlay=gpio-poweroff,gpiopin=4,active_low=yes,active_delay_ms=2000,inactive_delay_ms=0
@@ -77,7 +74,5 @@ dtparam=act_led_activelow=no
 
 dtoverlay=pspi-audio-zero-kernel6+
 dtoverlay=pspi-lcd-overlay,zero
-
-over_voltage_min=-8
 
 [all]
