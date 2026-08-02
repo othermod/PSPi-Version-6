@@ -70,24 +70,47 @@ jobs:
 
       - name: Generate build matrix
         id: matrix
+        env:
+          INPUT_DISTRO: ${{ github.event.inputs.distro }}
+          INPUT_TARGET: ${{ github.event.inputs.target }}
         run: |
-          if [[ -n "${{ github.event.inputs.distro }}" && -n "${{ github.event.inputs.target }}" ]]; then
-            matrix=$(jq -cn --arg d "${{ github.event.inputs.distro }}" --arg t "${{ github.event.inputs.target }}" '[{"distro": $d, "target": $t}]')
-          else
-            matrix='[]'
-            for distro_file in scripts/distros/*.sh; do
-              distro=$(basename "$distro_file" .sh)
-              targets=$(bash -c "source '$distro_file' 2>/dev/null && echo \"\${ALL_TARGETS[*]}\"")
-              if [[ -z "$targets" ]]; then
-                echo "ERROR: No ALL_TARGETS found in $distro_file" >&2
-                exit 1
-              fi
-              for target in $targets; do
-                matrix=$(echo "$matrix" | jq --arg d "$distro" --arg t "$target" '. += [{"distro": $d, "target": $t}]')
-              done
-            done
+          set -euo pipefail
+
+          # Restrict to one distro if requested, otherwise use every distro config
+          distro_files=(scripts/distros/*.sh)
+          if [[ -n "$INPUT_DISTRO" ]]; then
+            if [[ ! -f "scripts/distros/${INPUT_DISTRO}.sh" ]]; then
+              echo "ERROR: Unknown distro '$INPUT_DISTRO'. Available: $(basename -a -s .sh scripts/distros/*.sh | tr '\n' ' ')" >&2
+              exit 1
+            fi
+            distro_files=("scripts/distros/${INPUT_DISTRO}.sh")
           fi
-          echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
+
+          pairs=()
+          for distro_file in "${distro_files[@]}"; do
+            distro=$(basename "$distro_file" .sh)
+            targets=$(bash -c "source '$distro_file' 2>/dev/null && echo \"\${ALL_TARGETS[*]}\"")
+            if [[ -z "$targets" ]]; then
+              echo "ERROR: No ALL_TARGETS found in $distro_file" >&2
+              exit 1
+            fi
+            for target in $targets; do
+              # Skip targets the caller filtered out
+              if [[ -n "$INPUT_TARGET" && "$target" != "$INPUT_TARGET" ]]; then
+                continue
+              fi
+              pairs+=("$distro $target")
+            done
+          done
+
+          if [[ ${#pairs[@]} -eq 0 ]]; then
+            echo "ERROR: No builds match distro='$INPUT_DISTRO' target='$INPUT_TARGET'" >&2
+            exit 1
+          fi
+
+          matrix=$(printf '%s\n' "${pairs[@]}" | jq -Rcn '[inputs | split(" ") | {distro: .[0], target: .[1]}]')
+          echo "Building ${#pairs[@]} image(s): ${pairs[*]}"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build-images:
     needs: [collect-artifacts, generate-matrix]
