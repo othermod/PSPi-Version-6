@@ -24,6 +24,11 @@ TARGET_BIN[arm64]=64
 TARGET_BIN[armhf]=32
 
 distro_post_patch() {
+    local mnt_root="$1"
     local mnt_boot="$2"
     sed -i 's/^input_type=gamepad$/input_type=mouse/' "$mnt_boot/pspi.conf"
+    # Always launch Squeekboard at login (stock image only starts it with a touchscreen)
+    if [ -f "$mnt_root/etc/xdg/autostart/squeekboard.desktop" ]; then
+        sed -i 's|^Exec=/usr/bin/sbtest|Exec=/usr/bin/squeekboard|' "$mnt_root/etc/xdg/autostart/squeekboard.desktop"
+    fi
 }
