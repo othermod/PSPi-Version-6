@@ -9,6 +9,8 @@ static int voltage_uv = 3800000;
 static int current_ua;
 static int online;
 
+#define CHARGE_FULL_UAH 2000000  // full battery capacity in microamp-hours
+
 static struct power_supply *bat_psy, *ac_psy;
 
 // Writing any parameter fires a uevent so udev/UPower refresh right away.
@@ -42,6 +44,9 @@ static enum power_supply_property bat_props[] = {
     POWER_SUPPLY_PROP_CAPACITY,
     POWER_SUPPLY_PROP_VOLTAGE_NOW,
     POWER_SUPPLY_PROP_CURRENT_NOW,
+    POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+    POWER_SUPPLY_PROP_CHARGE_FULL,
+    POWER_SUPPLY_PROP_CHARGE_NOW,
     POWER_SUPPLY_PROP_SCOPE,
 };
 
@@ -73,6 +78,13 @@ static int bat_get_property(struct power_supply *psy,
         break;
     case POWER_SUPPLY_PROP_CURRENT_NOW:
         val->intval = current_ua;
+        break;
+    case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+    case POWER_SUPPLY_PROP_CHARGE_FULL:
+        val->intval = CHARGE_FULL_UAH;
+        break;
+    case POWER_SUPPLY_PROP_CHARGE_NOW:
+        val->intval = capacity * (CHARGE_FULL_UAH / 100);
         break;
     case POWER_SUPPLY_PROP_SCOPE:
         val->intval = POWER_SUPPLY_SCOPE_SYSTEM;
