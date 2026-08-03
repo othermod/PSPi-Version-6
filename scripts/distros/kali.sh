@@ -92,6 +92,15 @@ distro_post_patch() {
 
     sed -i 's/^input_type=gamepad$/input_type=mouse/' "$mnt_boot/pspi.conf"
 
+    # Kali's cloud-init generator sometimes fails to pull cloud-init.target
+    # into the boot transaction, so the first-boot rootfs resize never runs and
+    # the desktop starts on a full filesystem. Enable the target statically.
+    # The units carry ConditionPathExists=!/etc/cloud/cloud-init.disabled, so
+    # they self-disable once the first run completes.
+    mkdir -p "$rootfs/etc/systemd/system/multi-user.target.wants"
+    ln -sf /lib/systemd/system/cloud-init.target \
+        "$rootfs/etc/systemd/system/multi-user.target.wants/cloud-init.target"
+
     build_battery_module "$rootfs" "$work_dir" "$bin"
 
     # Belt and braces: modules-load.d handles it, but make sure the module is
