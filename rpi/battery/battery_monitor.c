@@ -21,8 +21,13 @@
 #define CHARGING    1
 #define CHARGED     2
 
+#define PARAM_DIR "/sys/module/pspi_battery/parameters"
 #define BAT_DIR   "/sys/class/power_supply/BAT0"
 #define POWER_DIR "/sys/class/power_supply/BAT0/power"
+
+// Set at startup: true when the pspi_battery module is loaded and we can
+// drive a real kernel power supply, false when we fall back to the tmpfs.
+static bool use_module = false;
 
 // --- Shared memory layout ---------------------------------------------------
 
@@ -154,7 +159,10 @@ static int write_file(const char *path, const char *value) {
     return 0;
 }
 
-static int setup_sysfs() {
+// Fallback for systems without the module: fake the power supply class
+// directory with a tmpfs. Visible to anything reading sysfs paths directly,
+// but not to udev, so UPower-based desktops need the module instead.
+static int setup_tmpfs() {
     char buf[32];
     if (mount("tmpfs", "/sys/class/power_supply/", "tmpfs", 0, NULL) != 0) {
         fprintf(stderr, "Failed to mount tmpfs: %s\n", strerror(errno));
@@ -178,9 +186,36 @@ static int setup_sysfs() {
     return 0;
 }
 
-static void update_sysfs() {
-    char buf[32];
+static int setup_sysfs() {
+    if (access(PARAM_DIR, W_OK) == 0) {
+        use_module = true;
+        return 0;
+    }
+    return setup_tmpfs();
+}
 
+static void update_module() {
+    char buf[32];
+    bool plugged_in = (battery.charge_state == CHARGING ||
+    battery.charge_state == CHARGED);
+
+    snprintf(buf, sizeof(buf), "%d", battery.percent);
+    write_file(PARAM_DIR "/capacity", buf);
+
+    snprintf(buf, sizeof(buf), "%d", battery.charge_state);
+    write_file(PARAM_DIR "/status", buf);
+
+    snprintf(buf, sizeof(buf), "%d", battery.display_mv * 1000);
+    write_file(PARAM_DIR "/voltage_uv", buf);
+
+    snprintf(buf, sizeof(buf), "%d", battery.current_ma * 1000);
+    write_file(PARAM_DIR "/current_ua", buf);
+
+    write_file(PARAM_DIR "/online", plugged_in ? "1" : "0");
+}
+
+static void update_tmpfs() {
+    char buf[32];
     bool plugged_in = (battery.charge_state == CHARGING ||
     battery.charge_state == CHARGED);
 
@@ -197,6 +232,11 @@ static void update_sysfs() {
 
     write_file(BAT_DIR "/status",       status_str);
     write_file(BAT_DIR "/power/online", plugged_in ? "1\n"         : "0\n");
+}
+
+static void update_sysfs() {
+    if (use_module) update_module();
+    else            update_tmpfs();
 }
 
 // --- Main -------------------------------------------------------------------
@@ -217,6 +257,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (setup_sysfs() != 0) return 1;
+    if (verbose) {
+        printf("[battery] output: %s\n", use_module ? "pspi_battery module" : "tmpfs fallback");
+        fflush(stdout);
+    }
 
     FILE *log_file = NULL;
     if (logging) {
