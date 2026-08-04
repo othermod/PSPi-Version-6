@@ -1,0 +1,7 @@
+# Build artifacts
+rpi/*/32/
+rpi/*/64/
+rpi/*/*.dtbo
+rpi/lcd/linux/
+atmega/firmware/build/
+atmega/firmware/*.hex
