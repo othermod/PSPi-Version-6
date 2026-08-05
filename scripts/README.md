@@ -17,7 +17,20 @@ sudo apt-get install -y \
   gcc-avr \
   binutils-avr \
   avr-libc \
-  device-tree-compiler
+  device-tree-compiler \
+  fdisk \
+  e2fsprogs \
+  qemu-user-static \
+  binfmt-support
+```
+
+The last four packages (`fdisk`, `e2fsprogs`, `qemu-user-static`, `binfmt-support`) are
+required only by the **retropie** distro, which expands the base image and installs
+RetroPie inside a QEMU chroot. All other distros need only the cross-toolchain and the
+squashfs/AVR/device-tree tools above.
+
+Note that on Ubuntu 24.04 and newer, `fdisk` is a separate package from `util-linux`
+and must be installed explicitly.
 
 # 3. Download and install Arduino CLI
 wget -qO /tmp/arduino-cli.tar.gz https://github.com/arduino/arduino-cli/releases/download/v1.5.0/arduino-cli_1.5.0_Linux_64bit.tar.gz
