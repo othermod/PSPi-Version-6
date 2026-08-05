@@ -21,6 +21,8 @@ set -euo pipefail
 #   SQUASHFS_COMP_ARGS           - extra args passed to mksquashfs (e.g. "-comp zstd"), can be empty
 #
 # Optional hooks (define in distro config if needed):
+#   distro_pre_patch()  - called with (img_path, work_dir, BIN) after decompression,
+#                         before partitions are mounted; use to expand/resize the image
 #   distro_post_patch() - called with (rootfs_target, mnt_boot, work_dir, BIN)
 #                         rootfs_target is overlay_target (squashfs) or mnt_rootfs (copy)
 #   distro_post_write() - called with (mnt_boot, BIN) after write is complete;
@@ -339,6 +341,11 @@ build_image() {
         *)   die "Unknown compression extension: $ext (expected gz or xz)" ;;
     esac
     echo "  Decompressed: $(du -h "$img_path" | cut -f1)"
+
+    # Optional pre-patch hook (eg. expand image, resize partitions)
+    if declare -f distro_pre_patch > /dev/null; then
+        distro_pre_patch "$img_path" "$work_dir" "$T_BIN"
+    fi
 
     patch_image "$img_path" "$work_dir" "$T_BIN"
 
