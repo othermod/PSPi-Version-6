@@ -353,6 +353,11 @@ build_image() {
 
     patch_image "$img_path" "$work_dir" "$T_BIN"
 
+    # Ensure all writes (post-chroot patches, PSPi sysroot edits) are flushed
+    # to the image's loop device before we compress, so no pending page-cache
+    # data is silently dropped if the rootfs could not be cleanly unmounted.
+    sync
+
     if [[ "$PATCH_METHOD" == "squashfs" ]]; then
         echo "  Zeroing free space in boot partition..."
         local boot_offset

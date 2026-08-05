@@ -104,10 +104,14 @@ _retropie_enter_chroot() {
 _retropie_exit_chroot() {
     local rootfs="$1" qemu_bin="$2"
 
-    umount "$rootfs/dev/pts" 2>/dev/null || true
-    umount "$rootfs/dev" 2>/dev/null || true
-    umount "$rootfs/sys" 2>/dev/null || true
-    umount "$rootfs/proc" 2>/dev/null || true
+    # Detach nested mounts (dev/pts, devtmpfs/tmpfs, sys, proc) first so the
+    # rootfs can be cleanly unmounted and its buffers flushed on loop detach.
+    umount -l "$rootfs/dev/pts" 2>/dev/null || true
+    umount -l "$rootfs/dev/shm" 2>/dev/null || true
+    umount -l "$rootfs/dev" 2>/dev/null || true
+    umount -l "$rootfs/sys" 2>/dev/null || true
+    umount -l "$rootfs/proc" 2>/dev/null || true
+    sync
     [[ -n "$qemu_bin" ]] && rm -f "$rootfs/usr/bin/$qemu_bin"
 }
 
@@ -165,12 +169,21 @@ distro_post_patch() {
 
     _retropie_enter_chroot "$rootfs" "$qemu_bin"
 
-    # Create the pi user if missing (Bookworm has no default user)
+    # Create the pi user if missing (base image usually already has one, but
+    # locked, awaiting the first-boot wizard)
     if ! chroot "$rootfs" id pi >/dev/null 2>&1; then
         echo "  [retropie] Creating user 'pi'..."
         chroot "$rootfs" useradd -m -G sudo,video,input,audio,dialout,plugdev,netdev -s /bin/bash pi
-        echo "pi:raspberry" | chroot "$rootfs" chpasswd
     fi
+
+    # Set the password unconditionally, whether pi already existed (locked)
+    # or was just created above. Written directly into /etc/shadow instead
+    # of chpasswd inside the chroot, since that depends on QEMU emulation
+    # working correctly and can fail silently.
+    echo "  [retropie] Setting pi password..."
+    local pw_hash
+    pw_hash=$(openssl passwd -6 raspberry)
+    sed -i "s#^pi:[^:]*:#pi:${pw_hash}:#" "$rootfs/etc/shadow"
 
     # Disable the first-boot wizard (mask services via symlink, not systemctl,
     # since systemctl in a chroot talks to the host's systemd)
@@ -179,7 +192,14 @@ distro_post_patch() {
     ln -sf /dev/null "$rootfs/etc/systemd/system/piwiz.service"
     rm -f "$rootfs/etc/xdg/autostart/piwiz.desktop"
 
-    # Set US keyboard layout and locale
+    # userconfig.service is normally what enables getty@tty1 on first boot.
+    # Since we mask it above, enable getty@tty1 directly or the console never
+    # gets a login prompt.
+    mkdir -p "$rootfs/etc/systemd/system/getty.target.wants"
+    ln -sf /lib/systemd/system/getty@.service \
+        "$rootfs/etc/systemd/system/getty.target.wants/getty@tty1.service"
+
+    # Set US keyboard layout
     cat > "$rootfs/etc/default/keyboard" <<'KEYBOARD'
 XKBMODEL="pc105"
 XKBLAYOUT="us"
@@ -187,9 +207,6 @@ XKBVARIANT=""
 XKBOPTIONS=""
 BACKSPACE="guess"
 KEYBOARD
-    cat > "$rootfs/etc/default/locale" <<'LOCALE'
-LANG=en_US.UTF-8
-LOCALE
 
     # Install RetroPie-Setup dependencies
     echo "  [retropie] Installing dependencies..."
