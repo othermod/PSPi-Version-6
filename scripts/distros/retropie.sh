@@ -82,8 +82,21 @@ _retropie_enter_chroot() {
     mount --make-rprivate "$rootfs"
     mount -t proc proc "$rootfs/proc"
     mount -t sysfs sysfs "$rootfs/sys"
-    mount -t devtmpfs devtmpfs "$rootfs/dev"
+    # Use tmpfs instead of devtmpfs to avoid sharing the host's /dev.
+    # devtmpfs is a single kernel-wide instance -- rm -rf during cleanup
+    # would delete real device nodes from the host.
+    mount -t tmpfs -o mode=755 tmpfs "$rootfs/dev"
+    mknod -m 666 "$rootfs/dev/null"    c 1 3
+    mknod -m 666 "$rootfs/dev/zero"    c 1 5
+    mknod -m 666 "$rootfs/dev/full"    c 1 7
+    mknod -m 444 "$rootfs/dev/random"  c 1 8
+    mknod -m 444 "$rootfs/dev/urandom" c 1 9
+    mknod -m 666 "$rootfs/dev/tty"     c 5 0
+    mknod -m 600 "$rootfs/dev/console" c 5 1
+    mkdir -p "$rootfs/dev/pts" "$rootfs/dev/shm"
     mount -t devpts devpts "$rootfs/dev/pts"
+    ln -s /proc/self/fd "$rootfs/dev/fd"
+    ln -s pts/ptmx "$rootfs/dev/ptmx"
     cp /etc/resolv.conf "$rootfs/etc/resolv.conf"
     export HOME=/root
 }
