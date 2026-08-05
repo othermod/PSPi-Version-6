@@ -85,10 +85,13 @@ cleanup() {
     awk '$2~/pspi/ {print $2}' /proc/mounts | while read -r mp; do
         umount "$mp" 2>/dev/null || true
     done
-    # Only detach loop devices backed by pspi build images
-    losetup -a 2>/dev/null | grep '/tmp/pspi-build-' | cut -d: -f1 | while read -r dev; do
-        losetup -d "$dev" 2>/dev/null || true
-    done
+    # Only detach loop devices backed by pspi build images.
+    # Guarded with `if` so a no-match grep (exit 1) doesn't trip `set -e`.
+    if losetup -a 2>/dev/null | grep -q '/tmp/pspi-build-'; then
+        losetup -a 2>/dev/null | grep '/tmp/pspi-build-' | cut -d: -f1 | while read -r dev; do
+            losetup -d "$dev" 2>/dev/null || true
+        done
+    fi
     rm -rf /tmp/pspi-build-*
 }
 
