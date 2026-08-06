@@ -217,11 +217,20 @@ jobs:
           pattern: pspi-images-${{ steps.version.outputs.version }}-*
           path: ${{ github.workspace }}/pspi/patched_images/
           merge-multiple: true
+      - name: Install 7-Zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
       - name: Split large images
         run: |
           shopt -s nullglob
           for img in "${{ github.workspace }}"/pspi/patched_images/*.img.xz; do
-            split -b 1500m --numeric-suffixes=1 -a 2 --additional-suffix=.part "$img" "$img."
+            # -mx0 = store only, no re-compression (the .img.xz is already compressed)
+            # 7z volumes are self-describing: opening the .001 file in 7-Zip/WinRAR
+            # auto-finds the rest, on Windows, macOS, and Linux alike.
+            7z a -v1500m -mx0 "$img.7z" "$img"
+            rm "$img"
           done
           shopt -u nullglob
 
@@ -239,8 +248,8 @@ jobs:
           shopt -s nullglob
           mv release-assets/pspi-binaries.tar.gz release-assets/pspi-binaries-v${VERSION}.tar.gz
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            ${{ github.workspace }}/pspi/patched_images/*.img.xz.*.part \
+            ${{ github.workspace }}/pspi/patched_images/*.img.xz.7z.* \
             release-assets/pspi-binaries-v${VERSION}.tar.gz \
-            --notes "Images are split into <2 GiB parts. Download all *.part files for an image, then reassemble with: cat IMAGE.img.xz.??.part > IMAGE.img.xz" \
+            --notes "Images are split into <2 GiB parts (IMAGE.img.xz.7z.001, .002, ...). Download all parts for an image into the same folder, then open the .001 file with 7-Zip (Windows/Linux) or Keka (Mac) to reassemble it automatically." \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
