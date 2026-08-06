@@ -27,13 +27,21 @@ TARGET_BIN[cm4]=64
 # against the header trees the image already ships, one per installed kernel.
 build_battery_module() {
     local rootfs="$1" work_dir="$2" bin="$3"
-    local arch cross build_dir kver kdir
+    local arch cross build_dir kver kdir qemu_prefix
 
     if [[ "$bin" == "64" ]]; then
         arch="arm64"; cross="aarch64-linux-gnu-"
+        qemu_prefix="/usr/aarch64-linux-gnu"
     else
         arch="arm";   cross="arm-linux-gnueabihf-"
+        qemu_prefix="/usr/arm-linux-gnueabihf"
     fi
+
+    # The Kali header trees ship prebuilt target-arch build tools (modpost,
+    # fixdep, etc.). On an x86_64 build host these run via the qemu-user-static
+    # binfmt handlers, which need the cross loader from the matching libc
+    # package. Point QEMU at it so the module build can execute them.
+    export QEMU_LD_PREFIX="$qemu_prefix"
 
     build_dir="$work_dir/pspi_battery"
     mkdir -p "$build_dir"
