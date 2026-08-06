@@ -217,6 +217,13 @@ jobs:
           pattern: pspi-images-${{ steps.version.outputs.version }}-*
           path: ${{ github.workspace }}/pspi/patched_images/
           merge-multiple: true
+      - name: Split large images
+        run: |
+          shopt -s nullglob
+          for img in "${{ github.workspace }}"/pspi/patched_images/*.img.xz; do
+            split -b 1500m --numeric-suffixes=1 -a 2 --additional-suffix=.part "$img" "$img."
+          done
+          shopt -u nullglob
 
       - name: Download binaries
         uses: actions/download-artifact@v4
@@ -232,7 +239,8 @@ jobs:
           shopt -s nullglob
           mv release-assets/pspi-binaries.tar.gz release-assets/pspi-binaries-v${VERSION}.tar.gz
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
-            ${{ github.workspace }}/pspi/patched_images/*.img.xz \
+            ${{ github.workspace }}/pspi/patched_images/*.img.xz.*.part \
             release-assets/pspi-binaries-v${VERSION}.tar.gz \
+            --notes "Images are split into <2 GiB parts. Download all *.part files for an image, then reassemble with: cat IMAGE.img.xz.??.part > IMAGE.img.xz" \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
