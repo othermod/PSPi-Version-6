@@ -17,7 +17,7 @@ ALL_TARGETS=(arm64 armhf)
 
 declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN
 
-TARGET_URL[arm64]="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2025-05-15/2025-05-13-raspios-bookworm-arm64-lite.img.xz"
+TARGET_URL[arm64]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2026-04-14/2026-04-13-raspios-bookworm-arm64-lite.img.xz"
 TARGET_URL[armhf]="https://downloads.raspberrypi.com/raspios_oldstable_lite_armhf/images/raspios_oldstable_lite_armhf-2026-04-14/2026-04-13-raspios-bookworm-armhf-lite.img.xz"
 
 TARGET_SHA256[arm64]=""
