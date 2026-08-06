@@ -369,7 +369,9 @@ build_image() {
     mv "${img_path}.xz" "$OUTPUT_DIR/$T_PSPI_NAME"
     echo "  Compressed: $T_PSPI_NAME ($(du -h "$OUTPUT_DIR/$T_PSPI_NAME" | cut -f1))"
 
-    rm -rf "$work_dir"
+    # Best-effort cleanup
+    rm -rf "$work_dir" 2>/dev/null || \
+        echo "  Warning: could not fully remove build dir $work_dir"
 }
 
 # --- Main ---
