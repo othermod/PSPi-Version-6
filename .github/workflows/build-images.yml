@@ -145,6 +145,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             squashfs-tools \
+            e2fsprogs \
+            qemu-user-static \
+            binfmt-support \
+            gcc-12-aarch64-linux-gnu \
+            gcc-12-arm-linux-gnueabihf \
             wget \
             util-linux
 
