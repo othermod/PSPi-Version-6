@@ -1,6 +1,6 @@
 .PHONY: 32 64 clean
 
-BUILDS := battery firmware gamepad osd rtc wifi
+BUILDS := battery firmware gamepad rtc wifi
 DTBO   := audio lcd pcie
 
 32:
