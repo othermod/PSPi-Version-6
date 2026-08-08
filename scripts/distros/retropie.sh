@@ -182,7 +182,7 @@ distro_post_patch() {
     # working correctly and can fail silently.
     echo "  [retropie] Setting pi password..."
     local pw_hash
-    pw_hash=$(openssl passwd -6 raspberry)
+    pw_hash=$(openssl passwd -6 othermod)
     sed -i "s#^pi:[^:]*:#pi:${pw_hash}:#" "$rootfs/etc/shadow"
 
     # Disable the first-boot wizard (mask services via symlink, not systemctl,
@@ -227,6 +227,25 @@ KEYBOARD
     chroot "$rootfs" /bin/bash -c \
         "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh setup basic_install"
 
+    # Install the USB ROM Service (usbromservice): the stock image's tool for
+    # adding ROMs/BIOS by plugging in a USB drive. It's an opt-section module,
+    # so basic_install doesn't pull it in either. No args = full depends/build/
+    # install/configure cycle (it builds RetroPie's usbmount .deb from source).
+    echo "  [retropie] Installing USB ROM Service..."
+    chroot "$rootfs" /bin/bash -c \
+        "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh usbromservice"
+
+    # Install and enable RetroPie's Samba ROM shares. basic_install only covers
+    # the core/main section packages, so samba (a config-section module) is not
+    # pulled in by it -- but it is part of the stock RetroPie image and lets
+    # users drop ROMs/BIOS onto the device over the network out of the box.
+    echo "  [retropie] Installing and enabling Samba ROM shares..."
+    # Run while still in the chroot so getDepends/aptInstall see /proc and /dev.
+    chroot "$rootfs" /bin/bash -c \
+        "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh samba depends"
+    chroot "$rootfs" /bin/bash -c \
+        "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh samba install_shares"
+
     # Enable EmulationStation autostart (done manually since raspi-config/systemctl
     # don't work in a chroot)
     echo "  [retropie] Configuring auto-login and EmulationStation autostart..."
@@ -251,7 +270,53 @@ PROFILE
     cat > "$rootfs/opt/retropie/configs/all/autostart.sh" <<'AUTOSTART'
 emulationstation #auto
 AUTOSTART
+
+    # Enable the A/B button swap in Emulation Station. This mirrors the
+    # RetroPie "Swap A/B Buttons" option: the es_swap_a_b autoconf makes the
+    # ES configscript write physical A as ES "b" and B as ES "a" during the
+    # first-boot controller setup. (The RetroArch menu half of the swap is
+    # already handled by menu_swap_ok_cancel_buttons below.)
+    if [[ -f "$rootfs/opt/retropie/configs/all/autoconf.cfg" ]]; then
+        sed -i 's/^es_swap_a_b = .*/es_swap_a_b = "1"/' "$rootfs/opt/retropie/configs/all/autoconf.cfg"
+        grep -q '^es_swap_a_b' "$rootfs/opt/retropie/configs/all/autoconf.cfg" || \
+            echo 'es_swap_a_b = "1"' >> "$rootfs/opt/retropie/configs/all/autoconf.cfg"
+        echo "  [retropie] Enabled EmulationStation A/B button swap"
+    else
+        echo "  [retropie] WARNING: autoconf.cfg not found, writing it"
+        mkdir -p "$rootfs/opt/retropie/configs/all"
+        echo 'es_swap_a_b = "1"' > "$rootfs/opt/retropie/configs/all/autoconf.cfg"
+    fi
     chroot "$rootfs" chown -R pi:pi /opt/retropie/configs/all
+
+    # Default EmulationStation's audio to the PCM/analog output instead of
+    # HDMI. RetroPie's ES sets AudioDevice="HDMI" by default on RPi, which
+    # spams the console with HDMI audio errors when no HDMI is attached. PCM
+    # routes sound to the PSPi's on-board analog/PCM DAC (the bcm2835 card).
+    es_dir="$rootfs/opt/retropie/configs/all/emulationstation"
+    mkdir -p "$es_dir"
+    if [[ -f "$es_dir/es_settings.cfg" ]]; then
+        sed -i 's|<string name="AudioCard" value="[^"]*"|<string name="AudioCard" value="default"|' "$es_dir/es_settings.cfg"
+        sed -i 's|<string name="AudioDevice" value="[^"]*"|<string name="AudioDevice" value="PCM"|' "$es_dir/es_settings.cfg"
+        grep -q 'name="AudioCard"' "$es_dir/es_settings.cfg" || echo '<string name="AudioCard" value="default" />' >> "$es_dir/es_settings.cfg"
+        grep -q 'name="AudioDevice"' "$es_dir/es_settings.cfg" || echo '<string name="AudioDevice" value="PCM" />' >> "$es_dir/es_settings.cfg"
+    else
+        cat > "$es_dir/es_settings.cfg" <<'ESCFG'
+<string name="AudioCard" value="default" />
+<string name="AudioDevice" value="PCM" />
+ESCFG
+    fi
+    chroot "$rootfs" chown -R pi:pi /opt/retropie/configs/all/emulationstation
+    echo "  [retropie] Set EmulationStation audio to PCM"
+
+    # Bake in the preconfigured EmulationStation controller mapping so the
+    # user doesn't have to run the first-boot controller setup. This is the
+    # PS3 Controller config (the PSPi gamepad presents as "PS3 Controller")
+    # taken from a working first-boot setup.
+    es_dir="$rootfs/opt/retropie/configs/all/emulationstation"
+    mkdir -p "$es_dir"
+    cp "$PROJECT_DIR/scripts/config/es_input.cfg" "$es_dir/es_input.cfg"
+    chroot "$rootfs" chown -R pi:pi /opt/retropie/configs/all/emulationstation
+    echo "  [retropie] Installed preconfigured EmulationStation controller config"
 
     # Clean up apt cache to save space
     chroot "$rootfs" apt-get clean
