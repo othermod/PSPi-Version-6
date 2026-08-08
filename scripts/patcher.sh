@@ -180,7 +180,7 @@ EOF
 }
 
 patch_image() {
-    local img_path="$1" work_dir="$2" BIN="$3"
+    local img_path="$1" work_dir="$2" BIN="$3" label="$4"
 
     local boot_offset
     boot_offset=$(detect_boot_offset "$img_path")
@@ -294,7 +294,7 @@ patch_image() {
 
     # Distro-specific rootfs edits (retroarch config, extra init scripts, etc.)
     if declare -f distro_post_patch > /dev/null; then
-        distro_post_patch "$rootfs_target" "$mnt_boot" "$work_dir" "$BIN"
+        distro_post_patch "$rootfs_target" "$mnt_boot" "$work_dir" "$BIN" "$label"
     fi
 
     # Method-specific: repack squashfs and swap it back into the image
@@ -316,7 +316,7 @@ patch_image() {
 
     # Distro-specific post-write steps (checksums, board marker files, etc.)
     if declare -f distro_post_write > /dev/null; then
-        distro_post_write "$mnt_boot" "$BIN"
+        distro_post_write "$mnt_boot" "$BIN" "$label"
     fi
 }
 
@@ -348,10 +348,10 @@ build_image() {
 
     # Optional pre-patch hook (eg. expand image, resize partitions)
     if declare -f distro_pre_patch > /dev/null; then
-        distro_pre_patch "$img_path" "$work_dir" "$T_BIN"
+        distro_pre_patch "$img_path" "$work_dir" "$T_BIN" "$label"
     fi
 
-    patch_image "$img_path" "$work_dir" "$T_BIN"
+    patch_image "$img_path" "$work_dir" "$T_BIN" "$label"
 
     # Ensure all writes (post-chroot patches, PSPi sysroot edits) are flushed
     # to the image's loop device before we compress, so no pending page-cache

@@ -7,27 +7,42 @@
 #   apt install qemu-user-static binfmt-support e2fsprogs
 #
 # Build:
-#   sudo ./scripts/patcher.sh --distro retropie [--target arm64]
+#   sudo ./scripts/patcher.sh --distro retropie [--target <zero1|zero2|cm4|cm5>]
 
 PATCH_METHOD="copy"
 DRIVERS_BASE="/boot/firmware"
 INIT_SYSTEM="systemd"
 
-ALL_TARGETS=(arm64 armhf)
+ALL_TARGETS=(zero1 zero2 cm4 cm5)
 
-declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN
+declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN TARGET_RP_PLATFORM
 
-TARGET_URL[arm64]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2026-04-14/2026-04-13-raspios-bookworm-arm64-lite.img.xz"
-TARGET_URL[armhf]="https://downloads.raspberrypi.com/raspios_oldstable_lite_armhf/images/raspios_oldstable_lite_armhf-2026-04-14/2026-04-13-raspios-bookworm-armhf-lite.img.xz"
+# zero1 (armv6) uses the 32-bit armhf image; zero2/cm4/cm5 share the 64-bit arm64 image.
+TARGET_URL[zero1]="https://downloads.raspberrypi.com/raspios_oldstable_lite_armhf/images/raspios_oldstable_lite_armhf-2026-04-14/2026-04-13-raspios-bookworm-armhf-lite.img.xz"
+TARGET_URL[zero2]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2026-04-14/2026-04-13-raspios-bookworm-arm64-lite.img.xz"
+TARGET_URL[cm4]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2026-04-14/2026-04-13-raspios-bookworm-arm64-lite.img.xz"
+TARGET_URL[cm5]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2026-04-14/2026-04-13-raspios-bookworm-arm64-lite.img.xz"
 
-TARGET_SHA256[arm64]=""
-TARGET_SHA256[armhf]=""
+TARGET_SHA256[zero1]=""
+TARGET_SHA256[zero2]=""
+TARGET_SHA256[cm4]=""
+TARGET_SHA256[cm5]=""
 
-TARGET_PSPI_PREFIX[arm64]="RetroPie-Bookworm-64bit-CM4-CM5-Zero2-PSPi6"
-TARGET_PSPI_PREFIX[armhf]="RetroPie-Bookworm-32bit-AllBoards-PSPi6"
+TARGET_PSPI_PREFIX[zero1]="RetroPie-Bookworm-32bit-Zero1-PSPi6"
+TARGET_PSPI_PREFIX[zero2]="RetroPie-Bookworm-64bit-Zero2-PSPi6"
+TARGET_PSPI_PREFIX[cm4]="RetroPie-Bookworm-64bit-CM4-PSPi6"
+TARGET_PSPI_PREFIX[cm5]="RetroPie-Bookworm-64bit-CM5-PSPi6"
 
-TARGET_BIN[arm64]=64
-TARGET_BIN[armhf]=32
+TARGET_BIN[zero1]=32
+TARGET_BIN[zero2]=64
+TARGET_BIN[cm4]=64
+TARGET_BIN[cm5]=64
+
+# RetroPie __platform per board (controls which prebuilt cores get installed)
+TARGET_RP_PLATFORM[zero1]="rpi1"
+TARGET_RP_PLATFORM[zero2]="rpi3"
+TARGET_RP_PLATFORM[cm4]="rpi4"
+TARGET_RP_PLATFORM[cm5]="rpi5"
 
 # --- QEMU chroot helpers ---
 
@@ -159,13 +174,13 @@ distro_post_patch() {
     local mnt_boot="$2"
     local work_dir="$3"
     local BIN="$4"
+    local LABEL="$5"
 
     local qemu_bin
     qemu_bin=$(_retropie_setup_binfmt "$BIN")
 
-    # RetroPie platform mapping
-    local rp_platform="rpi4"
-    # TODO: if a CM5/rpi5 target is added, set rp_platform="rpi5" for that target
+    # RetroPie platform mapping (per-board: controls which prebuilt cores get installed)
+    local rp_platform="${TARGET_RP_PLATFORM[$LABEL]:-rpi4}"
 
     _retropie_enter_chroot "$rootfs" "$qemu_bin"
 
@@ -271,23 +286,6 @@ PROFILE
 emulationstation #auto
 AUTOSTART
 
-    # Enable the A/B button swap in Emulation Station. This mirrors the
-    # RetroPie "Swap A/B Buttons" option: the es_swap_a_b autoconf makes the
-    # ES configscript write physical A as ES "b" and B as ES "a" during the
-    # first-boot controller setup. (The RetroArch menu half of the swap is
-    # already handled by menu_swap_ok_cancel_buttons below.)
-    if [[ -f "$rootfs/opt/retropie/configs/all/autoconf.cfg" ]]; then
-        sed -i 's/^es_swap_a_b = .*/es_swap_a_b = "1"/' "$rootfs/opt/retropie/configs/all/autoconf.cfg"
-        grep -q '^es_swap_a_b' "$rootfs/opt/retropie/configs/all/autoconf.cfg" || \
-            echo 'es_swap_a_b = "1"' >> "$rootfs/opt/retropie/configs/all/autoconf.cfg"
-        echo "  [retropie] Enabled EmulationStation A/B button swap"
-    else
-        echo "  [retropie] WARNING: autoconf.cfg not found, writing it"
-        mkdir -p "$rootfs/opt/retropie/configs/all"
-        echo 'es_swap_a_b = "1"' > "$rootfs/opt/retropie/configs/all/autoconf.cfg"
-    fi
-    chroot "$rootfs" chown -R pi:pi /opt/retropie/configs/all
-
     # Default EmulationStation's audio to the PCM/analog output instead of
     # HDMI. RetroPie's ES sets AudioDevice="HDMI" by default on RPi, which
     # spams the console with HDMI audio errors when no HDMI is attached. PCM
@@ -308,16 +306,6 @@ ESCFG
     chroot "$rootfs" chown -R pi:pi /opt/retropie/configs/all/emulationstation
     echo "  [retropie] Set EmulationStation audio to PCM"
 
-    # Bake in the preconfigured EmulationStation controller mapping so the
-    # user doesn't have to run the first-boot controller setup. This is the
-    # PS3 Controller config (the PSPi gamepad presents as "PS3 Controller")
-    # taken from a working first-boot setup.
-    es_dir="$rootfs/opt/retropie/configs/all/emulationstation"
-    mkdir -p "$es_dir"
-    cp "$PROJECT_DIR/scripts/config/es_input.cfg" "$es_dir/es_input.cfg"
-    chroot "$rootfs" chown -R pi:pi /opt/retropie/configs/all/emulationstation
-    echo "  [retropie] Installed preconfigured EmulationStation controller config"
-
     # Clean up apt cache to save space
     chroot "$rootfs" apt-get clean
 
@@ -332,5 +320,20 @@ ESCFG
         echo "  [retropie] Updated retroarch.cfg"
     else
         echo "  [retropie] WARNING: retroarch.cfg not found"
+    fi
+    # Enable RetroPie Setup's "Swap A/B Buttons in ES" (Emulation Station -> Swap A/B).
+    # Mirrors exactly what toggling that option to "Swapped" does in RetroPie Setup:
+    #   setAutoConf "es_swap_a_b" "1"  (writes es_swap_a_b = "1" to autoconf.cfg)
+    # and the corresponding menu_swap_ok_cancel_buttons = "true" change above.
+    local ac_cfg="$rootfs/opt/retropie/configs/all/autoconf.cfg"
+    if [[ -f "$ac_cfg" ]]; then
+        sed -i 's/^#\?\s*es_swap_a_b\s*=.*/es_swap_a_b = "1"/' "$ac_cfg"
+        if ! grep -q '^es_swap_a_b' "$ac_cfg"; then
+            echo 'es_swap_a_b = "1"' >> "$ac_cfg"
+        fi
+        chown 1000:1000 "$ac_cfg"
+        echo "  [retropie] Swapped A/B buttons in ES (es_swap_a_b=1)"
+    else
+        echo "  [retropie] WARNING: autoconf.cfg not found"
     fi
 }
