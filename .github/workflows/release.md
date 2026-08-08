@@ -1,7 +1,7 @@
 ## What's Changed
 
-<!-- Fill in per-release changelog. Group by topic, e.g. Images, Gamepad Driver,
-     Battery & Power, WiFi, Power & Stability. -->
+- **New images:** Kali (Zero 2 W, CM4, CM5) and RetroPie (Zero 1, Zero 2 W, CM4, CM5)
+  are now available.
 
 ## Downloading the Images
 
@@ -25,7 +25,9 @@ for users who want to patch their own image.
 ## Images
 
 ### Lakka
-<!-- screenshot: Lakka RetroArch menu -->
+![Lakka booting to the RetroArch menu](lakka.png)
+
+**Boards:** Zero 1, Zero 2 W, CM4, CM5
 
 The pure RetroArch option: the entire OS is RetroArch, with no separate front-end
 or desktop. It boots straight into the RetroArch menu and uses a read-only
@@ -37,7 +39,9 @@ Username: `root`
 Password: `root`
 
 ### Batocera
-<!-- screenshot: Batocera EmulationStation UI -->
+![Batocera EmulationStation menu](batocera.png)
+
+**Boards:** Zero 1, Zero 2 W, CM4, CM5
 
 A turn-key retro-gaming OS with its own EmulationStation-based UI and a built-in
 settings menu. Audio is heavily reworked for the PSPi: PipeWire is disabled in
@@ -49,7 +53,9 @@ Username: `root`
 Password: `linux`
 
 ### Recalbox
-<!-- screenshot: Recalbox EmulationStation UI -->
+![Recalbox EmulationStation menu](recalbox.png)
+
+**Boards:** Zero 2 W, CM4, CM5
 
 Another EmulationStation-based retro OS, similar in spirit to Batocera but a
 different ecosystem. The stock hardware-detection and add-on scripts are stripped
@@ -60,13 +66,14 @@ Username: `root`
 Password: `recalboxroot`
 
 ### RetroPie
-<!-- screenshot: RetroPie EmulationStation UI -->
+![RetroPie EmulationStation menu](retropie.png)
 
-RetroPie installed on top of Raspberry Pi OS Lite. Unlike the standalone retro
-OSes above, this builds RetroPie from RetroPie-Setup: flash the image with
-Raspberry Pi Imager and complete the WiFi setup first, then on first boot it
-downloads and installs RetroPie over the network. This takes upwards of an hour,
-so keep the PSPi charging. After install it boots into EmulationStation.
+**Boards:** Zero 1, Zero 2 W, CM4, CM5
+
+RetroPie installed on top of Raspberry Pi OS Lite. The `pi` user auto-logs-in on
+boot and EmulationStation starts straight away. Audio is set to the analog/PCM
+output, the A/B and OK/cancel buttons are swapped for the PSPi layout, and ROMs
+can be added via a USB drive or the built-in Samba (network) share.
 
 [How to SSH with RetroPie](https://retropie.org.uk/docs/SSH/)
 
@@ -74,7 +81,9 @@ Username: `pi`
 Password: `othermod`
 
 ### Raspberry Pi OS
-<!-- screenshot: Raspberry Pi OS desktop -->
+![Raspberry Pi OS desktop](raspios.png)
+
+**Boards:** 64-bit image: Zero 2 W, CM4, CM5 · 32-bit image: all boards
 
 The general-purpose desktop, not a gaming image. It boots into mouse mode by
 default because the desktop is more usable with a pointer than a gamepad (switch
@@ -86,7 +95,9 @@ Username: `pi`
 Password: `raspberry`
 
 ### Kali
-<!-- screenshot: Kali desktop -->
+![Kali desktop](kali.png)
+
+**Boards:** Zero 2 W, CM4, CM5 (CM5 uses the CM4 image)
 
 A security and penetration-testing distro, not gaming-focused. It boots into mouse
 mode like Raspberry Pi OS. Because Kali reads the battery through UPower rather
@@ -98,6 +109,8 @@ Password: `kali`
 
 ### Firmware
 <!-- screenshot: not needed (headless utility) -->
+
+**Boards:** all boards
 
 Not an operating system. A one-shot utility image that flashes updated firmware to
 the ATmega microcontroller over a bit-banged I2C bus, then powers off. There is no
