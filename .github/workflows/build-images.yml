@@ -250,6 +250,6 @@ jobs:
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
             ${{ github.workspace }}/pspi/patched_images/*.img.xz.7z.* \
             release-assets/pspi-binaries-v${VERSION}.tar.gz \
-            --notes "Images are split into <2 GiB parts (IMAGE.img.xz.7z.001, .002, ...). Download all parts for an image into the same folder, then open the .001 file with 7-Zip (Windows/Linux) or Keka (Mac) to reassemble it automatically." \
+            --notes-file .github/workflows/release.md \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
