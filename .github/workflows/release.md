@@ -56,8 +56,7 @@ Password: `othermod`
 64-bit image: Zero 2 W, CM4, CM5 
 32-bit image: all boards
 
-The general-purpose desktop, not a gaming image. It boots into mouse mode by default because the desktop is more usable with a pointer than a gamepad (switch `input_type` in `pspi.conf` on the boot partition for gamepad mode). The on-screen
-keyboard (Squeekboard) starts automatically at boot. This is the "it's just a Linux computer" option.
+The general-purpose desktop, not a gaming image. It boots into mouse mode by default because the desktop is more usable with a pointer than a gamepad (switch `input_type` in `pspi.conf` on the boot partition for gamepad mode). The on-screen keyboard (Squeekboard) starts automatically at boot. This is the "it's just a Linux computer" option.
 
 Username: `pi`
 Password: `raspberry`
