@@ -52,7 +52,9 @@ Password: `othermod`
 ### Raspberry Pi OS
 ![Raspberry Pi OS desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/pios.png)
 
-**Boards:** 64-bit image: Zero 2 W, CM4, CM5 · 32-bit image: all boards
+**Boards:** 
+64-bit image: Zero 2 W, CM4, CM5 
+32-bit image: all boards
 
 The general-purpose desktop, not a gaming image. It boots into mouse mode by default because the desktop is more usable with a pointer than a gamepad (switch `input_type` in `pspi.conf` on the boot partition for gamepad mode). The on-screen
 keyboard (Squeekboard) starts automatically at boot. This is the "it's just a Linux computer" option.
@@ -63,9 +65,11 @@ Password: `raspberry`
 ### Kali
 ![Kali desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/kali.png)
 
-**Boards:** Zero 2 W, CM4, CM5 (CM5 uses the CM4 image)
+**Boards:** Zero 2 W, CM4, CM5
 
 A security and penetration-testing distro, not gaming-focused. It boots into mouse mode like Raspberry Pi OS.
 
 Username: `kali`
 Password: `kali`
+
+**Full Changelog**: https://github.com/othermod/PSPi-Version-6/compare/v2.4.1...2.4.2
