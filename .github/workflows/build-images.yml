@@ -226,11 +226,18 @@ jobs:
         run: |
           shopt -s nullglob
           for img in "${{ github.workspace }}"/pspi/patched_images/*.img.xz; do
-            # -mx0 = store only, no re-compression (the .img.xz is already compressed)
-            # 7z volumes are self-describing: opening the .001 file in 7-Zip/WinRAR
-            # auto-finds the rest, on Windows, macOS, and Linux alike.
-            7z a -v1500m -mx0 "$img.7z" "$img"
-            rm "$img"
+            # GitHub's per-file release asset limit is 2 GiB (2147483648 B).
+            # Only split if the image is at or over the limit; a smaller image
+            # is uploaded unsplit as a single .img.xz.
+            size=$(stat -c%s "$img")
+            if (( size >= 2147483648 )); then
+              # -mx0 = store only, no re-compression (the .img.xz is already compressed)
+              # 7z volumes are self-describing: opening the .001 file in 7-Zip/WinRAR
+              # auto-finds the rest, on Windows, macOS, and Linux alike.
+              # -v1950m (binary MiB) keeps each volume below the 2 GiB ceiling.
+              7z a -v1950m -mx0 "$img.7z" "$img"
+              rm "$img"
+            fi
           done
           shopt -u nullglob
 
@@ -249,6 +256,7 @@ jobs:
           mv release-assets/pspi-binaries.tar.gz release-assets/pspi-binaries-v${VERSION}.tar.gz
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
             ${{ github.workspace }}/pspi/patched_images/*.img.xz.7z.* \
+            ${{ github.workspace }}/pspi/patched_images/*.img.xz \
             release-assets/pspi-binaries-v${VERSION}.tar.gz \
             --notes-file .github/workflows/release.md \
             --repo "$GITHUB_REPOSITORY"
