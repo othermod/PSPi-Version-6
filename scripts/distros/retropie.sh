@@ -237,6 +237,17 @@ KEYBOARD
         chroot "$rootfs" chown -R pi:pi /home/pi/RetroPie-Setup
     fi
 
+    # Make RetroPie's downloads resilient to transient CDN timeouts.
+    # download() in helpers.sh hardcodes "--connect-timeout 10" with no --retry,
+    # so a single SSL/connection timeout to files.retropie.org.uk aborts the
+    # whole build. Add retries and a longer connect timeout so transient
+    # failures are retried instead of failing the build.
+    local helpers="$rootfs/home/pi/RetroPie-Setup/scriptmodules/helpers.sh"
+    if [[ -f "$helpers" ]] && ! grep -q 'RP_RETRY_DOWNLOADS' "$helpers"; then
+        sed -i 's/--connect-timeout 10 --speed-limit 1 --speed-time 60 --fail/--connect-timeout 30 --retry 5 --retry-delay 2 --speed-limit 1 --speed-time 60 --fail/' "$helpers"
+        echo "  [retropie] Patched RetroPie download() with --retry 5 (resilient CDN downloads)"
+    fi
+
     # Run the basic install
     echo "  [retropie] Running basic_install (this will take a long time under QEMU)..."
     chroot "$rootfs" /bin/bash -c \
@@ -260,6 +271,74 @@ KEYBOARD
         "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh samba depends"
     chroot "$rootfs" /bin/bash -c \
         "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh samba install_shares"
+
+    # Install the experimental Steam Link port (streams games from a networked PC)
+    # and apply the first-launch black-screen fix.
+    # The scriptmodule is a bin module (depends -> aptInstall the Valve "steamlink"
+    # deb -> configure creates ~/.local/share/SteamLink and the "Steam Link" port).
+    # It is flagged "!all rpi3 rpi4 rpi5", so it only applies to zero2 (rpi3) /
+    # cm4 (rpi4) / cm5 (rpi5). On zero1 (rpi1) rp_callModule prints "not available
+    # for your system" and returns 3 (graceful skip, not a hard failure), but we
+    # gate it explicitly so zero1 doesn't run the udev pre-seed either.
+    # retropie_packages.sh with no mode arg runs the full install cycle
+    # (depends + install_bin + configure).
+    case "$rp_platform" in
+        rpi3|rpi4|rpi5)
+            # Workaround: the chroot has MODULES=dep in initramfs.conf, so
+            # mkinitramfs tries to autodetect the root block device, which fails
+            # inside the chroot ("failed to determine device for /"). Any apt
+            # transaction that triggers the initramfs-tools postinst then returns
+            # non-zero, and RetroPie's aptInstall treats that as fatal -> the
+            # Steam Link install aborts the whole build even though the deb
+            # itself installed. Temporarily switch to MODULES=most (the
+            # documented workaround, skips root-device probing) for the
+            # duration of the Steam Link install, clear any half-installed
+            # initramfs-tools state left by earlier failed triggers, then
+            # restore MODULES=dep afterward to keep the stock image behavior.
+            local irconf="$rootfs/etc/initramfs-tools/initramfs.conf"
+            if [[ -f "$irconf" ]]; then
+                sed -i 's/^MODULES=dep$/MODULES=most/' "$irconf"
+                echo "  [retropie] Temporarily set initramfs MODULES=most for the Steam Link install"
+            fi
+            chroot "$rootfs" /usr/bin/dpkg --configure -a || true
+
+            echo "  [retropie] Installing Steam Link port..."
+            chroot "$rootfs" /bin/bash -c \
+                "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh steamlink"
+
+            # Restore the stock MODULES=dep so the final image regenerates the
+            # initrd the same way Raspberry Pi OS does (dep works on the real
+            # device where / is a real block device).
+            if [[ -f "$irconf" ]] && grep -q '^MODULES=most$' "$irconf"; then
+                sed -i 's/^MODULES=most$/MODULES=dep/' "$irconf"
+                echo "  [retropie] Restored initramfs MODULES=dep"
+            fi
+
+            # Fix: Steam Link's first-launch setup (steamlink.sh) runs a one-time
+            # udev block that ends in an interactive "Press return to continue:
+            # read". Under RetroPie runcommand there is no tty input, so that read
+            # blocks forever and the app never starts -> permanent black screen.
+            # The whole block is guarded by "if [ ! -f /lib/udev/rules.d/56-steamlink.rules ]",
+            # so pre-creating that rule file (and the uinput module-load entry) in
+            # the image makes first launch skip the blocker and reach the app GUI.
+            echo "  [retropie] Pre-seeding Steam Link udev rules (skip first-run black screen)..."
+            mkdir -p "$rootfs/lib/udev/rules.d" "$rootfs/etc/modules-load.d"
+            cat > "$rootfs/lib/udev/rules.d/56-steamlink.rules" <<'STEAMLINKRULES'
+# USB devices
+SUBSYSTEM=="usb", GROUP="plugdev"
+
+# HID devices
+KERNEL=="hidraw*", GROUP="input", MODE:="0660"
+
+# Creating virtual devices
+KERNEL=="uinput", GROUP="input", MODE:="0660"
+STEAMLINKRULES
+            echo 'uinput' > "$rootfs/etc/modules-load.d/uinput.conf"
+            ;;
+        *)
+            echo "  [retropie] Skipping Steam Link (not supported on $rp_platform)"
+            ;;
+    esac
 
     # Enable EmulationStation autostart (done manually since raspi-config/systemctl
     # don't work in a chroot)
