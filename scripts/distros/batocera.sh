@@ -171,5 +171,22 @@ PACTL_EOF
     chmod +x "$pactl_bin"
     echo "  [batocera] Installed pactl amixer wrapper"
 
+    # Seed a Moonlight launcher so the system appears in EmulationStation on
+    # first boot without needing a terminal. EmulationStation only lists a
+    # system when it has at least one ROM, so this single .moonlight file is
+    # what makes the Moonlight system show up. On first launch (no host yet)
+    # it opens the moonlight-qt client GUI for host discovery and PIN pairing.
+    local ml_seed="${overlay_target}/usr/share/batocera/datainit/roms/moonlight"
+    if [[ -d "$ml_seed" ]]; then
+        if [[ ! -e "$ml_seed/Moonlight.moonlight" ]]; then
+            : > "$ml_seed/Moonlight.moonlight"
+            echo "  [batocera] Seeded Moonlight launcher (Moonlight.moonlight)"
+        else
+            echo "  [batocera] Moonlight launcher already present"
+        fi
+    else
+        echo "  [batocera] WARNING: datainit roms/moonlight not found, skipping Moonlight"
+    fi
+
     echo "  [batocera] Audio fix complete"
 }
