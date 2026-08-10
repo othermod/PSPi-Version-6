@@ -19,6 +19,8 @@ The pure RetroArch option: the entire OS is RetroArch, with no separate front-en
 Username: `root`
 Password: `root`
 
+---
+
 ### Batocera
 ![Batocera EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/batocera.png)
 
@@ -28,6 +30,8 @@ A turn-key retro-gaming OS with its own EmulationStation-based UI and a built-in
 
 Username: `root`
 Password: `linux`
+
+---
 
 ### Recalbox
 ![Recalbox EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/recalbox.png)
@@ -39,6 +43,8 @@ Another EmulationStation-based retro OS, similar in spirit to Batocera but a dif
 Username: `root`
 Password: `recalboxroot`
 
+---
+
 ### RetroPie
 ![RetroPie EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/retropie.png)
 
@@ -48,6 +54,8 @@ RetroPie installed on top of Raspberry Pi OS Lite. The `pi` user auto-logs-in on
 
 Username: `pi`
 Password: `othermod`
+
+---
 
 ### Raspberry Pi OS
 ![Raspberry Pi OS desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/pios.png)
@@ -61,6 +69,8 @@ The general-purpose desktop, not a gaming image. It boots into mouse mode by def
 Username: `pi`
 Password: `raspberry`
 
+---
+
 ### Kali
 ![Kali desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/kali.png)
 
@@ -70,5 +80,7 @@ A security and penetration-testing distro, not gaming-focused. It boots into mou
 
 Username: `kali`
 Password: `kali`
+
+---
 
 **Full Changelog**: https://github.com/othermod/PSPi-Version-6/compare/v2.4.1...2.4.2
