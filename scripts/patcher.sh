@@ -39,6 +39,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/config"
 OUTPUT_DIR="${GITHUB_WORKSPACE:-$HOME}/pspi/patched_images"
 CACHE_DIR="${GITHUB_WORKSPACE:-$HOME}/pspi/stock_images"
+DOWNLOAD_ATTEMPTS=5
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -146,15 +147,35 @@ download_image() {
     fi
 
     echo "  Downloading $compressed..."
-    wget -nv -O "$cached" "$url" || die "Failed to download $url"
-    if [[ -n "$sha256" ]]; then
-        local actual_sha
-        actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
-        [[ "$actual_sha" != "$sha256" ]] && die "Checksum mismatch: expected $sha256, got $actual_sha"
-        echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
-    else
-        echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1))"
-    fi
+    local attempt reason actual_sha delay
+    for ((attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++)); do
+        reason=""
+        # --timeout/--tries let wget recover from a stalled or dropped connection
+        # on its own; the outer loop handles a download that fails outright or
+        # arrives corrupted.
+        if wget -nv --timeout=30 --tries=3 --waitretry=10 -O "$cached" "$url"; then
+            if [[ -z "$sha256" ]]; then
+                echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1))"
+                return 0
+            fi
+            actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
+            if [[ "$actual_sha" == "$sha256" ]]; then
+                echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
+                return 0
+            fi
+            reason="checksum mismatch: expected $sha256, got $actual_sha"
+        else
+            reason="wget failed"
+        fi
+
+        rm -f "$cached"
+        if ((attempt < DOWNLOAD_ATTEMPTS)); then
+            delay=$((attempt * 15))
+            echo "  Attempt $attempt/$DOWNLOAD_ATTEMPTS failed ($reason). Retrying in ${delay}s..."
+            sleep "$delay"
+        fi
+    done
+    die "Failed to download $url after $DOWNLOAD_ATTEMPTS attempts ($reason)"
 }
 
 detect_boot_offset() {
