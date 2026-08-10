@@ -1,6 +1,7 @@
 ## What's Changed
 
-- **New images:** Kali (Zero 2 W, CM4, CM5) and RetroPie (Zero 1, Zero 2 W, CM4, CM5) are now available.
+- RetroPie now has Steam Link included by default
+- Batocera now has Moonlight included by default
 
 ## Compute Module 5 Reminder
 
@@ -8,18 +9,6 @@
 - Audio through headphones and speakers does not work on the CM5 with the CM4 carrier. The pins changed, so no software change will fix this. Use Bluetooth or USB audio.
 
 ## Images
-
-### Lakka
-![Lakka booting to the RetroArch menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/lakka.png)
-
-**Boards:** Zero 1, Zero 2 W, CM4, CM5
-
-The pure RetroArch option: the entire OS is RetroArch, with no separate front-end or desktop. It boots straight into the RetroArch menu and uses a read-only (squashfs) root filesystem, so it stays small and consistent between boots. This is the Libretro reference build, with PSPi button mapping and menu layout already applied.
-
-Username: `root`
-Password: `root`
-
----
 
 ### Batocera
 ![Batocera EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/batocera.png)
@@ -30,6 +19,30 @@ A turn-key retro-gaming OS with its own EmulationStation-based UI and a built-in
 
 Username: `root`
 Password: `linux`
+
+---
+
+### Kali
+![Kali desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/kali.png)
+
+**Boards:** Zero 2 W, CM4, CM5
+
+A security and penetration-testing distro, not gaming-focused. It boots into mouse mode like Raspberry Pi OS.
+
+Username: `kali`
+Password: `kali`
+
+---
+
+### Lakka
+![Lakka booting to the RetroArch menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/lakka.png)
+
+**Boards:** Zero 1, Zero 2 W, CM4, CM5
+
+The pure RetroArch option: the entire OS is RetroArch, with no separate front-end or desktop. It boots straight into the RetroArch menu and uses a read-only (squashfs) root filesystem, so it stays small and consistent between boots. This is the Libretro reference build, with PSPi button mapping and menu layout already applied.
+
+Username: `root`
+Password: `root`
 
 ---
 
@@ -71,16 +84,4 @@ Password: `raspberry`
 
 ---
 
-### Kali
-![Kali desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/kali.png)
-
-**Boards:** Zero 2 W, CM4, CM5
-
-A security and penetration-testing distro, not gaming-focused. It boots into mouse mode like Raspberry Pi OS.
-
-Username: `kali`
-Password: `kali`
-
----
-
-**Full Changelog**: https://github.com/othermod/PSPi-Version-6/compare/v2.4.1...2.4.2
+**Full Changelog**: https://github.com/othermod/PSPi-Version-6/compare/v2.4.2...v2.4.3
