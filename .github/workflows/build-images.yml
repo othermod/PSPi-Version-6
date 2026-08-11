@@ -134,6 +134,9 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ github.event.inputs.version }}"
+            # Strip any stray whitespace so it can't be word-split by unquoted
+            # uses (filenames, artifact patterns, release tag).
+            VERSION="${VERSION//[[:space:]]/}"
             VERSION="${VERSION#[vV]}"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           else
@@ -205,6 +208,9 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             VERSION="${{ github.event.inputs.version }}"
+            # Strip any stray whitespace so it can't be word-split by unquoted
+            # uses (filenames, artifact patterns, release tag).
+            VERSION="${VERSION//[[:space:]]/}"
             VERSION="${VERSION#[vV]}"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           else
@@ -256,11 +262,11 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           shopt -s nullglob
-          mv release-assets/pspi-binaries.tar.gz release-assets/pspi-binaries-v${VERSION}.tar.gz
+          mv "release-assets/pspi-binaries.tar.gz" "release-assets/pspi-binaries-v${VERSION}.tar.gz"
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
             ${{ github.workspace }}/pspi/patched_images/*.img.xz.7z.* \
             ${{ github.workspace }}/pspi/patched_images/*.img.xz \
-            release-assets/pspi-binaries-v${VERSION}.tar.gz \
+            "release-assets/pspi-binaries-v${VERSION}.tar.gz" \
             --notes-file .github/workflows/release.md \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob

@@ -46,6 +46,20 @@ Password: `root`
 
 ---
 
+### Raspberry Pi OS
+![Raspberry Pi OS desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/pios.png)
+
+**Boards:** 
+64-bit image: Zero 2 W, CM4, CM5 
+32-bit image: all boards
+
+The general-purpose desktop, not a gaming image. It boots into mouse mode by default because the desktop is more usable with a pointer than a gamepad (switch `input_type` in `pspi.conf` on the boot partition for gamepad mode). The on-screen keyboard (Squeekboard) starts automatically at boot. This is the "it's just a Linux computer" option.
+
+Username: `pi`
+Password: `raspberry`
+
+---
+
 ### Recalbox
 ![Recalbox EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/recalbox.png)
 
@@ -70,17 +84,14 @@ Password: `othermod`
 
 ---
 
-### Raspberry Pi OS
-![Raspberry Pi OS desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/pios.png)
+### Ubuntu
+![Ubuntu desktop](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/ubuntu.png)
 
-**Boards:** 
-64-bit image: Zero 2 W, CM4, CM5 
-32-bit image: all boards
+**Boards:** CM4, CM5
 
-The general-purpose desktop, not a gaming image. It boots into mouse mode by default because the desktop is more usable with a pointer than a gamepad (switch `input_type` in `pspi.conf` on the boot partition for gamepad mode). The on-screen keyboard (Squeekboard) starts automatically at boot. This is the "it's just a Linux computer" option.
+Ubuntu 26.04 LTS with the full GNOME desktop — the “it's a real Linux computer” option. Ships with the PSPi battery kernel module so the battery icon works, boots into mouse mode, and has the built-in GNOME on-screen keyboard enabled.
 
-Username: `pi`
-Password: `raspberry`
+Username / Password: created during the first-boot setup wizard (there is no default user).
 
 ---
 
