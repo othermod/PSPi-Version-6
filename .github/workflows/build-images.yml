@@ -150,10 +150,13 @@ jobs:
             binfmt-support \
             gcc-12-aarch64-linux-gnu \
             gcc-12-arm-linux-gnueabihf \
+            gcc-14-aarch64-linux-gnu \
             libc6-arm64-cross \
             libc6-armhf-cross \
             libc6-dev-arm64-cross \
             libc6-dev-armhf-cross \
+            kmod \
+            curl \
             wget \
             util-linux
 

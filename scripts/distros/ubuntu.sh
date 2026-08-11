@@ -36,6 +36,86 @@ TARGET_PSPI_PREFIX[all]="Ubuntu26.04-Desktop-CM4-CM5-PSPi6"
 
 TARGET_BIN[all]=64
 
+# Build the pspi_battery kernel module for the image's specific kernel by
+# cross-compiling on the host (Option B). The preinstalled Ubuntu image ships
+# NO kernel headers (unlike Kali), so we fetch the matching linux-headers
+# packages from the Ubuntu arm64 archive, extract them into a scratch tree,
+# and build against them with an aarch64 cross gcc.
+#
+# The raspi headers ship PREBUILT arm64 build tools (scripts/mod/modpost), which
+# run on this x86_64 host under QEMU -- so qemu-user-static/binfmt plus
+# libc6-arm64-cross (the loader at /usr/aarch64-linux-gnu) are required, wired
+# up via QEMU_LD_PREFIX (the same trick Kali uses).
+#
+# Host deps: gcc-14/15-aarch64-linux-gnu (>=14 for -fmin-function-alignment),
+#            libc6-arm64-cross, kmod (depmod), qemu-user-static, binfmt-support
+build_battery_module() {
+    local rootfs="$1" work_dir="$2"
+
+    # Resolve the installed kernel version from the image's own module dir
+    local kver=""
+    for kd in "$rootfs"/lib/modules/*/; do
+        [[ -d "$kd" ]] && kver="$(basename "$kd")" && break
+    done
+    [[ -z "$kver" ]] && die "[ubuntu] No kernel module dir found in $rootfs/lib/modules"
+    local front="${kver%-raspi}"   # e.g. 7.0.0-1009
+    echo "  [ubuntu] Building battery module for kernel $kver"
+
+    # A recent-enough aarch64 cross gcc (gcc >= 14 understands the kernel's
+    # -fmin-function-alignment flag)
+    local cc="" c
+    for c in aarch64-linux-gnu-gcc-15 aarch64-linux-gnu-gcc-14; do
+        if command -v "$c" >/dev/null 2>&1; then cc="$c"; break; fi
+    done
+    [[ -n "$cc" ]] || die "[ubuntu] No aarch64 gcc >=14 found. Install gcc-14-aarch64-linux-gnu"
+    local tccbin="$work_dir/tccbin"; mkdir -p "$tccbin"
+    ln -sf "$(command -v "$cc")" "$tccbin/aarch64-linux-gnu-gcc"
+
+    [[ -d /usr/aarch64-linux-gnu ]] \
+        || die "[ubuntu] libc6-arm64-cross not installed (QEMU loader). Run: apt install libc6-arm64-cross"
+
+    # Fetch the matching header packages from the Ubuntu arm64 archive
+    local pool="http://ports.ubuntu.com/ubuntu-ports/pool/main/l/linux-raspi"
+    local listing arch_deb common_deb
+    listing="$(curl -fsS "$pool/" 2>/dev/null || true)"
+    [[ -n "$listing" ]] || die "[ubuntu] Could not list $pool (network?)"
+    arch_deb="$(printf '%s\n' "$listing" | grep -oE "linux-headers-${kver}_[^\"<> ]+_arm64\.deb" | sort -Vu | tail -1)"
+    common_deb="$(printf '%s\n' "$listing" | grep -oE "linux-raspi-headers-${front}_[^\"<> ]+_arm64\.deb" | sort -Vu | tail -1)"
+    [[ -n "$arch_deb" && -n "$common_deb" ]] \
+        || die "[ubuntu] Could not find header packages for $kver in Ubuntu archive"
+
+    local hdr_root="$work_dir/hdr" HDR
+    mkdir -p "$hdr_root"
+    wget -q "$pool/$arch_deb"   -O "$hdr_root/$arch_deb"   || die "[ubuntu] failed to download $arch_deb"
+    wget -q "$pool/$common_deb" -O "$hdr_root/$common_deb" || die "[ubuntu] failed to download $common_deb"
+    dpkg-deb -x "$hdr_root/$arch_deb"   "$hdr_root/root"
+    dpkg-deb -x "$hdr_root/$common_deb" "$hdr_root/root"
+    HDR="$hdr_root/root/usr/src/linux-headers-${kver}"
+    [[ -d "$HDR" ]]              || die "[ubuntu] Extracted header tree not found at $HDR"
+    [[ -f "$HDR/.config" ]]      || die "[ubuntu] Header tree missing .config: $HDR"
+
+    # Build the module (modpost runs under QEMU via the cross-gcc PATH + loader)
+    local bdir="$work_dir/pspi_battery"
+    mkdir -p "$bdir"
+    cp "$PROJECT_DIR/rpi/battery/module/pspi_battery.c" "$bdir/"
+    echo 'obj-m += pspi_battery.o' > "$bdir/Makefile"
+    PATH="$tccbin:$PATH" QEMU_LD_PREFIX=/usr/aarch64-linux-gnu \
+        make -C "$HDR" M="$bdir" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules \
+        >/dev/null 2>&1 || die "[ubuntu] pspi_battery module build failed"
+    [[ -f "$bdir/pspi_battery.ko" ]] || die "[ubuntu] pspi_battery.ko was not produced"
+
+    # Install into the image and refresh module metadata
+    local kdir="$rootfs/lib/modules/$kver"
+    mkdir -p "$kdir/extra"
+    cp "$bdir/pspi_battery.ko" "$kdir/extra/"
+    depmod -b "$rootfs" "$kver" || die "[ubuntu] depmod failed for $kver"
+
+    # Load early (before battery_monitor starts, which auto-detects the module)
+    mkdir -p "$rootfs/etc/modules-load.d"
+    echo "pspi_battery" > "$rootfs/etc/modules-load.d/pspi_battery.conf"
+    echo "  [ubuntu] Installed pspi_battery.ko for $kver + modules-load.d entry"
+}
+
 distro_post_patch() {
     local rootfs_target="$1"
     local mnt_boot="$2"
@@ -71,4 +151,35 @@ distro_post_patch() {
     else
         echo "  [ubuntu] WARNING: current/overlays not found, PSPi overlays left in overlays/"
     fi
+
+    # GNOME/UPower reads the battery via udev, so the tmpfs fallback is
+    # invisible on this desktop. Build + install the real power_supply kernel
+    # module for the image's kernel (battery_monitor auto-switches to it).
+    build_battery_module "$rootfs_target" "$work_dir"
+
+    # Belt-and-braces: make sure the module is up before battery_monitor picks
+    # its output path (modules-load.d already handles it).
+    sed -i 's|^\./drivers/battery_monitor &$|modprobe pspi_battery 2>/dev/null\n./drivers/battery_monitor \&|' \
+        "$mnt_boot/boot.sh"
+
+    # On-screen keyboard: GNOME Shell ships a built-in keyboard (no separate
+    # Squeekboard like Raspberry Pi OS) shown only when the accessibility
+    # setting org.gnome.desktop.a11y.applications screen-keyboard-enabled is
+    # true. Enable it system-wide and lock it so every user (including one
+    # created by the first-boot wizard) gets it, regardless of touchscreen --
+    # the canonical GNOME dconf-override mechanism.
+    mkdir -p "$rootfs_target/etc/dconf/profile" \
+             "$rootfs_target/etc/dconf/db/local.d/locks"
+    cat > "$rootfs_target/etc/dconf/profile/user" <<'PROFILE'
+user-db:user
+system-db:local
+PROFILE
+    cat > "$rootfs_target/etc/dconf/db/local.d/00-pspi-osk" <<'OSKDB'
+[org/gnome/desktop/a11y/applications]
+screen-keyboard-enabled=true
+OSKDB
+    cat > "$rootfs_target/etc/dconf/db/local.d/locks/00-pspi-osk" <<'OSKLOCK'
+/org/gnome/desktop/a11y/applications/screen-keyboard-enabled
+OSKLOCK
+    echo "  [ubuntu] Forced on-screen keyboard (dconf override + lock)"
 }
