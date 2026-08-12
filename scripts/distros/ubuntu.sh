@@ -181,5 +181,66 @@ OSKDB
     cat > "$rootfs_target/etc/dconf/db/local.d/locks/00-pspi-osk" <<'OSKLOCK'
 /org/gnome/desktop/a11y/applications/screen-keyboard-enabled
 OSKLOCK
-    echo "  [ubuntu] Forced on-screen keyboard (dconf override + lock)"
+    # Keep the desktop from auto-locking / suspending on idle, which would land
+    # on the GDM login screen (awkward with the on-screen keyboard on the small
+    # LCD). Screen dimming/blanking is left enabled -- only the lock, and the
+    # whole-system suspension on idle, are turned off. Deliberately NOT locked
+    # so the end user can still enable locking/suspend in Settings if desired.
+    mkdir -p "$rootfs_target/etc/dconf/db/local.d"
+    cat > "$rootfs_target/etc/dconf/db/local.d/01-pspi-idle" <<'IDLE'
+[org/gnome/desktop/screensaver]
+lock-enabled=false
+
+[org/gnome/settings-daemon/plugins/power]
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='nothing'
+IDLE
+    echo "  [ubuntu] Forced on-screen keyboard (dconf override + lock); disabled idle lock/suspend"
+
+    # Default account (ubuntu/othermod) so the first-boot wizard isn't required.
+    # Ubuntu's preinstalled desktop ships NoCloud user-data with `users: []`,
+    # which tells cloud-init to create NO user and instead forces the interactive
+    # gnome-initial-setup wizard (which builds the account on screen). We:
+    #   1. replace `users: []` so cloud-init creates the `ubuntu` user with
+    #      password `othermod` on first boot (keeps the swap config intact), and
+    #   2. set GDM InitialSetupEnable=false so the wizard never runs.
+    local ud="$mnt_boot/user-data"
+    if [[ -f "$ud" ]]; then
+        python3 - "$ud" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p).read()
+block = (
+"users:\n"
+"  - name: ubuntu\n"
+"    gecos: Ubuntu\n"
+"    groups: [adm, audio, cdrom, dialout, dip, floppy, netdev, plugdev, sudo, video]\n"
+"    sudo: ALL=(ALL) NOPASSWD:ALL\n"
+"    shell: /bin/bash\n"
+"    lock_passwd: false\n"
+"    plain_text_passwd: othermod\n")
+if re.search(r'^\s*name:\s*ubuntu\s*$', s, re.M):
+    print("  [ubuntu] user already defined in user-data, skipping")
+else:
+    s2 = re.sub(r'^users:\s*\[\s*\]\s*$', block, s, count=1, flags=re.M)
+    if s2 == s:
+        print("  [ubuntu] WARNING: could not find 'users: []' in user-data, skipping")
+    else:
+        open(p, 'w').write(s2)
+        print("  [ubuntu] cloud-init will create ubuntu/othermod on first boot")
+PY
+    fi
+    local gdmc="$rootfs_target/etc/gdm3/custom.conf"
+    if [[ -f "$gdmc" ]]; then
+        # Auto-login the ubuntu user so it boots straight to the desktop, and
+        # disable the first-boot setup wizard. Each entry is inserted after the
+        # [daemon] header if not already present (no duplicate lines).
+        grep -q '^AutomaticLoginEnable' "$gdmc" \
+            || sed -i '/^\[daemon\]/a AutomaticLoginEnable=true' "$gdmc"
+        grep -q '^AutomaticLogin=' "$gdmc" \
+            || sed -i '/^\[daemon\]/a AutomaticLogin=ubuntu' "$gdmc"
+        grep -q '^InitialSetupEnable' "$gdmc" \
+            || sed -i '/^\[daemon\]/a InitialSetupEnable=false' "$gdmc"
+        echo "  [ubuntu] GDM: autologin=ubuntu, first-boot wizard disabled"
+    fi
 }
