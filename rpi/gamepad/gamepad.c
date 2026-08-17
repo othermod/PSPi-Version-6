@@ -555,9 +555,10 @@ void cleanup_resources(void) {
             }
 
             static const uint16_t mouse_keys[] = {
-                KEY_BACK, KEY_FORWARD, KEY_LEFTMETA,
+                KEY_LEFTMETA,
+                KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
                 BTN_LEFT, BTN_RIGHT,
-                KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER,
+                KEY_ENTER, KEY_ESC,
             };
             ioctl(virtual_mouse_fd, UI_SET_EVBIT, EV_KEY);
             for (size_t i = 0; i < sizeof(mouse_keys)/sizeof(mouse_keys[0]); i++)
@@ -700,16 +701,15 @@ void update_mouse_events(int uinput_fd) {
 
             // Buttons: hw bitmask -> key code table
             static const ButtonMap mouse_map[] = {
-                { 1 << 2,  KEY_ENTER    },  // start
-                { 1 << 3,  BTN_LEFT     },  // a
-                { 1 << 6,  BTN_RIGHT    },  // b
-                { 1 << 7,  KEY_FORWARD  },  // rshoulder
-                { 1 << 8,  KEY_BACK     },  // lshoulder
-                { 1 << 9,  KEY_LEFT     },  // dpad_left
-                { 1 << 10, KEY_UP       },  // dpad_up
-                { 1 << 11, KEY_DOWN     },  // dpad_down
-                { 1 << 12, KEY_RIGHT    },  // dpad_right
-                { 1 << 15, KEY_LEFTMETA },  // home
+                { 1 << 3,  KEY_ENTER    },  // a (cross)  -> Enter: select the focused item
+                { 1 << 6,  KEY_ESC      },  // b (circle) -> Esc: back / cancel
+                { 1 << 7,  BTN_LEFT     },  // R1         -> left click
+                { 1 << 8,  BTN_RIGHT    },  // L1         -> right click
+                { 1 << 9,  KEY_LEFT     },  // dpad_left  -> Left arrow
+                { 1 << 10, KEY_UP       },  // dpad_up    -> Up arrow
+                { 1 << 11, KEY_DOWN     },  // dpad_down  -> Down arrow
+                { 1 << 12, KEY_RIGHT    },  // dpad_right -> Right arrow
+                { 1 << 15, KEY_LEFTMETA },  // home       -> Super (opens the menu / overview)
             };
             uint16_t changed_buttons = previous_mouse_data.buttons.raw ^ current_controller_data.buttons.raw;
             for (size_t i = 0; changed_buttons && i < sizeof(mouse_map)/sizeof(mouse_map[0]); i++) {

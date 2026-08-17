@@ -1,16 +1,28 @@
 ## What's Changed
 
-- RetroPie now has Steam Link included by default
-- Batocera now has Moonlight included by default
 - RetroPie ships with the controller fully preconfigured, so the input wizard never runs on first boot
-- Recalbox is now available for the Zero 1
-- The battery icon now appears reliably in Ubuntu and Kali
-- The WiFi signal stays on screen even when WiFi is slow to connect at boot
+- The battery icon now appears reliably in Kali
+- Changed the actions of some buttons when in mouse mode
+- Added Ubuntu
 
 ## Compute Module 5 Reminder
 
 - Power draw is very high. The system may cut off if power demand spikes, and the hardware gets very hot.
 - Audio through headphones and speakers does not work on the CM5 with the CM4 carrier. The pins changed, so no software change will fix this. Use Bluetooth or USB audio.
+
+## Using the Mouse (Desktop Images)
+
+Raspberry Pi OS, Kali, and Ubuntu boot with the controller acting as a mouse. The left stick moves the on-screen cursor, the d-pad navigates menus, and the buttons handle clicks and confirmations.
+
+| Control | Action |
+|---|---|
+| **Left stick** | Move the mouse cursor |
+| **D-pad** | Navigate menus (arrow keys) |
+| **Cross** | Select / confirm (Enter) |
+| **Circle** | Back / cancel (Esc) |
+| **R1** | Mouse left click |
+| **L1** | Mouse right click |
+| **Home** | Open the app menu / overview (Super) |
 
 ## Images
 
