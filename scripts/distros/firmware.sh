@@ -8,7 +8,7 @@ ALL_TARGETS=(all)
 declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN
 
 TARGET_URL[all]="https://downloads.raspberrypi.com/raspios_oldstable_lite_armhf/images/raspios_oldstable_lite_armhf-2026-04-14/2026-04-13-raspios-bookworm-armhf-lite.img.xz"
-TARGET_SHA256[all]=""
+TARGET_SHA256[all]="265dfcd2a032ef01c224e8f9fc03b5fd0e31d3a5038f7e578cc5f01e22bc74a9"
 TARGET_PSPI_PREFIX[all]="Update-Firmware-PSPi6"
 TARGET_BIN[all]=32
 
