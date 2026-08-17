@@ -20,6 +20,7 @@ sudo apt-get install -y make wget xz-utils python3 tar gzip sudo
 sudo apt-get install -y \
   gcc-arm-linux-gnueabi g++-arm-linux-gnueabi binutils-arm-linux-gnueabi \
   gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
+  gcc-12-arm-linux-gnueabihf g++-12-arm-linux-gnueabihf \
   gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-14-aarch64-linux-gnu \
   libc6-arm64-cross libc6-armhf-cross \
   kmod curl squashfs-tools gcc-avr binutils-avr avr-libc \
@@ -65,6 +66,7 @@ gcc-14 package** (see table). Do not try to run `gcc-14-aarch64-linux-gnu`
 |---|---|---|
 | `gcc-arm-linux-gnueabi`, `g++-…`, `binutils-…` | `arm-linux-gnueabi-gcc` (GCC 13), `-g++`, `-ld`, `-ar` | **All 32-bit PSPi runtime drivers.** The rpi Makefiles hardcode `arm-linux-gnueabi-gcc -march=armv6zk -mfloat-abi=softfp` (armel, softfp). Do NOT "fix" this to `arm-linux-gnueabihf`: the static binaries are built for the kernel ABI. |
 | `gcc-arm-linux-gnueabihf`, `g++-…`, `binutils-…` | `arm-linux-gnueabihf-gcc` (GCC 13) | **32-bit kernel-module builds only** (Kali `zero2`): `build_battery_module_from_headers` uses `CROSS_COMPILE=arm-linux-gnueabihf-`. The patcher's convenience function, not the driver Makefiles. |
+| `gcc-12-arm-linux-gnueabihf`, `g++-12-…` | **`arm-linux-gnueabihf-gcc-12`** (version-suffixed!) | **Kali `zero2` battery module only.** Kali's image kernel was built with GCC 12 and the shipped header tree pins `CONFIG_CC_VERSION_TEXT=…gcc-12`, so the cross-module build invokes the version-suffixed `gcc-12` binary whether or not `arm-linux-gnueabihf-gcc` (13) exists. Missing it fails the build with `make[1]: arm-linux-gnueabihf-gcc-12: No such file or directory`. |
 | `gcc-aarch64-linux-gnu`, `g++-…` | `aarch64-linux-gnu-gcc` (GCC 13) | All 64-bit PSPi runtime drivers (`aarch64-linux-gnu-gcc ... -static`). |
 | `gcc-14-aarch64-linux-gnu` | **`/usr/bin/aarch64-linux-gnu-gcc-14`** (version-suffixed!) | **Ubuntu distro only.** Kernel >= 6.5 needs `-fmin-function-alignment`, unsupported by GCC 13. `ubuntu.sh` selects it via `command -v aarch64-linux-gnu-gcc-15` then `aarch64-linux-gnu-gcc-14`. |
 | `libc6-arm64-cross` | `/usr/aarch64-linux-gnu` | QEMU loader needed to run the prebuilt arm64 `modpost` on x86_64 during kernel-module builds (Ubuntu, Kali cm4). Wired via `QEMU_LD_PREFIX=/usr/aarch64-linux-gnu`. |
@@ -75,7 +77,7 @@ gcc-14 package** (see table). Do not try to run `gcc-14-aarch64-linux-gnu`
 | `device-tree-compiler` | `dtc` | Builds the .dtbo overlays (`rpi/audio`, `rpi/lcd`, `rpi/pcie`). |
 | `zerofree` | `zerofree` | Required by every `copy`-method distro; zeroes rootfs free space before xz compression. A missing/failing `zerofree` is FATAL (never a silent size blowup). |
 | `fdisk` | `fdisk` | RetroPie only (expands the base image). On Ubuntu >= 24.04 this is a package separate from `util-linux`. |
-| `qemu-user-static`, `binfmt-support` | `qemu-arm-static`, `qemu-aarch64-static` | RetroPie's QEMU chroot, and kernel-module builds that execute the binary `modpost` under QEMU (Kali, Ubuntu). See section 5. |
+| `qemu-user-static`, `binfmt-support` | `qemu-arm-static`, `qemu-aarch64-static` | RetroPie's QEMU chroot, and kernel-module builds that execute the binary `modpost`/`fixdep` under QEMU (Kali, Ubuntu). Both `qemu-arm` and `qemu-aarch64` must be enabled in `/proc/sys/fs/binfmt_misc` — a missing `qemu-arm` handler fails Kali's 32-bit module build with `scripts/basic/fixdep: Exec format error`. |
 | `e2fsprogs` | `mkfs.ext4`, ... | RetroPie (resize/expand). |
 | `curl` | `curl` | **Ubuntu distro only**: resolves the matching `linux-headers-<kernel>` package from the Ubuntu archive. |
 
