@@ -23,10 +23,10 @@ TARGET_URL[zero2]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm6
 TARGET_URL[cm4]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2026-04-14/2026-04-13-raspios-bookworm-arm64-lite.img.xz"
 TARGET_URL[cm5]="https://downloads.raspberrypi.com/raspios_oldstable_lite_arm64/images/raspios_oldstable_lite_arm64-2026-04-14/2026-04-13-raspios-bookworm-arm64-lite.img.xz"
 
-TARGET_SHA256[zero1]=""
-TARGET_SHA256[zero2]=""
-TARGET_SHA256[cm4]=""
-TARGET_SHA256[cm5]=""
+TARGET_SHA256[zero1]="265dfcd2a032ef01c224e8f9fc03b5fd0e31d3a5038f7e578cc5f01e22bc74a9"
+TARGET_SHA256[zero2]="9bba9c625dd4dd4e1b326dd2551e37a2029db9090bf19ea300649b78c054de6f"
+TARGET_SHA256[cm4]="9bba9c625dd4dd4e1b326dd2551e37a2029db9090bf19ea300649b78c054de6f"
+TARGET_SHA256[cm5]="9bba9c625dd4dd4e1b326dd2551e37a2029db9090bf19ea300649b78c054de6f"
 
 TARGET_PSPI_PREFIX[zero1]="RetroPie-Bookworm-32bit-Zero1-PSPi6"
 TARGET_PSPI_PREFIX[zero2]="RetroPie-Bookworm-64bit-Zero2-PSPi6"
@@ -60,33 +60,43 @@ _retropie_setup_binfmt() {
     local host_arch
     host_arch="$(uname -m)"
     if [[ "$host_arch" == "aarch64" && "$arch" == "64" ]]; then
-        echo ""
+        echo "none 0"
         return
     elif [[ "$host_arch" == armv7* && "$arch" == "32" ]]; then
-        echo ""
+        echo "none 0"
         return
     fi
 
     command -v "$qemu_bin" >/dev/null 2>&1 \
         || die "$qemu_bin not found. Install qemu-user-static."
 
-    # Mount binfmt_misc if needed
-    if [[ ! -d /proc/sys/fs/binfmt_misc/register ]]; then
+    # Mount binfmt_misc if needed (register is a file, not a dir).
+    if [[ ! -e /proc/sys/fs/binfmt_misc/register ]]; then
         mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc 2>/dev/null || true
     fi
 
-    # Register the handler if not already present
-    if [[ ! -f "/proc/sys/fs/binfmt_misc/$qemu_bin" ]]; then
+    # Handlers register under the interpreter name (qemu-aarch64), not the
+    # binary filename (qemu-aarch64-static).
+    local handler
+    if [[ "$arch" == "64" ]]; then handler="qemu-aarch64"; else handler="qemu-arm"; fi
+
+    # Register only if missing; record it so _retropie_exit_chroot can remove it.
+    if [[ ! -e "/proc/sys/fs/binfmt_misc/$handler" ]]; then
         if [[ "$arch" == "64" ]]; then
             printf '%s' ':qemu-aarch64:M::\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:/usr/bin/qemu-aarch64-static:F' \
-                > /proc/sys/fs/binfmt_misc/register
+                > /proc/sys/fs/binfmt_misc/register \
+                || die "Failed to register binfmt handler $handler"
         else
             printf '%s' ':qemu-arm:M::\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:/usr/bin/qemu-arm-static:F' \
-                > /proc/sys/fs/binfmt_misc/register
+                > /proc/sys/fs/binfmt_misc/register \
+                || die "Failed to register binfmt handler $handler"
         fi
+        _RETROPIE_DID_REGISTER=1
     fi
 
-    echo "$qemu_bin"
+    # Called via command substitution, so variables die with the subshell;
+    # print both values for the caller to split.
+    echo "$qemu_bin ${_RETROPIE_DID_REGISTER:-0}"
 }
 
 _retropie_enter_chroot() {
@@ -112,15 +122,29 @@ _retropie_enter_chroot() {
     mount -t devpts devpts "$rootfs/dev/pts"
     ln -s /proc/self/fd "$rootfs/dev/fd"
     ln -s pts/ptmx "$rootfs/dev/ptmx"
-    cp /etc/resolv.conf "$rootfs/etc/resolv.conf"
+
+    # Working DNS without baking the host resolver into the image: bind-mount
+    # over the image's resolv.conf (unmounted on exit). If none exists, create
+    # an empty file to mount over and track it for removal.
+    _RETROPIE_TEMP_RESOLV=""
+    if [[ ! -e "$rootfs/etc/resolv.conf" ]]; then
+        # A symlink writes through to its target; keep it, don't track it.
+        : > "$rootfs/etc/resolv.conf"
+        [[ -L "$rootfs/etc/resolv.conf" ]] || _RETROPIE_TEMP_RESOLV="$rootfs/etc/resolv.conf"
+    fi
+    mount --bind /etc/resolv.conf "$rootfs/etc/resolv.conf" \
+        || die "Failed to bind-mount resolv.conf into the chroot"
+
     export HOME=/root
 }
 
 _retropie_exit_chroot() {
     local rootfs="$1" qemu_bin="$2"
 
-    # Detach nested mounts (dev/pts, devtmpfs/tmpfs, sys, proc) first so the
-    # rootfs can be cleanly unmounted and its buffers flushed on loop detach.
+    # Detach nested mounts first so the rootfs unmounts cleanly on loop detach.
+    umount "$rootfs/etc/resolv.conf" 2>/dev/null \
+        || umount -l "$rootfs/etc/resolv.conf" 2>/dev/null || true
+    [[ -n "${_RETROPIE_TEMP_RESOLV:-}" ]] && rm -f "$_RETROPIE_TEMP_RESOLV"
     umount -l "$rootfs/dev/pts" 2>/dev/null || true
     umount -l "$rootfs/dev/shm" 2>/dev/null || true
     umount -l "$rootfs/dev" 2>/dev/null || true
@@ -128,6 +152,13 @@ _retropie_exit_chroot() {
     umount -l "$rootfs/proc" 2>/dev/null || true
     sync
     [[ -n "$qemu_bin" ]] && rm -f "$rootfs/usr/bin/$qemu_bin"
+
+    # Remove only a handler this build registered.
+    if [[ -n "${_RETROPIE_REGISTERED_BINFMT:-}" ]]; then
+        echo -1 > "/proc/sys/fs/binfmt_misc/$_RETROPIE_REGISTERED_BINFMT" 2>/dev/null || true
+        _RETROPIE_REGISTERED_BINFMT=""
+    fi
+    return 0
 }
 
 # --- Hooks ---
@@ -139,34 +170,37 @@ distro_pre_patch() {
     truncate -s +4G "$img_path"
 
     # Get rootfs partition start sector
-    local root_start
-    root_start=$(python3 - "$img_path" <<'PY'
-import struct, sys
-with open(sys.argv[1], 'rb') as f:
-    f.seek(446 + 16)
-    lba = struct.unpack_from('<I', f.read(16), 8)[0]
-print(lba)
-PY
-    )
+    local root_offset root_size root_start
+    read -r root_offset root_size < <(detect_partition "$img_path" 2) \
+        || die "[retropie] Failed to read rootfs partition"
+    root_start=$(( root_offset / 512 ))
 
     # Recreate partition 2 to fill available space
-    echo -e "d\n2\nn\np\n2\n${root_start}\n\nw" | fdisk "$img_path" >/dev/null 2>&1 || true
+    echo -e "d\n2\nn\np\n2\n${root_start}\n\nw" | fdisk "$img_path" >/dev/null \
+        || die "[retropie] Failed to recreate the rootfs partition"
 
-    # Resize the filesystem (mount briefly just for resize2fs)
-    local resize_dev=""
-    for dev in /dev/loop{0..7}; do
-        if losetup -o $((root_start * 512)) "$dev" "$img_path" 2>/dev/null; then
-            resize_dev="$dev"
-            break
-        fi
-    done
-    [[ -z "$resize_dev" ]] && die "No available loop device for resize"
+    # resize2fs grows to the bounded loop device, not end-of-image.
+    local resize_dev
+    resize_dev=$(attach_partition "$img_path" 2)
 
-    e2fsck -fy "$resize_dev" >/dev/null 2>&1 || true
-    resize2fs "$resize_dev" >/dev/null 2>&1
+    # e2fsck returns 1 on successful repair; only >= 4 is a real failure.
+    e2fsck -fy "$resize_dev" >/dev/null 2>&1 || [[ $? -lt 4 ]] \
+        || die "[retropie] e2fsck failed on the rootfs partition"
+    resize2fs "$resize_dev" >/dev/null 2>&1 \
+        || die "[retropie] resize2fs failed on the rootfs partition"
+
+    # Confirm the filesystem actually grew into the partition.
+    local block_size block_count fs_bytes new_size
+    read -r new_size < <(detect_partition "$img_path" 2 | cut -d' ' -f2)
+    block_size=$(dumpe2fs -h "$resize_dev" 2>/dev/null | awk -F': *' '/^Block size/{print $2}')
+    block_count=$(dumpe2fs -h "$resize_dev" 2>/dev/null | awk -F': *' '/^Block count/{print $2}')
     losetup -d "$resize_dev"
 
-    echo "  [retropie] Image expanded"
+    fs_bytes=$(( block_size * block_count ))
+    (( fs_bytes > new_size - 16 * 1024 * 1024 )) \
+        || die "[retropie] Resize did not fill the partition ($fs_bytes of $new_size bytes)"
+
+    echo "  [retropie] Image expanded ($(( fs_bytes / 1024 / 1024 )) MiB rootfs)"
 }
 
 distro_post_patch() {
@@ -176,13 +210,25 @@ distro_post_patch() {
     local BIN="$4"
     local LABEL="$5"
 
-    local qemu_bin
-    qemu_bin=$(_retropie_setup_binfmt "$BIN")
+    local qemu_bin registered
+    # "none" means the host runs this arch natively and no emulation is needed.
+    read -r qemu_bin registered < <(_retropie_setup_binfmt "$BIN")
+    [[ "$qemu_bin" == "none" ]] && qemu_bin=""
+    _RETROPIE_REGISTERED_BINFMT=""
+    if [[ "$registered" == "1" ]]; then
+        _RETROPIE_REGISTERED_BINFMT=$([[ "$BIN" == "64" ]] && echo qemu-aarch64 || echo qemu-arm)
+    fi
 
     # RetroPie platform mapping (per-board: controls which prebuilt cores get installed)
     local rp_platform="${TARGET_RP_PLATFORM[$LABEL]:-rpi4}"
 
     _retropie_enter_chroot "$rootfs" "$qemu_bin"
+
+    # If die() fires inside the chroot, _retropie_exit_chroot would never run
+    # (die exits), leaking the chroot mounts, resolv.conf bind, and binfmt
+    # handler. Chain it onto EXIT with values baked in; restore the patcher's
+    # trap on the success path below. Idempotent, so double-call is harmless.
+    trap "_retropie_exit_chroot '$rootfs' '$qemu_bin' 2>/dev/null; cleanup" EXIT
 
     # Create the pi user if missing (base image usually already has one, but
     # locked, awaiting the first-boot wizard)
@@ -369,7 +415,7 @@ AUTOSTART
     # HDMI. RetroPie's ES sets AudioDevice="HDMI" by default on RPi, which
     # spams the console with HDMI audio errors when no HDMI is attached. PCM
     # routes sound to the PSPi's on-board analog/PCM DAC (the bcm2835 card).
-    es_dir="$rootfs/opt/retropie/configs/all/emulationstation"
+    local es_dir="$rootfs/opt/retropie/configs/all/emulationstation"
     mkdir -p "$es_dir"
     if [[ -f "$es_dir/es_settings.cfg" ]]; then
         sed -i 's|<string name="AudioCard" value="[^"]*"|<string name="AudioCard" value="default"|' "$es_dir/es_settings.cfg"
@@ -382,13 +428,68 @@ AUTOSTART
 <string name="AudioDevice" value="PCM" />
 ESCFG
     fi
+
+    # Replay EmulationStation's first-boot controller wizard for the PSPi pad.
+    # On a stock image the wizard's onfinish action (inputconfiguration.sh)
+    # converts the newly-configured pad into per-app inputs: the retroarch
+    # joypad autoconfig (which joy2key reads to navigate RetroPie-Setup,
+    # raspi-config and runcommand dialogs), the SDL mapper and the per-emulator
+    # keymaps (mupen64plus, flycast/reicast). We preinstall es_input.cfg so the
+    # wizard never runs on the device, so replay it here from the temp config
+    # ES would have written for that session. The layout mirrors
+    # scripts/config/es_input.cfg; leftshoulder/rightshoulder are the L1/R1
+    # buttons (also pageup/pagedown in ES), and no hotkeyenable is assigned so
+    # the wizard's onend rule makes select the retroarch hotkey.
+    local tmp_cfg="/opt/retropie/configs/all/emulationstation/es_temporaryinput.cfg"
+    cat > "$rootfs$tmp_cfg" <<'ESCFG'
+<?xml version="1.0"?>
+<inputList>
+  <inputConfig type="joystick" deviceName="PS3 Controller" vendorId="1356" productId="616" deviceGUID="03007a2e4c0500006802000011810000">
+    <input name="a" type="button" id="0" value="1"/>
+    <input name="b" type="button" id="1" value="1"/>
+    <input name="x" type="button" id="2" value="1"/>
+    <input name="y" type="button" id="3" value="1"/>
+    <input name="leftshoulder" type="button" id="4" value="1"/>
+    <input name="rightshoulder" type="button" id="5" value="1"/>
+    <input name="select" type="button" id="8" value="1"/>
+    <input name="start" type="button" id="9" value="1"/>
+    <input name="up" type="button" id="13" value="1"/>
+    <input name="down" type="button" id="14" value="1"/>
+    <input name="left" type="button" id="15" value="1"/>
+    <input name="right" type="button" id="16" value="1"/>
+    <input name="leftanalogup" type="axis" id="1" value="-1"/>
+    <input name="leftanalogdown" type="axis" id="1" value="1"/>
+    <input name="leftanalogleft" type="axis" id="0" value="-1"/>
+    <input name="leftanalogright" type="axis" id="0" value="1"/>
+  </inputConfig>
+</inputList>
+ESCFG
+    chroot "$rootfs" chown pi:pi "$tmp_cfg"
+    local ic_script="/opt/retropie/supplementary/emulationstation/scripts/inputconfiguration.sh"
+    [[ -f "$rootfs$ic_script" ]] \
+        || die "[retropie] $ic_script missing (emulationstation install incomplete)"
+    chroot "$rootfs" /bin/su -s /bin/bash pi -c "$ic_script" \
+        || die "[retropie] inputconfiguration.sh failed"
+    # Clear the wizard's scratch files (it also rewrites es_input.cfg from the
+    # temp config; the curated copy below restores the tested layout instead).
+    rm -f "$rootfs/tmp/sdl2temp.txt" "$rootfs/tmp/guid_check.py" \
+          "$rootfs/tmp/openMSXtemp.cfg" "$rootfs/tmp/mp64tempconfig.cfg" \
+          "$rootfs/tmp/flycast-input-"*.ini "$rootfs$tmp_cfg"
+
+    # Skip the ES input wizard on first boot.
+    rm -f "$es_dir/es_input.cfg.bak"
+    cp "$CONFIG_DIR/es_input.cfg" "$es_dir/es_input.cfg" \
+        || die "[retropie] Failed to install es_input.cfg"
+
     chroot "$rootfs" chown -R pi:pi /opt/retropie/configs/all/emulationstation
-    echo "  [retropie] Set EmulationStation audio to PCM"
+    echo "  [retropie] Set EmulationStation audio to PCM, installed es_input.cfg"
 
     # Clean up apt cache to save space
     chroot "$rootfs" apt-get clean
 
     _retropie_exit_chroot "$rootfs" "$qemu_bin"
+    # Restore the patcher's own EXIT trap.
+    trap cleanup EXIT
 
     # RetroArch PSPi tweaks
     local ra_cfg="$rootfs/opt/retropie/configs/all/retroarch.cfg"
@@ -400,10 +501,8 @@ ESCFG
     else
         echo "  [retropie] WARNING: retroarch.cfg not found"
     fi
-    # Enable RetroPie Setup's "Swap A/B Buttons in ES" (Emulation Station -> Swap A/B).
-    # Mirrors exactly what toggling that option to "Swapped" does in RetroPie Setup:
-    #   setAutoConf "es_swap_a_b" "1"  (writes es_swap_a_b = "1" to autoconf.cfg)
-    # and the corresponding menu_swap_ok_cancel_buttons = "true" change above.
+    # Mirrors RetroPie Setup's "Swap A/B Buttons in ES" toggle
+    # (setAutoConf es_swap_a_b 1) + the retroarch.cfg change above.
     local ac_cfg="$rootfs/opt/retropie/configs/all/autoconf.cfg"
     if [[ -f "$ac_cfg" ]]; then
         sed -i 's/^#\?\s*es_swap_a_b\s*=.*/es_swap_a_b = "1"/' "$ac_cfg"
