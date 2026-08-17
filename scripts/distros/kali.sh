@@ -27,43 +27,39 @@ TARGET_BIN[cm4]=64
 # against the header trees the image already ships, one per installed kernel.
 build_battery_module() {
     local rootfs="$1" work_dir="$2" bin="$3"
-    local arch cross build_dir kver kdir qemu_prefix
-
-    if [[ "$bin" == "64" ]]; then
-        arch="arm64"; cross="aarch64-linux-gnu-"
-        qemu_prefix="/usr/aarch64-linux-gnu"
-    else
-        arch="arm";   cross="arm-linux-gnueabihf-"
-        qemu_prefix="/usr/arm-linux-gnueabihf"
-    fi
-
-    # The Kali header trees ship prebuilt target-arch build tools (modpost,
-    # fixdep, etc.). On an x86_64 build host these run via the qemu-user-static
-    # binfmt handlers, which need the cross loader from the matching libc
-    # package. Point QEMU at it so the module build can execute them.
-    export QEMU_LD_PREFIX="$qemu_prefix"
-
-    build_dir="$work_dir/pspi_battery"
-    mkdir -p "$build_dir"
-    cp "$PROJECT_DIR/rpi/battery/module/pspi_battery.c" "$build_dir/"
-    echo "obj-m += pspi_battery.o" > "$build_dir/Makefile"
+    local kdir kver
 
     # The arch-specific header trees include the common tree by absolute path
-    # (/usr/src/linux-headers-*-common-rpi), so expose the image's trees at
-    # that path on the build host for the duration of the build.
-    local -a linked=()
+    # (/usr/src/linux-headers-*-common-rpi), so expose them there for the build.
+    # Bind-mount (not symlink) so nothing is left on the host and concurrent
+    # builds don't collide.
+    local -a bound=()
+    local tree name
+    shopt -s nullglob   # no header trees must not yield a literal 'linux-headers-*'
     for tree in "$rootfs"/usr/src/linux-headers-*; do
-        local name="/usr/src/$(basename "$tree")"
-        # Only replace links we own; a dangling one from a failed run reads as
-        # absent to -e, so test -L as well.
-        if [[ -L "$name" ]]; then
-            rm -f "$name"
-        elif [[ -e "$name" ]]; then
+        name="/usr/src/$(basename "$tree")"
+        if [[ -e "$name" ]]; then
+            echo "  Not bind-mounting $name: path already exists on host"
             continue
         fi
-        ln -s "$tree" "$name"
-        linked+=("$name")
+        mkdir -p "$name"
+        mount --bind "$tree" "$name" || die "Failed to bind-mount $name"
+        bound+=("$name")
     done
+    shopt -u nullglob
+
+    _kali_unbind_headers() {
+        local m
+        for m in "${bound[@]}"; do
+            umount "$m" 2>/dev/null || umount -l "$m" 2>/dev/null || true
+            rmdir "$m" 2>/dev/null || true
+        done
+        bound=()
+    }
+    # RETURN covers the normal path; EXIT covers die(). These mounts are
+    # outside the patcher's work dir, so chain onto both. Idempotent.
+    trap _kali_unbind_headers RETURN
+    trap '_kali_unbind_headers; cleanup' EXIT
 
     for kdir in "$rootfs"/lib/modules/*/; do
         kver="$(basename "$kdir")"
@@ -71,48 +67,28 @@ build_battery_module() {
             echo "  No header tree for $kver, skipping"
             continue
         fi
-
-        echo "  Building pspi_battery for $kver..."
-        make -C "/usr/src/linux-headers-$kver" \
-             M="$build_dir" ARCH="$arch" CROSS_COMPILE="$cross" modules \
-             > /dev/null || die "Module build failed for $kver"
-
-        mkdir -p "$kdir/extra"
-        cp "$build_dir/pspi_battery.ko" "$kdir/extra/"
-        depmod -b "$rootfs" "$kver" || die "depmod failed for $kver"
-        make -C "/usr/src/linux-headers-$kver" \
-             M="$build_dir" ARCH="$arch" CROSS_COMPILE="$cross" clean > /dev/null
+        build_battery_module_from_headers \
+            "/usr/src/linux-headers-$kver" "$kver" "$rootfs" "$work_dir" "$bin"
     done
 
-    # Stale links from an aborted run are removed on the next pass above,
-    # so this only needs to handle the success path.
-    if [[ ${#linked[@]} -gt 0 ]]; then
-        rm -f "${linked[@]}"
-    fi
+    _kali_unbind_headers
+    trap cleanup EXIT
 
-    # Load at boot, before battery_monitor starts
-    mkdir -p "$rootfs/etc/modules-load.d"
-    echo "pspi_battery" > "$rootfs/etc/modules-load.d/pspi_battery.conf"
+    enable_battery_module_at_boot "$rootfs"
 }
 
 distro_post_patch() {
     local rootfs="$1" mnt_boot="$2" work_dir="$3" bin="$4"
 
-    sed -i 's/^input_type=gamepad$/input_type=mouse/' "$mnt_boot/pspi.conf"
+    set_input_mouse "$mnt_boot"
 
     # Kali's cloud-init generator sometimes fails to pull cloud-init.target
-    # into the boot transaction, so the first-boot rootfs resize never runs and
-    # the desktop starts on a full filesystem. Enable the target statically.
-    # The units carry ConditionPathExists=!/etc/cloud/cloud-init.disabled, so
-    # they self-disable once the first run completes.
+    # into the boot transaction, so the first-boot rootfs resize never runs.
+    # Enable it statically; the units self-disable via ConditionPathExists
+    # once the first run completes.
     mkdir -p "$rootfs/etc/systemd/system/multi-user.target.wants"
     ln -sf /lib/systemd/system/cloud-init.target \
         "$rootfs/etc/systemd/system/multi-user.target.wants/cloud-init.target"
 
     build_battery_module "$rootfs" "$work_dir" "$bin"
-
-    # Belt and braces: modules-load.d handles it, but make sure the module is
-    # up before battery_monitor picks its output path.
-    sed -i 's|^\./drivers/battery_monitor &$|modprobe pspi_battery 2>/dev/null\n./drivers/battery_monitor \&|' \
-        "$mnt_boot/boot.sh"
 }
