@@ -31,13 +31,18 @@ build_battery_module() {
 
     # The arch-specific header trees include the common tree by absolute path
     # (/usr/src/linux-headers-*-common-rpi), so expose them there for the build.
+    # Their scripts/ and tools/ entries are symlinks into
+    # /usr/lib/linux-kbuild-<ver>/, which is outside /usr/src -- bind that tree
+    # too, or the symlinks dangle on the host and make dies looking for
+    # scripts/Makefile.extrawarn.
     # Bind-mount (not symlink) so nothing is left on the host and concurrent
     # builds don't collide.
-    local -a bound=()
+    local -a bound=() srcs=()
     local tree name
     shopt -s nullglob   # no header trees must not yield a literal 'linux-headers-*'
-    for tree in "$rootfs"/usr/src/linux-headers-*; do
-        name="/usr/src/$(basename "$tree")"
+    srcs=("$rootfs"/usr/src/linux-headers-* "$rootfs"/usr/lib/linux-kbuild-*)
+    for tree in "${srcs[@]}"; do
+        name="/usr/${tree#"$rootfs"/usr/}"   # src/… → /usr/src/…, lib/… → /usr/lib/…
         if [[ -e "$name" ]]; then
             echo "  Not bind-mounting $name: path already exists on host"
             continue
