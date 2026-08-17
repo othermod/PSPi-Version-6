@@ -1,0 +1,14 @@
+[Unit]
+Description=PSPi WiFi signal monitor
+After=sys-subsystem-net-devices-wlan0.device
+Wants=sys-subsystem-net-devices-wlan0.device
+
+[Service]
+Type=simple
+WorkingDirectory=__DRIVERS_BASE__
+ExecStart=__DRIVERS_BASE__/drivers/wifi_monitor
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

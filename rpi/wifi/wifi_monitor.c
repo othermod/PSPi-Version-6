@@ -85,10 +85,22 @@ static int         shm_fd      = -1;
 // --- I2C -------------------------------------------------------------------
 
 static void init_i2c(void) {
-    i2c_fd = open("/dev/i2c-1", O_RDWR);
-    if (i2c_fd < 0) {
-        perror("Failed to open i2c bus");
-        exit(1);
+    // pspi-wifi.service may start before i2c-dev loads. Retry until the bus
+    // appears, then give up so Restart=on-failure takes over instead of
+    // spinning silently. Log periodically.
+    int attempts = 0;
+    while ((i2c_fd = open("/dev/i2c-1", O_RDWR)) < 0) {
+        if (errno != ENOENT && errno != ENODEV) {
+            perror("Failed to open i2c bus");
+            exit(1);
+        }
+        if (attempts == 0 || (attempts % 30 == 0))
+            fprintf(stderr, "i2c bus not ready yet (errno %d), retrying...\n", errno);
+        if (++attempts >= 120) {  // ~2 min
+            fprintf(stderr, "giving up on /dev/i2c-1 after %d attempts\n", attempts);
+            exit(1);
+        }
+        sleep(1);
     }
     if (ioctl(i2c_fd, I2C_SLAVE, I2C_DEVICE_ADDRESS) < 0) {
         perror("Failed to set i2c slave");
