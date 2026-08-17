@@ -149,6 +149,7 @@ jobs:
           sudo apt-get install -y \
             squashfs-tools \
             e2fsprogs \
+            zerofree \
             qemu-user-static \
             binfmt-support \
             gcc-12-aarch64-linux-gnu \
