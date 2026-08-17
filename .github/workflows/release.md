@@ -69,7 +69,7 @@ Password: `raspberry`
 ### Recalbox
 ![Recalbox EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/recalbox.png)
 
-**Boards:** Zero 2 W, CM4, CM5
+**Boards:** Zero 1, Zero 2 W, CM4, CM5
 
 Another EmulationStation-based retro OS, similar in spirit to Batocera but a different ecosystem. The stock hardware-detection and add-on scripts are stripped out to prevent the GPIO conflicts that caused LCD color issues at startup. Note that Recalbox has no battery icon (haven't investigated why, just yet), so charge level is not shown on screen.
 
