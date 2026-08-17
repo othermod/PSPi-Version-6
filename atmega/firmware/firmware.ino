@@ -556,10 +556,16 @@ void onRequest() {
 }
 
 void onReceive(int numBytes) {
-  if (numBytes == 4) {
-    for (int i = 0; i < 4; i++) rxData[i] = Wire.read();
-    pendingCommand = true;
+  // Always drain the buffer, otherwise Wire latches and ignores all future
+  // writes (the guard in onReceiveService stays tripped forever). A bogus
+  // byte count here is the symptom of a bus desync, not a reason to skip.
+  uint8_t count = 0;
+  while (Wire.available()) {
+    uint8_t b = Wire.read();
+    if (count < 4) rxData[count] = b;
+    count++;
   }
+  if (count == 4) pendingCommand = true;
 }
 
 void checkForIncomingI2CCommand() {
