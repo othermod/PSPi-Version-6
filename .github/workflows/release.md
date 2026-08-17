@@ -2,6 +2,12 @@
 
 - RetroPie now has Steam Link included by default
 - Batocera now has Moonlight included by default
+- The WiFi signal monitor now retries at boot and restarts automatically if it stops, so the signal stays on even when WiFi comes up slowly
+- The gamepad now restarts itself if it crashes, and reads every setting from pspi.conf
+- RetroPie ships with the controller fully preconfigured, so the input wizard never runs on first boot
+- Recalbox is now available for the Zero 1
+- Ubuntu and Kali load the battery module at boot, so the battery icon appears reliably
+- All image downloads are now checksum-verified, and every finished image is verified before release
 
 ## Compute Module 5 Reminder
 
