@@ -194,48 +194,52 @@ download_image() {
                 echo "  Cached: $compressed"
                 return 0
             fi
-            echo "  Checksum mismatch. Redownloading..."
+            # Stale cache (eg. moved "latest" URL). Fetch fresh; its
+            # checksum is verified once, below.
+            echo "  Cached $compressed fails SHA256. Deleting stale copy..."
             rm -f "$cached"
         else
-            # No checksum configured, so there is nothing to revalidate against
-            # -- treat the cached file as the source of truth and use it as-is.
-            # Never re-download based on age; refresh only happens when a
-            # configured SHA256 does not match.
+            # No SHA256 set: trust the cached file as-is. Never re-download
+            # based on age; refresh via a SHA256 mismatch above.
             echo "  Cached (no SHA256 set): $compressed"
             return 0
         fi
     fi
 
     echo "  Downloading $compressed..."
-    local attempt reason actual_sha delay
+    local attempt actual_sha delay ok=0
     for ((attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++)); do
-        reason=""
-        # Retries are handled by the outer loop only; wget does a single attempt
-        # so a failure is not multiplied across two backoff layers.
+        # Retry only incomplete transfers; a checksum failure is fatal below,
+        # never a retry (re-downloading re-fetches the same bytes).
         if wget -nv --timeout=30 --tries=1 -O "$cached" "$url"; then
-            if [[ -z "$sha256" ]]; then
-                echo "  WARNING: downloaded $compressed ($(du -h "$cached" | cut -f1))" \
-                     "UNVERIFIED -- no SHA256 set for this target"
-                return 0
-            fi
-            actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
-            if [[ "$actual_sha" == "$sha256" ]]; then
-                echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
-                return 0
-            fi
-            reason="checksum mismatch: expected $sha256, got $actual_sha"
-        else
-            reason="wget failed"
+            ok=1
+            break
         fi
-
         rm -f "$cached"
         if ((attempt < DOWNLOAD_ATTEMPTS)); then
             delay=$((attempt * 15))
-            echo "  Attempt $attempt/$DOWNLOAD_ATTEMPTS failed ($reason). Retrying in ${delay}s..."
+            echo "  Download attempt $attempt/$DOWNLOAD_ATTEMPTS failed. Retrying in ${delay}s..."
             sleep "$delay"
         fi
     done
-    die "Failed to download $url after $DOWNLOAD_ATTEMPTS attempts ($reason)"
+    if [[ "$ok" != 1 ]]; then
+        die "Failed to download $url after $DOWNLOAD_ATTEMPTS attempts (transfer never completed)"
+    fi
+
+    if [[ -z "$sha256" ]]; then
+        echo "  WARNING: downloaded $compressed ($(du -h "$cached" | cut -f1))" \
+             "UNVERIFIED -- no SHA256 set for this target"
+        return 0
+    fi
+
+    actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
+    if [[ "$actual_sha" != "$sha256" ]]; then
+        # Transfer completed; these are the bytes upstream serves, so a retry
+        # would fetch the same file. If upstream changed, update TARGET_SHA256
+        # and delete the cached file, then rerun.
+        die "Downloaded $compressed fails SHA256: expected $sha256, got $actual_sha. If the upstream file changed, update TARGET_SHA256 and delete $cached before rerunning."
+    fi
+    echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
 }
 
 # Print "<offset_bytes> <size_bytes>" for MBR partition <n> (1-based).
