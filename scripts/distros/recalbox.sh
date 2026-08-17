@@ -4,10 +4,12 @@ DRIVERS_BASE="/boot"
 INIT_SYSTEM=sysv
 SQUASHFS_COMP_ARGS="-comp xz"
 
-ALL_TARGETS=(cm4 cm5 zero2)
+ALL_TARGETS=(cm4 cm5 zero2 zero1)
 
 declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN
 
+# Fixed filename under a "latest" path with no SHA256: the patcher trusts
+# the cached file and never re-downloads. Refresh by deleting the cache.
 TARGET_URL[cm4]="https://upgrade.recalbox.com/latest/rpi4_64/recalbox-rpi4_64.img.xz"
 TARGET_URL[cm5]="https://upgrade.recalbox.com/latest/rpi5_64/recalbox-rpi5_64.img.xz"
 TARGET_URL[zero2]="https://upgrade.recalbox.com/latest/rpizero2/recalbox-rpizero2.img.xz"

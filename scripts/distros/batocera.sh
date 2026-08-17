@@ -13,10 +13,10 @@ TARGET_URL[cm5]="https://updates.batocera.org/bcm2712/stable/last/batocera-bcm27
 TARGET_URL[zero2]="https://updates.batocera.org/bcm2837/stable/last/batocera-bcm2837-43.1-20260530.img.gz"
 TARGET_URL[zero1]="https://updates.batocera.org/bcm2835/stable/last/batocera-bcm2835-43-20260507.img.gz"
 
-TARGET_SHA256[cm4]=""
-TARGET_SHA256[cm5]=""
-TARGET_SHA256[zero2]=""
-TARGET_SHA256[zero1]=""
+TARGET_SHA256[cm4]="0cd09f3f6d37f5c64523d4a7e2f9f3658b1fbaf36bc440d32fcc1940898c2a13"
+TARGET_SHA256[cm5]="17274ab36b452a26d4be8cfbba871b068da9b2c16bf962ae412a8468fed225c4"
+TARGET_SHA256[zero2]="e12208735bcfa9013577557bd28a43e4f9320608e8c9dc30fdb6fa1ab5d51fe1"
+TARGET_SHA256[zero1]="0c5a82a76e1db6613de5e6bfb6d271d73b7fbff46cd0aa18d9d9af42d1072afb"
 
 TARGET_PSPI_PREFIX[cm4]="Batocera43.1-CM4-PSPi6"
 TARGET_PSPI_PREFIX[cm5]="Batocera43.1-CM5-PSPi6"
@@ -32,18 +32,18 @@ distro_post_patch() {
     local overlay_target="$1"
     local mnt_boot="$2"
 
-    echo "  [batocera] Removing boot partition files..."
-    # rufomaculata contains libretro cores and user data - do not remove
-    echo "  [batocera] Removed boot partition files"
-
-    echo "  [batocera] Applying bcm2835 audio fix..."
-
+    # Size optimization: firmware for wireless/graphics hardware the PSPi
+    # cannot have. Also removes some USB WiFi adapter firmware -- if one stops
+    # working, restore the matching directory.
+    echo "  [batocera] Removing firmware for hardware the PSPi cannot have..."
     rm -rf "${overlay_target}/lib/firmware/intel" \
            "${overlay_target}/lib/firmware/ath11k" \
            "${overlay_target}/lib/firmware/mediatek" \
            "${overlay_target}/lib/firmware/ath12k" \
            "${overlay_target}/lib/firmware/rtw89"
     echo "  [batocera] Removed unused firmware"
+
+    echo "  [batocera] Applying bcm2835 audio fix..."
 
     local s06audio="${overlay_target}/etc/init.d/S06audio"
     if [[ -f "$s06audio" ]]; then
@@ -103,8 +103,12 @@ EOF
     fi
 
     local pactl_bin="${overlay_target}/usr/bin/pactl"
+    local pactl_fallback="exec /usr/bin/pactl.real \"\$@\""
     if [[ -f "$pactl_bin" ]]; then
         mv "$pactl_bin" "${pactl_bin}.real"
+    else
+        # No real pactl to fall through to; unknown commands become a no-op.
+        pactl_fallback=":"
     fi
     cat > "$pactl_bin" << 'PACTL_EOF'
 #!/bin/bash
@@ -164,10 +168,11 @@ case "$1" in
         [ "$MUTE" = "[off]" ] && echo "Mute: yes" || echo "Mute: no"
         ;;
     *)
-        exec /usr/bin/pactl.real "$@"
+        __PACTL_FALLBACK__
         ;;
 esac
 PACTL_EOF
+    sed -i "s|__PACTL_FALLBACK__|$pactl_fallback|" "$pactl_bin"
     chmod +x "$pactl_bin"
     echo "  [batocera] Installed pactl amixer wrapper"
 
