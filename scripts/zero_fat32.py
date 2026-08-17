@@ -6,10 +6,23 @@ import sys
 CHUNK = 64 * 1024 * 1024  # 64 MB write buffer
 
 
+ZEROS = b"\x00" * CHUNK
+
+
 def zero_free_clusters(image_path: str, partition_offset: int) -> None:
     with open(image_path, "r+b") as f:
         f.seek(partition_offset)
         bpb = f.read(90)
+
+        # Refuse non-FAT32: the FAT-size field below is FAT32-only; on
+        # FAT12/16 it is zero and the computed data region would be wrong,
+        # so this would zero live data. Type string is at offset 82 on FAT32
+        # (offset 54 on FAT12/16 -- the case this must catch).
+        fs_type = bpb[82:90].rstrip(b" ")
+        fat_size_16 = struct.unpack_from("<H", bpb, 22)[0]
+        if fs_type != b"FAT32" or fat_size_16 != 0:
+            sys.exit(f"Not a FAT32 partition at offset {partition_offset} "
+                     f"(type={fs_type!r}); refusing to write")
 
         bytes_per_sector   = struct.unpack_from("<H", bpb, 11)[0]
         sectors_per_cluster = struct.unpack_from("<B", bpb, 13)[0]
@@ -49,7 +62,7 @@ def zero_free_clusters(image_path: str, partition_offset: int) -> None:
             f.seek(offset)
             while remaining > 0:
                 block = min(remaining, CHUNK)
-                f.write(b"\x00" * block)
+                f.write(ZEROS if block == CHUNK else ZEROS[:block])
                 remaining -= block
                 zeroed += block
 
