@@ -7,7 +7,7 @@
 
 ## Compute Module 5 Reminder
 
-- Power draw is very high. The system may cut off if power demand spikes, and the hardware gets very hot.
+- Power draw is very high. The small battery can be overwhelmed, so the system may cut off if power demand spikes. The hardware gets very hot.
 - Audio through headphones and speakers does not work on the CM5 with the CM4 carrier. The pins changed, so no software change will fix this. Use Bluetooth or USB audio.
 
 ## Using the Mouse (Desktop Images)

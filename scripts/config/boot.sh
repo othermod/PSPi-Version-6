@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 CONF="./pspi.conf"
 
 modprobe i2c-dev
@@ -16,44 +16,48 @@ until [ -e /dev/i2c-1 ]; do sleep 1; done
 #./drivers/rtc &
 
 # Absent/empty keys fall through to the gamepad's compiled-in defaults, so
-# pspi.conf is the single source of truth.
-declare -A conf
+# pspi.conf is the single source of truth. Deliberately plain POSIX sh:
+# Lakka/Batocera/Recalbox run this under busybox ash or dash (no real bash),
+# so bash-only features would abort the script before the gamepad starts.
 while IFS="=" read -r key value; do
-    key="${key//[[:space:]]/}"
-    [[ -z "$key" || "$key" == \#* ]] && continue
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-    [[ -n "$value" ]] && conf["$key"]="$value"
+    key=$(printf '%s' "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    case "$key" in ''|\#*) continue ;; esac
+    value=$(printf '%s' "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    [ -n "$value" ] || continue
+    case "$key" in
+        enable_dim)   enable_dim="$value"   ;;
+        dim_seconds)  dim_seconds="$value"  ;;
+        fast_mode)    fast_mode="$value"    ;;
+        disable_crc)  disable_crc="$value"  ;;
+        input_type)   input_type="$value"   ;;
+        joysticks)    joysticks="$value"    ;;
+        deadzone)     deadzone="$value"     ;;
+        autocenter)   autocenter="$value"   ;;
+        verbose)      verbose="$value"      ;;
+        extrabuttons) extrabuttons="$value" ;;
+    esac
 done < "$CONF"
 
-set_flag() {   # set_flag <key> <flag>: pass the flag when the key is "true"
-    [[ "${conf[$1]:-}" == "true" ]] && GAMEPAD_ARGS+=("$2")
-}
-
-set_value() {  # set_value <key> <flag>: pass the flag and its value when set
-    [[ -n "${conf[$1]:-}" ]] && GAMEPAD_ARGS+=("$2" "${conf[$1]}")
-}
-
 # --input must precede --joysticks/--extrabuttons (parser requires it).
-GAMEPAD_ARGS=()
-if [[ "${conf[enable_dim]:-}" == "true" ]]; then
+GAMEPAD_ARGS=""
+if [ "$enable_dim" = "true" ]; then
     # Bare --dim uses the gamepad's own default timeout
-    GAMEPAD_ARGS+=(--dim)
-    [[ -n "${conf[dim_seconds]:-}" ]] && GAMEPAD_ARGS+=("${conf[dim_seconds]}")
+    GAMEPAD_ARGS="$GAMEPAD_ARGS --dim"
+    [ -n "$dim_seconds" ] && GAMEPAD_ARGS="$GAMEPAD_ARGS $dim_seconds"
 fi
-set_flag  disable_crc  --nocrc
-set_flag  fast_mode    --fast
-set_value input_type   --input
+[ "$disable_crc" = "true" ] && GAMEPAD_ARGS="$GAMEPAD_ARGS --nocrc"
+[ "$fast_mode"   = "true" ] && GAMEPAD_ARGS="$GAMEPAD_ARGS --fast"
+[ -n "$input_type" ]        && GAMEPAD_ARGS="$GAMEPAD_ARGS --input $input_type"
 # --joysticks/--extrabuttons are gamepad-only: in mouse mode the binary skips
 # the flag but consumes the value, then exits on the unknown argument.
-if [[ "${conf[input_type]:-gamepad}" == "gamepad" ]]; then
-    set_value joysticks    --joysticks
+if [ "$input_type" = "gamepad" ]; then
+    [ -n "$joysticks" ] && GAMEPAD_ARGS="$GAMEPAD_ARGS --joysticks $joysticks"
 fi
-set_value deadzone     --deadzone
-set_flag  autocenter   --autocenter
-set_flag  verbose      --verbose
-if [[ "${conf[input_type]:-gamepad}" == "gamepad" ]]; then
-    set_value extrabuttons --extrabuttons
+[ -n "$deadzone" ]         && GAMEPAD_ARGS="$GAMEPAD_ARGS --deadzone $deadzone"
+[ "$autocenter" = "true" ] && GAMEPAD_ARGS="$GAMEPAD_ARGS --autocenter"
+[ "$verbose"    = "true" ] && GAMEPAD_ARGS="$GAMEPAD_ARGS --verbose"
+if [ "$input_type" = "gamepad" ]; then
+    [ -n "$extrabuttons" ] && GAMEPAD_ARGS="$GAMEPAD_ARGS --extrabuttons $extrabuttons"
 fi
 
 # Restart the gamepad on crash: neither init system restarts boot.sh's
@@ -62,16 +66,20 @@ fi
 (
     delay=2
     while true; do
-        ./drivers/gamepad "${GAMEPAD_ARGS[@]}"
+        ./drivers/gamepad $GAMEPAD_ARGS
         rc=$?
         echo "gamepad exited ($rc); restarting in ${delay}s" >&2
         sleep "$delay"
-        (( delay < 60 )) && delay=$(( delay * 2 )) || delay=60
+        if [ "$delay" -lt 60 ]; then
+            delay=$(( delay * 2 ))
+        else
+            delay=60
+        fi
     done
 ) &
 
 # On systemd, pspi-wifi.service owns wifi_monitor instead.
-if [[ "${PSPI_WIFI_MANAGED:-}" != "1" ]]; then
+if [ "${PSPI_WIFI_MANAGED:-}" != "1" ]; then
     ./drivers/wifi_monitor &
 fi
 
