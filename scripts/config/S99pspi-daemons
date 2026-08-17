@@ -1,4 +1,22 @@
 #!/bin/sh
+# boot.sh ends in `wait`, so background it or it stalls a sequential SysV runner.
+PIDFILE=/var/run/pspi-daemons.pid
+
 case "$1" in
-    start) cd __DRIVERS_BASE__ && ./boot.sh ;;
+    start)
+        cd __DRIVERS_BASE__ || exit 1
+        setsid ./boot.sh &
+        echo $! > "$PIDFILE"
+        ;;
+    stop)
+        [ -f "$PIDFILE" ] || exit 0
+        pid=$(cat "$PIDFILE")
+        rm -f "$PIDFILE"
+        kill -TERM "$pid" 2>/dev/null        # setsid exec'd directly
+        kill -TERM -- -"$pid" 2>/dev/null    # setsid forked a session
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
 esac
