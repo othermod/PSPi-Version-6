@@ -5,3 +5,7 @@ rpi/*/*.dtbo
 rpi/lcd/linux/
 atmega/firmware/build/
 atmega/firmware/*.hex
+
+# Python caches
+__pycache__/
+*.pyc
