@@ -7,7 +7,7 @@
 - RetroPie ships with the controller fully preconfigured, so the input wizard never runs on first boot
 - Recalbox is now available for the Zero 1
 - Ubuntu and Kali load the battery module at boot, so the battery icon appears reliably
-- All image downloads are now checksum-verified, and every finished image is verified before release
+- Image downloads are now checksum-verified where checksums are set, so stale or corrupted downloads no longer pass silently
 
 ## Compute Module 5 Reminder
 

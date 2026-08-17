@@ -327,7 +327,6 @@ firmware flashing script and the payloads `update_firmware` +
 | `gcc-14-aarch64-linux-gnu: command not found` | Wrong binary name | The package installs `/usr/bin/aarch64-linux-gnu-gcc-14` (section 1.2); `ubuntu.sh` finds it itself |
 | `aarch64 gcc >= 14 not found` (ubuntu distro dies in `build_battery_module`) | `gcc-14-aarch64-linux-gnu` missing | install it per section 1; confirm `/usr/bin/aarch64-linux-gnu-gcc-14` |
 | `zerofree not installed; required to zero rootfs` | missing package | `apt-get install zerofree` — it is fatal by design |
-| Image verification fails at the end (`Verify FAILED: …`) | A distro hook or copy silently stopped applying; `verify_image` is the backstop and is intentionally strict | Inspect the failing hook; files are checked on a remount of the finished image |
 | `fdisk: command not found` (RetroPie) | On Ubuntu >= 24.04 `fdisk` is not pulled in by `util-linux` | `apt-get install fdisk` |
 
 ---

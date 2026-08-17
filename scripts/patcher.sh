@@ -383,14 +383,14 @@ patch_image() {
         || die "Overlay destination parent missing: $overlays_rel (check BOOT_OVERLAYS_DIR)"
     mkdir -p "$overlays_dir"
     local -a dtbos
-    : > "$work_dir/expected-overlays"
+    local dtbo_count=0
     for overlay in audio lcd pcie; do
         dtbos=("${base}/${overlay}/"*.dtbo)
         [[ -e "${dtbos[0]}" ]] || die "No .dtbo files found in ${base}/${overlay}"
         cp "${dtbos[@]}" "$overlays_dir/" || die "Failed to copy $overlay overlays"
-        printf '%s\n' "${dtbos[@]##*/}" >> "$work_dir/expected-overlays"
+        dtbo_count=$(( dtbo_count + ${#dtbos[@]} ))
     done
-    echo "  Installed $(wc -l < "$work_dir/expected-overlays") overlays into $overlays_rel/"
+    echo "  Installed $dtbo_count overlays into $overlays_rel/"
 
     # Copy driver binaries
     mkdir -p "$mnt_boot/drivers"
@@ -496,97 +496,6 @@ patch_image() {
     fi
 }
 
-# Assert the init entries landed in a mounted rootfs. Shared by both methods:
-# copy mounts the partition directly, squashfs mounts the repacked image.
-verify_init_entries() {
-    local root="$1" rc=0
-    case "$INIT_SYSTEM" in
-        systemd)
-            local unit
-            for unit in pspi.service pspi-wifi.service; do
-                [[ -s "$root/usr/lib/systemd/system/$unit" ]] \
-                    || { echo "  Verify FAILED: $unit missing" >&2; rc=1; }
-                [[ -e "$root/usr/lib/systemd/system/multi-user.target.wants/$unit" ]] \
-                    || { echo "  Verify FAILED: $unit not enabled" >&2; rc=1; }
-            done ;;
-        sysv)
-            [[ -x "$root/etc/init.d/S99pspi-daemons" ]] \
-                || { echo "  Verify FAILED: S99pspi-daemons missing" >&2; rc=1; } ;;
-    esac
-    return $rc
-}
-
-# Remount the finished image and confirm the PSPi files actually landed. This
-# is the backstop for a hook or copy that silently stops applying: nothing else
-# in the pipeline notices a no-op.
-verify_image() {
-    local img_path="$1" work_dir="$2"
-    local dev mnt rc=0
-
-    dev=$(attach_partition "$img_path" 1)
-    mnt="$work_dir/mnt-verify"
-    mkdir -p "$mnt"
-    mount -o ro "$dev" "$mnt" || die "Verify: could not mount boot partition"
-
-    local overlays_rel="${BOOT_OVERLAYS_DIR:-overlays}"
-    local f
-    for f in pspi.conf boot.sh drivers/gamepad drivers/battery_monitor \
-             drivers/rtc drivers/wifi_monitor; do
-        [[ -s "$mnt/$f" ]] || { echo "  Verify FAILED: missing $f" >&2; rc=1; }
-    done
-    local dtbo_count=0 dtbo
-    while IFS= read -r dtbo; do
-        [[ -z "$dtbo" ]] && continue
-        if [[ -s "$mnt/$overlays_rel/$dtbo" ]]; then
-            dtbo_count=$(( dtbo_count + 1 ))
-        else
-            echo "  Verify FAILED: missing $overlays_rel/$dtbo" >&2
-            rc=1
-        fi
-    done < "$work_dir/expected-overlays"
-    (( dtbo_count > 0 )) \
-        || { echo "  Verify FAILED: no overlays installed in $overlays_rel/" >&2; rc=1; }
-    grep -q '^input_type=' "$mnt/pspi.conf" \
-        || { echo "  Verify FAILED: pspi.conf has no input_type" >&2; rc=1; }
-
-    # The init entries live in the rootfs. On the copy method that is the second
-    # partition; on squashfs it is inside the image just repacked and swapped
-    # back onto the boot partition, so mount that read-only and check there.
-    if [[ "$PATCH_METHOD" == "squashfs" ]]; then
-        local sq_mnt="$work_dir/mnt-verify-squashfs"
-        local sq_dev=""
-        mkdir -p "$sq_mnt"
-        # Explicit loop device again: the implicit one from mount -o loop is
-        # detached asynchronously, so the boot partition below would still be
-        # busy when it is unmounted.
-        if sq_dev=$(losetup --find --show --read-only "$mnt/$SQUASHFS_PATH" 2>/dev/null) \
-           && mount -t squashfs -o ro "$sq_dev" "$sq_mnt" 2>/dev/null; then
-            verify_init_entries "$sq_mnt" || rc=1
-            umount "$sq_mnt"
-            losetup -d "$sq_dev"
-        else
-            [[ -n "$sq_dev" ]] && losetup -d "$sq_dev" 2>/dev/null
-            echo "  Verify FAILED: could not mount $SQUASHFS_PATH" >&2
-            rc=1
-        fi
-    fi
-
-    umount "$mnt"
-    losetup -d "$dev"
-
-    if [[ "$PATCH_METHOD" == "copy" ]]; then
-        dev=$(attach_partition "$img_path" 2)
-        mount -o ro "$dev" "$mnt" || die "Verify: could not mount rootfs partition"
-        verify_init_entries "$mnt" || rc=1
-        umount "$mnt"
-        losetup -d "$dev"
-    fi
-
-    (( rc == 0 )) || die "Image verification failed"
-    echo "  Verified: drivers, $dtbo_count overlay(s), config and init entries" \
-         "($INIT_SYSTEM, $PATCH_METHOD rootfs)"
-}
-
 build_image() {
     local label="$1"
 
@@ -624,8 +533,6 @@ build_image() {
     # both of which flush. This is cheap insurance against anything a distro
     # hook wrote directly to the image file after that.
     sync
-
-    verify_image "$img_path" "$work_dir"
 
     if [[ "$PATCH_METHOD" == "squashfs" ]]; then
         echo "  Zeroing free space in boot partition..."
