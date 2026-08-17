@@ -2,12 +2,10 @@
 
 - RetroPie now has Steam Link included by default
 - Batocera now has Moonlight included by default
-- The WiFi signal monitor now retries at boot and restarts automatically if it stops, so the signal stays on even when WiFi comes up slowly
-- The gamepad now restarts itself if it crashes, and reads every setting from pspi.conf
 - RetroPie ships with the controller fully preconfigured, so the input wizard never runs on first boot
 - Recalbox is now available for the Zero 1
-- Ubuntu and Kali load the battery module at boot, so the battery icon appears reliably
-- Image downloads are now checksum-verified where checksums are set, so stale or corrupted downloads no longer pass silently
+- The battery icon now appears reliably in Ubuntu and Kali
+- The WiFi signal stays on screen even when WiFi is slow to connect at boot
 
 ## Compute Module 5 Reminder
 
@@ -21,7 +19,7 @@
 
 **Boards:** Zero 1, Zero 2 W, CM4, CM5
 
-A turn-key retro-gaming OS with its own EmulationStation-based UI and a built-in settings menu. Audio is heavily reworked for the PSPi: PipeWire is disabled in favor of ALSA, RetroArch uses the ALSA thread driver, and a compatibility shim routes the OS volume control to the BCM2835 PWM audio hardware (PipeWire otherwise spikes CPU usage on this hardware).
+A turn-key retro-gaming OS with its own EmulationStation-based UI and a built-in settings menu. Emulators and the PSPi controls are preconfigured.
 
 Username: `root`
 Password: `linux`
@@ -33,7 +31,7 @@ Password: `linux`
 
 **Boards:** Zero 2 W, CM4, CM5
 
-A security and penetration-testing distro, not gaming-focused. It boots into mouse mode like Raspberry Pi OS.
+A security and penetration-testing distro, not gaming-focused. It boots into mouse mode like Raspberry Pi OS. The on-screen keyboard can be enabled by clicking the button in the taskbar that looks like a person, making it possible to log in without a physical keyboard.
 
 Username: `kali`
 Password: `kali`
@@ -45,7 +43,7 @@ Password: `kali`
 
 **Boards:** Zero 1, Zero 2 W, CM4, CM5
 
-The pure RetroArch option: the entire OS is RetroArch, with no separate front-end or desktop. It boots straight into the RetroArch menu and uses a read-only (squashfs) root filesystem, so it stays small and consistent between boots. This is the Libretro reference build, with PSPi button mapping and menu layout already applied.
+The minimal RetroArch-only option. It boots straight into the RetroArch menu with the PSPi controls and menu layout preconfigured.
 
 Username: `root`
 Password: `root`
@@ -59,7 +57,7 @@ Password: `root`
 64-bit image: Zero 2 W, CM4, CM5 
 32-bit image: all boards
 
-The general-purpose desktop, not a gaming image. It boots into mouse mode by default because the desktop is more usable with a pointer than a gamepad (switch `input_type` in `pspi.conf` on the boot partition for gamepad mode). The on-screen keyboard (Squeekboard) starts automatically at boot. This is the "it's just a Linux computer" option.
+The general-purpose desktop. It's a lean OS that performs well. The on-screen keyboard (Squeekboard) starts automatically at boot.
 
 Username: `pi`
 Password: `raspberry`
@@ -71,7 +69,7 @@ Password: `raspberry`
 
 **Boards:** Zero 1, Zero 2 W, CM4, CM5
 
-Another EmulationStation-based retro OS, similar in spirit to Batocera but a different ecosystem. The stock hardware-detection and add-on scripts are stripped out to prevent the GPIO conflicts that caused LCD color issues at startup. Note that Recalbox has no battery icon (haven't investigated why, just yet), so charge level is not shown on screen.
+An EmulationStation-based retro OS and the main alternative to Batocera if you prefer a different ecosystem. Note: Recalbox doesn't show a battery icon yet, so you won't see charge level on screen.
 
 Username: `root`
 Password: `recalboxroot`
@@ -83,7 +81,7 @@ Password: `recalboxroot`
 
 **Boards:** Zero 1, Zero 2 W, CM4, CM5
 
-RetroPie installed on top of Raspberry Pi OS Lite. The `pi` user auto-logs-in on boot and EmulationStation starts straight away. Audio is set to the analog/PCM output, the A/B and OK/cancel buttons are swapped for the PSPi layout, and ROMs can be added via a USB drive or the built-in Samba (network) share.
+The classic Raspberry Pi retro-gaming OS. It boots straight into EmulationStation, is very efficient, and uses very little battery when games aren't being played.
 
 Username: `pi`
 Password: `othermod`
@@ -95,9 +93,10 @@ Password: `othermod`
 
 **Boards:** CM4, CM5
 
-Ubuntu 26.04 LTS with the full GNOME desktop — the “it's a real Linux computer” option. Ships with the PSPi battery kernel module so the battery icon works, boots into mouse mode, and has the built-in GNOME on-screen keyboard enabled.
+Ubuntu 26.04 LTS with the full GNOME desktop.
 
-Username / Password: created during the first-boot setup wizard (there is no default user).
+Username: `ubuntu`
+Password: `othermod`
 
 ---
 
