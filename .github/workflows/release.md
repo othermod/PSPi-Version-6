@@ -71,6 +71,8 @@ Password: `root`
 
 The general-purpose desktop. It's a lean OS that performs well. The on-screen keyboard (Squeekboard) starts automatically at boot.
 
+**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
+
 Username: `pi`
 Password: `raspberry`
 
@@ -95,8 +97,24 @@ Password: `recalboxroot`
 
 The classic Raspberry Pi retro-gaming OS. It boots straight into EmulationStation, is very efficient, and uses very little battery when games aren't being played.
 
+**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
+
 Username: `pi`
 Password: `othermod`
+
+---
+
+### TS Dash
+![TS Dash dashboard](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/tsdash.png)
+
+**Boards:** Zero 1, Zero 2 W, CM4
+
+EFI Analytics TS Dash Pro turns the PSPi into an automotive digital dash for MegaSquirt EFI systems. The kiosk app boots straight to the dash on the PSPi LCD, and the joystick acts as a mouse so you can navigate dashes and on-screen buttons without a touchscreen.
+
+**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
+
+Username: `pi`
+Password: `raspberry`
 
 ---
 
