@@ -265,9 +265,9 @@ static void draw_face_button(Canvas *c, Btn *b)
 
     int s = b->r - 12;                  /* symbol half-size */
     switch (b->tag[0]) {
-        case 'X':
-            fill_rect(c, b->x - s, b->y - 2, s * 2, 4, sym);
-            fill_rect(c, b->x - 2, b->y - s, 4, s * 2, sym);
+        case 'X':   /* diagonal cross, same bounding size as the others */
+            draw_line(c, b->x - s + 2, b->y - s + 2, b->x + s - 2, b->y + s - 2, 4, sym);
+            draw_line(c, b->x - s + 2, b->y + s - 2, b->x + s - 2, b->y - s + 2, 4, sym);
             break;
         case 'O':
             ring_circle(c, b->x, b->y, s, 4, sym);
@@ -275,8 +275,8 @@ static void draw_face_button(Canvas *c, Btn *b)
         case 'S':
             rect_outline(c, b->x - s, b->y - s, s * 2, s * 2, 4, sym);
             break;
-        case 'T':
-            fill_triangle(c, b->x, b->y - s, b->x - s, b->y + s - 2,
+        case 'T':   /* triangle, 2px high so its visual mass stays centered */
+            fill_triangle(c, b->x, b->y - s - 2, b->x - s, b->y + s - 2,
                           b->x + s, b->y + s - 2, sym);
             break;
     }
@@ -343,6 +343,12 @@ static void draw_frame(Canvas *c, uint16_t btns, bool l2, bool r2, bool muted,
         if (down)  fill_rect(c,  98, 217, 34, 43, C_AMBER);
         if (left)  fill_rect(c,  55, 183, 43, 34, C_AMBER);
         if (right) fill_rect(c, 132, 183, 43, 34, C_AMBER);
+
+        /* direction arrows on the resting arms */
+        fill_triangle(c, 115, 154, 106, 168, 124, 168, C_LABEL);  /* up    */
+        fill_triangle(c, 115, 246, 106, 232, 124, 232, C_LABEL);  /* down  */
+        fill_triangle(c,  68, 200,  82, 191,  82, 209, C_LABEL);  /* left  */
+        fill_triangle(c, 162, 200, 148, 191, 148, 209, C_LABEL);  /* right */
     }
 
     /* face buttons: PSP diamond (△ top, ○ right, ✕ bottom, □ left),
