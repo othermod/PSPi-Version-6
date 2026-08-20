@@ -1,4 +1,4 @@
-# TS Dash Pro (EFI Analytics) "Reference" SD image for Raspberry Pi 3/4.
+# TS Dash (EFI Analytics) "Reference" SD image for Raspberry Pi 3/4.
 #
 # Base: "Raspberry Pi reference 2022-04-04" pi-gen stage4 (full LXDE desktop),
 # Bullseye, kernel 5.15.61. Boot partition is a classic 256 MB vfat mounted at
@@ -57,6 +57,13 @@ distro_post_patch() {
     # TS Dash is a kiosk GUI: the joystick drives the cursor and on-screen
     # buttons (arrows/ENTER still arrive via the gamepad's virtual keyboard).
     set_input_mouse "$mnt_boot"
+
+    # A dash cluster is always on: disable the idle backlight dim so the
+    # screen never goes dark while driving (stock pspi.conf enables it).
+    sed -i 's/^enable_dim=true/enable_dim=false/' "$mnt_boot/pspi.conf"
+    grep -q '^enable_dim=false' "$mnt_boot/pspi.conf" \
+        || die "[tsdash] could not disable dimming in $mnt_boot/pspi.conf"
+    echo "  [tsdash] Disabled idle dimming (enable_dim=false)"
 
     # --- Old-kernel (5.15) audio: flip the PSPi audio overlay references from
     # the kernel6+ variant to the kernel5- (legacy snd_bcm2835) variant. Both
