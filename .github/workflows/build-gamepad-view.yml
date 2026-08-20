@@ -12,24 +12,24 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Native arm64 runner (free for public repos since GA Aug 2025; this repo
+    # is public). gamepad_view is arm64-only by design, so compiling natively
+    # avoids the whole amd64-host multiarch dance: no dpkg --add-architecture,
+    # no mirror surgery, no :arm64 package suffixes -- plain native libdrm-dev,
+    # gcc, and make.
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross make
-          sudo dpkg --add-architecture arm64
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libdrm-dev:arm64
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdrm-dev gcc make
 
       - name: Build
         run: |
           cd rpi/gamepad_view
-          make 64
+          make 64 CC_64=gcc
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
