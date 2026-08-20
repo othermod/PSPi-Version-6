@@ -4,6 +4,7 @@
 - The battery icon now appears reliably in Kali
 - Changed the actions of some buttons when in mouse mode
 - Added Ubuntu
+- Added Raspberry Pi OS Lite (headless, SSH enabled)
 
 ## Compute Module 5 Reminder
 
@@ -78,6 +79,22 @@ Password: `raspberry`
 
 ---
 
+### Raspberry Pi OS Lite
+![Raspberry Pi OS Lite console](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/pios-lite.png)
+
+**Boards:** 
+64-bit image: Zero 2 W, CM4, CM5 
+32-bit image: all boards
+
+The headless variant of Raspberry Pi OS. There is no desktop environment — it boots straight to a terminal on the PSPi LCD, making it a lightweight base for your own build. SSH is enabled automatically, so you can log in over the PSPi's WiFi right after first boot.
+
+**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
+
+Username: `pi`
+Password: `othermod`
+
+---
+
 ### Recalbox
 ![Recalbox EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/recalbox.png)
 
@@ -109,7 +126,7 @@ Password: `othermod`
 
 **Boards:** Zero 1, Zero 2 W, CM4
 
-EFI Analytics TS Dash Pro turns the PSPi into an automotive digital dash for MegaSquirt EFI systems. The kiosk app boots straight to the dash on the PSPi LCD, and the joystick acts as a mouse so you can navigate dashes and on-screen buttons without a touchscreen.
+EFI Analytics TS Dash turns the PSPi into an automotive digital dash. The kiosk app boots straight to the dash on the PSPi LCD, and the joystick acts as a mouse so you can navigate dashes and on-screen buttons without a touchscreen.
 
 **First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
 
