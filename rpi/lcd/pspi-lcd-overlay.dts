@@ -78,16 +78,17 @@
                 bus-format = <0x1013>; /* MEDIA_BUS_FMT_BGR888_1X24 */
 
                 panel-timing {
-                    clock-frequency = <29500000>;
+
+                    clock-frequency = <26000000>;
                     hactive = <800>;
                     hfront-porch = <24>;
-                    hsync-len = <72>;
-                    hback-porch = <96>;
+                    hsync-len = <8>;
+                    hback-porch = <24>;
                     hsync-active = <0>;
                     vactive = <480>;
-                    vfront-porch = <3>;
-                    vsync-len = <10>;
-                    vback-porch = <7>;
+                    vfront-porch = <8>;
+                    vsync-len = <8>;
+                    vback-porch = <8>;
                     vsync-active = <0>;
                     de-active = <1>;
                     pixelclk-active = <1>;
