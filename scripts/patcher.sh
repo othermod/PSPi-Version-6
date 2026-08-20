@@ -175,6 +175,15 @@ build_drivers() {
     echo "Building wifi monitor..."
     ( cd "$PROJECT_DIR/rpi/wifi" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
 
+    # gamepad_view is the 64-bit display tool used only by the gamepadview
+    # distro. Building it for every local build would force the multiarch
+    # libdrm-dev:arm64 dependency on distros that never ship it, so it is
+    # gated here (CI is unaffected: --driver-binaries skips build_drivers).
+    if [[ "$DISTRO" == "gamepadview" ]]; then
+        echo "Building gamepad view..."
+        ( cd "$PROJECT_DIR/rpi/gamepad_view" && "${as_user[@]}" make 64 )
+    fi
+
     for overlay in audio lcd pcie; do
         echo "Building $overlay overlay..."
         ( cd "$PROJECT_DIR/rpi/$overlay" && "${as_user[@]}" make clean && "${as_user[@]}" make all )
@@ -343,6 +352,29 @@ enable_battery_module_at_boot() {
         || die "pspi_battery.ko not installed under $rootfs/lib/modules"
     mkdir -p "$rootfs/etc/modules-load.d"
     echo "pspi_battery" > "$rootfs/etc/modules-load.d/pspi_battery.conf"
+}
+
+# Headless first-boot login for Raspberry Pi OS Lite images (raspioslite,
+# gamepadview). Trixie Lite ships the pi user locked with shell
+# /usr/sbin/nologin, sshd off, and no first-boot dialog (userconfig's
+# INTERACTIVE path only runs on desktop builds), so a stock image cannot be
+# logged into at all. This writes the two marker files the image itself
+# consumes on first boot:
+#   userconf -> userconfig.service runs /usr/lib/userconf-pi/userconf
+#               pi <hash>: sets pi's shell to /bin/bash, applies the SHA-512
+#               crypt password (rpi-imager's own pre-seed mechanism), then
+#               deletes the file.
+#   ssh      -> sshswitch.service enables sshd on first boot and removes it.
+# Login: pi / othermod. To change the password, regenerate the hash and edit
+# it here (single source of truth for both distros):
+#   $ printf 'pi:<password>\n' | openssl passwd -6 -stdin
+write_headless_login() {
+    local mnt_boot="$1"
+    cat > "$mnt_boot/userconf" <<'EOF'
+pi:$6$LA3zaIw2CN30FeGz$QWjeZuEhx7wcV1ltt/Hah1aPZd1903LPXStpOLdHgRdUeeePtfFERBZr.URcXN5wJ5eaQrxgtsLvq.vAt.ssK0
+EOF
+    : > "$mnt_boot/ssh"
+    echo "  Set pi/othermod via userconf; SSH enabled via ssh marker"
 }
 
 patch_image() {

@@ -1,0 +1,38 @@
+name: Build Gamepad View
+
+on:
+  workflow_call:
+  push:
+    paths:
+      - 'rpi/gamepad_view/**'
+  pull_request:
+    paths:
+      - 'rpi/gamepad_view/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross make
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libdrm-dev:arm64
+
+      - name: Build
+        run: |
+          cd rpi/gamepad_view
+          make 64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamepad-view
+          path: rpi/gamepad_view/64
