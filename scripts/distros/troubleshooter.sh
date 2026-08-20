@@ -1,8 +1,8 @@
-# Raspberry Pi OS Lite + gamepad_view (headless display — 64-bit only).
+# Raspberry Pi OS Lite + troubleshooter (headless display — 64-bit only).
 #
 # Same base image, layout, and process as raspioslite.sh (Trixie Lite, copy
 # method, systemd, /boot/firmware), with ONE difference: instead of running
-# the gamepad driver, the image runs rpi/gamepad_view. That binary reads the
+# the gamepad driver, the image runs rpi/troubleshooter. That binary reads the
 # controller board directly over I2C (0x10, CRC-16-CCITT packets — same
 # protocol as the gamepad driver) and renders the live pad state on the PSPi
 # LCD via KMS/DRM: pressing buttons, stick deflection with deadzone, and a
@@ -10,7 +10,7 @@
 # and there is no desktop cursor, so gamepad input is not exposed to the OS —
 # this is a controller-display image, not an input device.
 #
-# 64-bit only: gamepad_view is an aarch64 build (libdrm, via the top-level
+# 64-bit only: troubleshooter is an aarch64 build (libdrm, via the top-level
 # rpi/Makefile's BUILD64 set), so this distro ships a single arm64 target
 # (CM4, CM5, Zero 2 W — Zero 1 is armv6 and cannot run it).
 #
@@ -36,7 +36,7 @@ TARGET_URL[arm64]="https://downloads.raspberrypi.com/raspios_lite_arm64/images/r
 
 TARGET_SHA256[arm64]="acff736ca7945e3b305f07cda4abdb870910e12634991da69783611756e381b3"
 
-TARGET_PSPI_PREFIX[arm64]="GamepadView-64bit-CM4-CM5-Zero2-PSPi6"
+TARGET_PSPI_PREFIX[arm64]="Troubleshooter-64bit-CM4-CM5-Zero2-PSPi6"
 
 TARGET_BIN[arm64]=64
 
@@ -50,34 +50,37 @@ distro_post_patch() {
     # services (see write_headless_login in patcher.sh).
     write_headless_login "$mnt_boot"
 
-    # --- Swap the gamepad driver for gamepad_view. The generic patcher has
+    # --- Swap the gamepad driver for troubleshooter. The generic patcher has
     # already copied /boot/firmware/drivers/gamepad and boot.sh; both are
-    # replaced here so only gamepad_view ever runs.
+    # replaced here so only troubleshooter ever runs.
     rm -f "$mnt_boot/drivers/gamepad"
 
-    # Resolve the gamepad_view binary: CI supplies it via --driver-binaries
-    # (artifact "gamepad-view"), local builds produce it under the repo
-    # (patcher.sh build_drivers runs `make -C rpi/gamepad_view 64`). Try both
+    # Resolve the troubleshooter binary: CI supplies it via --driver-binaries
+    # (artifact "troubleshooter"; the pre-rename "gamepad-view" artifact name
+    # is still accepted), local builds produce it under the repo
+    # (patcher.sh build_drivers runs `make -C rpi/troubleshooter 64`). Try both
     # artifact layouts: upload-artifact organizes a single-directory path
-    # differently by version (64/gamepad_view vs gamepad_view at the root).
+    # differently by version (64/troubleshooter vs troubleshooter at the root).
     local gv_src="" cand
     if [[ -n "${DRIVER_BINARIES_DIR:-}" ]]; then
         for cand in \
+            "$DRIVER_BINARIES_DIR/troubleshooter/64/troubleshooter" \
+            "$DRIVER_BINARIES_DIR/troubleshooter/troubleshooter" \
             "$DRIVER_BINARIES_DIR/gamepad-view/64/gamepad_view" \
             "$DRIVER_BINARIES_DIR/gamepad-view/gamepad_view"; do
             [[ -f "$cand" ]] && gv_src="$cand" && break
         done
     else
-        gv_src="$PROJECT_DIR/rpi/gamepad_view/64/gamepad_view"
+        gv_src="$PROJECT_DIR/rpi/troubleshooter/64/troubleshooter"
     fi
     [[ -n "$gv_src" && -f "$gv_src" ]] \
-        || die "[gamepadview] gamepad_view binary not found under drivers-bin or the repo (run: make -C rpi/gamepad_view 64)"
-    cp "$gv_src" "$mnt_boot/drivers/gamepad_view"
-    chmod +x "$mnt_boot/drivers/gamepad_view"
+        || die "[troubleshooter] troubleshooter binary not found under drivers-bin or the repo (run: make -C rpi/troubleshooter 64)"
+    cp "$gv_src" "$mnt_boot/drivers/troubleshooter"
+    chmod +x "$mnt_boot/drivers/troubleshooter"
 
     # boot.sh: same flow as the stock one (battery_monitor, wifi_monitor via
-    # pspi-wifi.service, restart-on-crash) but gamepad_view instead of the
-    # gamepad. No pspi.conf parsing: gamepad_view takes no config args — it
+    # pspi-wifi.service, restart-on-crash) but troubleshooter instead of the
+    # gamepad. No pspi.conf parsing: troubleshooter takes no config args — it
     # reads the controller board directly and draws until the power key is
     # held 500 ms (its built-in shutdown) or the system is powered off via
     # the gpio-poweroff overlay in config.txt.
@@ -95,15 +98,18 @@ modprobe pspi_battery 2>/dev/null
 # Wait for the I2C bus before starting anything that depends on it
 until [ -e /dev/i2c-1 ]; do sleep 1; done
 
-# Restart gamepad_view on crash: same backoff pattern the stock boot.sh uses
-# for the gamepad. gamepad_view exits 1 before touching the display when no
+# Restart troubleshooter on crash: same backoff pattern the stock boot.sh uses
+# for the gamepad. troubleshooter exits 1 before touching the display when no
 # CRC-valid packet arrives, so this also covers "controller not powered yet".
+# pkill before relaunch: if the visualizer died mid audio test, the tone is
+# orphaned (setsid'd) and would keep playing.
 (
     delay=2
     while true; do
-        ./drivers/gamepad_view
+        ./drivers/troubleshooter
         rc=$?
-        echo "gamepad_view exited ($rc); restarting in ${delay}s" >&2
+        echo "troubleshooter exited ($rc); restarting in ${delay}s" >&2
+        pkill -x speaker-test 2>/dev/null || true
         sleep "$delay"
         if [ "$delay" -lt 60 ]; then
             delay=$(( delay * 2 ))
@@ -121,5 +127,5 @@ fi
 wait
 BOOT
     chmod +x "$mnt_boot/boot.sh"
-    echo "  [gamepadview] Swapped gamepad -> drivers/gamepad_view; boot.sh rewritten"
+    echo "  [troubleshooter] Swapped gamepad -> drivers/troubleshooter; boot.sh rewritten"
 }

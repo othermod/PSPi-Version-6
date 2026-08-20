@@ -37,11 +37,11 @@ Password: `linux`
 ---
 
 ### Gamepad Troubleshooter
-![GamepadView controller display](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/gamepadview.png)
+![Troubleshooter controller display](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/gamepadview.png)
 
 **Boards:** Zero 2 W, CM4, CM5
 
-An image solely meant for troubleshooting issues with the PSPi gamepad. It boots Raspberry Pi OS Lite and starts the **gamepad_view** tool fullscreen on the LCD. Every button lights up as it's pressed, and both sticks show deflection with the deadzone. Holding the power button for half a second shuts the system down.
+An image solely meant for troubleshooting issues with the PSPi gamepad. It boots Raspberry Pi OS Lite and starts the **troubleshooter** tool fullscreen on the LCD. Every button lights up as it's pressed, and both sticks show deflection with the deadzone. Holding the power button for half a second shuts the system down.
 
 ---
 

@@ -44,11 +44,11 @@ jobs:
   build-wifi:
     uses: ./.github/workflows/build-wifi.yml
 
-  build-gamepad-view:
-    uses: ./.github/workflows/build-gamepad-view.yml
+  build-troubleshooter:
+    uses: ./.github/workflows/build-troubleshooter.yml
 
   collect-artifacts:
-    needs: [build-gamepad, build-battery, build-rtc, build-firmware, build-atmega, build-audio, build-lcd, build-pcie, build-wifi, build-gamepad-view]
+    needs: [build-gamepad, build-battery, build-rtc, build-firmware, build-atmega, build-audio, build-lcd, build-pcie, build-wifi, build-troubleshooter]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts

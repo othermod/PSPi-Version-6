@@ -91,6 +91,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -z "$DISTRO" ]] && die "No distro specified. Use --distro <name>"
+# gamepadview.sh was renamed to troubleshooter.sh (the image runs the
+# troubleshooter display tool for diagnosing the controller). Accept the old
+# name so existing local invocations and scripts keep working; CI derives the
+# distro name from the config filename (troubleshooter) and never passes it.
+[[ "$DISTRO" == "gamepadview" ]] && DISTRO="troubleshooter"
 DISTRO_FILE="$SCRIPT_DIR/distros/${DISTRO}.sh"
 [[ -f "$DISTRO_FILE" ]] || die "Distro config not found: $DISTRO_FILE"
 # shellcheck source=/dev/null
@@ -175,13 +180,13 @@ build_drivers() {
     echo "Building wifi monitor..."
     ( cd "$PROJECT_DIR/rpi/wifi" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
 
-    # gamepad_view is the 64-bit display tool used only by the gamepadview
+    # troubleshooter is the 64-bit display tool used only by the troubleshooter
     # distro. Building it for every local build would force the multiarch
     # libdrm-dev:arm64 dependency on distros that never ship it, so it is
     # gated here (CI is unaffected: --driver-binaries skips build_drivers).
-    if [[ "$DISTRO" == "gamepadview" ]]; then
-        echo "Building gamepad view..."
-        ( cd "$PROJECT_DIR/rpi/gamepad_view" && "${as_user[@]}" make 64 )
+    if [[ "$DISTRO" == "troubleshooter" ]]; then
+        echo "Building troubleshooter..."
+        ( cd "$PROJECT_DIR/rpi/troubleshooter" && "${as_user[@]}" make 64 )
     fi
 
     for overlay in audio lcd pcie; do
@@ -355,7 +360,7 @@ enable_battery_module_at_boot() {
 }
 
 # Headless first-boot login for Raspberry Pi OS Lite images (raspioslite,
-# gamepadview). Trixie Lite ships the pi user locked with shell
+# troubleshooter). Trixie Lite ships the pi user locked with shell
 # /usr/sbin/nologin, sshd off, and no first-boot dialog (userconfig's
 # INTERACTIVE path only runs on desktop builds), so a stock image cannot be
 # logged into at all. This writes the two marker files the image itself

@@ -1,19 +1,19 @@
-name: Build Gamepad View
+name: Build Troubleshooter
 
 on:
   workflow_call:
   push:
     paths:
-      - 'rpi/gamepad_view/**'
+      - 'rpi/troubleshooter/**'
   pull_request:
     paths:
-      - 'rpi/gamepad_view/**'
+      - 'rpi/troubleshooter/**'
   workflow_dispatch:
 
 jobs:
   build:
     # Native arm64 runner (free for public repos since GA Aug 2025; this repo
-    # is public). gamepad_view is arm64-only by design, so compiling natively
+    # is public). troubleshooter is arm64-only by design, so compiling natively
     # avoids the whole amd64-host multiarch dance: no dpkg --add-architecture,
     # no mirror surgery, no :arm64 package suffixes -- plain native libdrm-dev,
     # gcc, and make.
@@ -28,11 +28,11 @@ jobs:
 
       - name: Build
         run: |
-          cd rpi/gamepad_view
+          cd rpi/troubleshooter
           make 64 CC_64=gcc
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: gamepad-view
-          path: rpi/gamepad_view/64
+          name: troubleshooter
+          path: rpi/troubleshooter/64
