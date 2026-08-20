@@ -1,10 +1,7 @@
 ## What's Changed
 
-- RetroPie ships with the controller fully preconfigured, so the input wizard never runs on first boot
-- The battery icon now appears reliably in Kali
-- Changed the actions of some buttons when in mouse mode
-- Added Ubuntu
-- Added Raspberry Pi OS Lite (headless, SSH enabled)
+- Added Raspberry Pi OS Lite
+- Added Gamepad Troubleshooter Image
 
 ## Compute Module 5 Reminder
 
@@ -36,6 +33,15 @@ A turn-key retro-gaming OS with its own EmulationStation-based UI and a built-in
 
 Username: `root`
 Password: `linux`
+
+---
+
+### Gamepad Troubleshooter
+![GamepadView controller display](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/gamepadview.png)
+
+**Boards:** Zero 2 W, CM4, CM5
+
+An image solely meant for troubleshooting issues with the PSPi gamepad. It boots Raspberry Pi OS Lite and starts the **gamepad_view** tool fullscreen on the LCD. Every button lights up as it's pressed, and both sticks show deflection with the deadzone. Holding the power button for half a second shuts the system down.
 
 ---
 
@@ -147,4 +153,3 @@ Password: `othermod`
 
 ---
 
-**Full Changelog**: https://github.com/othermod/PSPi-Version-6/compare/v2.4.2...v2.4.3
