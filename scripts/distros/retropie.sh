@@ -269,6 +269,22 @@ XKBOPTIONS=""
 BACKSPACE="guess"
 KEYBOARD
 
+    # Quiet console boot: append `quiet` to kernel cmdline.txt (append-only,
+    # never reorder or remove existing kernel args).
+    echo "  [retropie] Appending quiet to cmdline.txt..."
+    grep -q ' quiet' "$mnt_boot/cmdline.txt" \
+        || sed -i 's/$/ quiet/' "$mnt_boot/cmdline.txt"
+
+    # Disable RetroPie's splash screen. It plays the boot logo via vlc, which
+    # needs X11/HDMI output: run as User=pi in a system service it dies with
+    # "XDG_RUNTIME_DIR is invalid or not set", and run as root it refuses
+    # ("VLC is not supposed to be run as root"). A PSPi has a DPI LCD, no
+    # HDMI and no display server, so it can never show anything -- mask the
+    # unit (systemctl is unusable in a chroot; a /dev/null symlink is the
+    # standard mask).
+    echo "  [retropie] Disabling splash screen..."
+    ln -sf /dev/null "$rootfs/etc/systemd/system/asplashscreen.service"
+
     # Install RetroPie-Setup dependencies
     echo "  [retropie] Installing dependencies..."
     chroot "$rootfs" apt-get update -qq
