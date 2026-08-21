@@ -1,7 +1,10 @@
 ## What's Changed
 
 - Added Raspberry Pi OS Lite
-- Added Gamepad Troubleshooter Image
+- Added TS Dash
+- Added the Troubleshooter image, which tests the gamepad, audio, switches, and display
+- Fixed screen instability caused by incorrect LCD timings
+- Fixed a boot error on RetroPie caused by the splash screen, and made the boot quieter
 
 ## Compute Module 5 Reminder
 
@@ -24,6 +27,9 @@ Raspberry Pi OS, Kali, and Ubuntu boot with the controller acting as a mouse. Th
 
 ## Images
 
+**First Boot Reminder :** The first boot takes a minute or so. The system may appear idle, but it is working in the background.
+
+
 ### Batocera
 ![Batocera EmulationStation menu](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/batocera.png)
 
@@ -37,11 +43,11 @@ Password: `linux`
 ---
 
 ### Gamepad Troubleshooter
-![Troubleshooter controller display](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/gamepadview.png)
+![Troubleshooter controller display](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/troubleshooter.png)
 
 **Boards:** Zero 2 W, CM4, CM5
 
-An image solely meant for troubleshooting issues with the PSPi gamepad. It boots Raspberry Pi OS Lite and starts the **troubleshooter** tool fullscreen on the LCD. Every button lights up as it's pressed, and both sticks show deflection with the deadzone. Holding the power button for half a second shuts the system down.
+An image solely meant for troubleshooting issues with the PSPi. It boots directly into a fullscreen tool that gives full system information on the LCD. Every button lights up as it's pressed, and both sticks show deflection with the deadzone, brightness appears as a bar, and audio is toggled using L1 and R1. Holding the power button for half a second shuts the system down.
 
 ---
 
@@ -62,7 +68,7 @@ Password: `kali`
 
 **Boards:** Zero 1, Zero 2 W, CM4, CM5
 
-The minimal RetroArch-only option. It boots straight into the RetroArch menu with the PSPi controls and menu layout preconfigured.
+The minimal option that looks very Sony. It boots straight into the RetroArch menu with the PSPi controls and menu layout preconfigured.
 
 Username: `root`
 Password: `root`
@@ -78,23 +84,19 @@ Password: `root`
 
 The general-purpose desktop. It's a lean OS that performs well. The on-screen keyboard (Squeekboard) starts automatically at boot.
 
-**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
-
 Username: `pi`
 Password: `raspberry`
 
 ---
 
 ### Raspberry Pi OS Lite
-![Raspberry Pi OS Lite console](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/pios-lite.png)
+![Raspberry Pi OS Lite console](https://raw.githubusercontent.com/wiki/othermod/PSPi-Version-6/releases/pioslite.png)
 
 **Boards:** 
 64-bit image: Zero 2 W, CM4, CM5 
 32-bit image: all boards
 
 The headless variant of Raspberry Pi OS. There is no desktop environment — it boots straight to a terminal on the PSPi LCD, making it a lightweight base for your own build. SSH is enabled automatically, so you can log in over the PSPi's WiFi right after first boot.
-
-**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
 
 Username: `pi`
 Password: `othermod`
@@ -120,8 +122,6 @@ Password: `recalboxroot`
 
 The classic Raspberry Pi retro-gaming OS. It boots straight into EmulationStation, is very efficient, and uses very little battery when games aren't being played.
 
-**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
-
 Username: `pi`
 Password: `othermod`
 
@@ -133,8 +133,6 @@ Password: `othermod`
 **Boards:** Zero 1, Zero 2 W, CM4
 
 EFI Analytics TS Dash turns the PSPi into an automotive digital dash. The kiosk app boots straight to the dash on the PSPi LCD, and the joystick acts as a mouse so you can navigate dashes and on-screen buttons without a touchscreen.
-
-**First boot:** The first boot takes a couple of minutes. The filesystem expands to fill your SD card, and the screen may stay blank or black while it works. This is normal, so be patient. Don't power off during the expansion.
 
 Username: `pi`
 Password: `raspberry`
@@ -153,3 +151,4 @@ Password: `othermod`
 
 ---
 
+**Full Changelog**: https://github.com/othermod/PSPi-Version-6/compare/v2.5.0...v2.6.0
