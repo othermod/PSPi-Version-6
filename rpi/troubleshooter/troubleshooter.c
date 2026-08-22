@@ -136,6 +136,9 @@ typedef struct {
     bool power;                  /* status flag: power/SD key held */
     bool pwr_critical;           /* power held, shutdown imminent */
     unsigned crc_ok, crc_fail;   /* link statistics */
+    uint8_t adc_sys, adc_bat;    /* raw voltage bytes from this packet */
+    int      bat_percent;        /* battery estimate (from Battery struct) */
+    uint8_t  charge_state;       /* BAT_DISCHARGING / CHARGING / CHARGED */
 } PadState;
 
 static int i2c_fd = -1;
@@ -163,6 +166,8 @@ static bool parse_packet(const uint8_t *pkt, PadState *st)
     st->wifi = (pkt[4] & STATUS_WIFI) == 0;   /* bit is raw switch pos; wifi on = clear */
     st->brightness = pkt[4] & STATUS_BRIGHT;
     st->power = (pkt[4] & STATUS_PWR) != 0;
+    st->adc_sys = pkt[2];
+    st->adc_bat = pkt[3];
     return true;
 }
 
@@ -216,6 +221,154 @@ static void probe(void)
         return;
     }
     printf("  probe failed: no CRC-valid packet after 20 tries\n");
+}
+
+/* --------------------------- battery estimation -------------------------- */
+/* Ported from rpi/battery/battery_monitor.c: estimates charge state and
+   percent from the two ADC channels in every gamepad packet (bytes 2/3 are
+   senseSys/senseBat). Runs once per poll (~8 ms), faster than the
+   monitor's 50 ms tick. See battery_init() for the scaling note. */
+
+#define SENSE_RESISTOR_MILLIOHM                     50
+#define RESISTOR_A_KOHM                             150
+#define RESISTOR_B_KOHM                             10
+#define BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM   210
+#define BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM  190
+
+#define BAT_DISCHARGING 0
+#define BAT_CHARGING    1
+#define BAT_CHARGED     2
+
+typedef struct {
+    uint16_t sys_mv_filtered;   /* IIR-smoothed system voltage (x16 fixed-point, mV) */
+    uint16_t bat_mv_filtered;   /* IIR-smoothed battery voltage (x16 fixed-point, mV) */
+    int      sense_drop_mv;     /* voltage drop across sense resistor + divider correction (mV) */
+    int      current_ma;        /* estimated current: negative = discharging, positive = charging */
+    uint16_t adjusted_sys_mv;   /* system voltage minus sense resistor drop (mV) */
+    uint16_t open_circuit_mv;   /* estimated open-circuit battery voltage (mV) */
+    uint16_t display_mv;        /* slow-moving voltage used for percent calculation (mV) */
+    uint8_t  charge_state;      /* DISCHARGING, CHARGING, or CHARGED */
+    int      percent;           /* battery level 0-100 */
+} Battery;
+
+static Battery battery;
+static uint16_t sys_mv, bat_mv;
+
+/* Voltage (mV) corresponding to each SOC level 0..99%.
+   soc_mv_table[i] = voltage at which the battery is considered i% full.
+   Derived from a real discharge log: 11891 samples split into 100 equal
+   time-buckets, median display_mv taken per bucket, ties nudged +1mV
+   to preserve strict monotonicity. */
+static const uint16_t soc_mv_table[100] = {
+    3270, 3288, 3295, 3301, 3323, // 0-4%
+    3333, 3340, 3341, 3360, 3377, // 5-9%
+    3380, 3381, 3386, 3388, 3398, // 10-14%
+    3423, 3424, 3428, 3430, 3431, // 15-19%
+    3432, 3434, 3436, 3438, 3454, // 20-24%
+    3472, 3473, 3474, 3475, 3476, // 25-29%
+    3477, 3479, 3480, 3481, 3482, // 30-34%
+    3485, 3486, 3498, 3506, 3507, // 35-39%
+    3509, 3512, 3513, 3514, 3515, // 40-44%
+    3516, 3521, 3529, 3546, 3555, // 45-49%
+    3558, 3562, 3565, 3566, 3570, // 50-54%
+    3583, 3605, 3607, 3613, 3616, // 55-59%
+    3621, 3637, 3656, 3657, 3659, // 60-64%
+    3664, 3685, 3703, 3704, 3709, // 65-69%
+    3715, 3731, 3748, 3755, 3758, // 70-74%
+    3761, 3787, 3796, 3799, 3805, // 75-79%
+    3807, 3830, 3837, 3838, 3840, // 80-84%
+    3845, 3880, 3881, 3885, 3889, // 85-89%
+    3904, 3925, 3929, 3934, 3940, // 90-94%
+    3975, 3977, 3981, 4014, 4020, // 95-99%
+};
+
+static int percent_from_voltage(uint16_t mv)
+{
+    if (mv <= soc_mv_table[0])  return 0;
+    if (mv >  soc_mv_table[99]) return 100;
+    for (int i = 99; i >= 0; i--) {
+        if (mv >= soc_mv_table[i]) return i;
+    }
+    return 0;
+}
+
+static int get_internal_resistance_milliohm(void)
+{
+    /* Internal resistance scales with SOC. Uses battery.percent from the
+       previous iteration, self-correcting on each pass. */
+    if (battery.percent <= 0)   return BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM;
+    if (battery.percent >= 100) return BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM;
+
+    return BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM
+    + (BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM - BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM)
+    * battery.percent / 100;
+}
+
+static void calc_amperage(void)
+{
+    /* Update IIR low-pass filters (weight ~1/8 new sample) */
+    battery.sys_mv_filtered = battery.sys_mv_filtered - (battery.sys_mv_filtered / 8) + sys_mv;
+    battery.bat_mv_filtered = battery.bat_mv_filtered - (battery.bat_mv_filtered / 8) + bat_mv;
+
+    /* Derive current from voltage drop across the sense resistor,
+       corrected for the voltage divider ratio */
+    battery.sense_drop_mv = (battery.bat_mv_filtered - battery.sys_mv_filtered) / 16;
+    battery.sense_drop_mv = battery.sense_drop_mv * (RESISTOR_A_KOHM + RESISTOR_B_KOHM) / RESISTOR_A_KOHM;
+    battery.current_ma    = battery.sense_drop_mv * (1000 / SENSE_RESISTOR_MILLIOHM);
+}
+
+static void calc_voltage(void)
+{
+    /* Remove the sense resistor drop to get closer to true battery voltage,
+       then compensate for SOC-dependent internal resistance */
+    battery.adjusted_sys_mv = battery.sys_mv_filtered - battery.sense_drop_mv;
+
+    battery.open_circuit_mv = battery.adjusted_sys_mv
+    - battery.current_ma * get_internal_resistance_milliohm() / 1000;
+
+    /* Nudge the display voltage one step toward open_circuit_mv,
+       ignoring noise within a +/-25mV hysteresis band */
+    if      (battery.open_circuit_mv > battery.display_mv + 25) battery.display_mv++;
+    else if (battery.open_circuit_mv < battery.display_mv - 25) battery.display_mv--;
+}
+
+static void calc_battery_status(void)
+{
+    battery.percent = percent_from_voltage(battery.display_mv);
+
+    /* Determine charge state from current flow */
+    if (battery.current_ma < -60)  battery.charge_state = BAT_DISCHARGING;
+    if (battery.current_ma >= 0)   battery.charge_state = BAT_CHARGING;
+    if (battery.display_mv > 4000 && abs(battery.current_ma) < 50)
+        battery.charge_state = BAT_CHARGED;
+}
+
+/* The monitor reads these same bytes from shared memory and converts them
+   as if they were full 10-bit ADC samples (*3000/1024), then seeds its
+   filters at 8x that value. The 8x cancels at steady state, so we must use
+   the identical (non-obvious) scaling for bit-identical results. */
+static void battery_init(uint8_t sys_raw, uint8_t bat_raw)
+{
+    sys_mv = (uint16_t)sys_raw * 3000 / 1024;
+    bat_mv = (uint16_t)bat_raw * 3000 / 1024;
+    battery.sys_mv_filtered = sys_mv * 8;
+    battery.bat_mv_filtered = bat_mv * 8;
+    battery.percent         = 50; /* reasonable starting point for resistance lookup */
+
+    calc_amperage();
+    calc_voltage();
+    calc_battery_status();
+    battery.display_mv = battery.open_circuit_mv;
+}
+
+/* One pipeline step per gamepad packet */
+static void battery_update(uint8_t sys_raw, uint8_t bat_raw)
+{
+    sys_mv = (uint16_t)sys_raw * 3000 / 1024;
+    bat_mv = (uint16_t)bat_raw * 3000 / 1024;
+    calc_amperage();
+    calc_voltage();
+    calc_battery_status();
 }
 
 /* ------------------------------ stick widget ---------------------------- */
@@ -493,6 +646,37 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
         for (int i = 0; i < 8; i++)
             fill_rect(c, x0 + i * 18, 454, 14, 16, i < lvl ? C_WHITE : C_DZ);
     }
+    /* battery indicator, top-right corner beside R1/R2: a battery icon
+       filled bottom-up by percent (color: green=charged/full, amber=charging
+       with a bolt overlay, white while discharging above 20%, red at or
+       below) */
+    {
+        uint32_t col = st->charge_state == BAT_CHARGED ? C_GREEN
+                     : st->charge_state == BAT_CHARGING ? C_AMBER
+                     : st->bat_percent <= 20 ? C_RED : C_WHITE;
+        const int bx = 744, by = 10, bw = 56, bh = 70;
+
+        /* battery body + top terminal nub, centered in the box */
+        const int cx = bx + bw / 2;
+        const int body_w = 36, body_h = 48;
+        const int body_x = cx - body_w / 2, body_y = by + bh - 8 - body_h;
+        fill_rect(c, cx - 8, body_y - 8, 16, 8, col);            /* nub */
+        rect_outline(c, body_x, body_y, body_w, body_h, 2, col);
+
+        /* level fill, bottom-up, inset 4px inside the body */
+        int fh = (body_h - 8) * st->bat_percent / 100;
+        if (fh > 0) fill_rect(c, body_x + 4, body_y + body_h - 4 - fh,
+                              body_w - 8, fh, col);
+
+        /* bolt overlay while charging */
+        if (st->charge_state == BAT_CHARGING) {
+            fill_triangle(c, cx + 3, body_y + 6,
+                          cx - 8, body_y + 22, cx - 1, body_y + 22, C_WHITE);
+            fill_triangle(c, cx - 3, body_y + 40,
+                          cx + 8, body_y + 24, cx + 1, body_y + 24, C_WHITE);
+        }
+    }
+
     if (st->power) {
         uint32_t pc = st->pwr_critical ? C_RED : C_AMBER;
         const int bx = 744, by = 444, bw = 56, bh = 36;
@@ -611,6 +795,9 @@ int main(int argc, char **argv)
     }
     printf("gamepad link OK (buttons=0x%04X sticks=%d,%d)\n", st.buttons, st.sx, st.sy);
 
+    /* seed the battery estimator from the first valid packet */
+    battery_init(st.adc_sys, st.adc_bat);
+
     Display disp;
     const char *cname = NULL;
     if (!display_init(&disp, &cname)) return 1;
@@ -638,6 +825,9 @@ int main(int argc, char **argv)
         for (int i = 0; i < 3 && !ok; i++) ok = read_packet(&st);
         if (ok) {
             link_fail = 0;
+            battery_update(st.adc_sys, st.adc_bat);
+            st.bat_percent   = battery.percent;
+            st.charge_state  = battery.charge_state;
         } else {
             /* The screen intentionally freezes on the last good state while
                the link is down (that is the point of the display), but a
@@ -698,7 +888,9 @@ int main(int argc, char **argv)
                     abs((int)st.sx - (int)prev.sx) >= 2 ||
                     abs((int)st.sy - (int)prev.sy) >= 2 ||
                     abs((int)st.rx - (int)prev.rx) >= 2 ||
-                    abs((int)st.ry - (int)prev.ry) >= 2;
+                    abs((int)st.ry - (int)prev.ry) >= 2 ||
+                    (st.bat_percent != prev.bat_percent) ||
+                    (st.charge_state != prev.charge_state);
         } else {
             /* CRC failures aren't shown on screen anymore; while the bus is
                down the only thing that can change the display is the stale
