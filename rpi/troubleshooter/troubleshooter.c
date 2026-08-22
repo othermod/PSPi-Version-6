@@ -162,8 +162,9 @@ static bool parse_packet(const uint8_t *pkt, PadState *st)
     st->sy = pkt[6];
     st->rx = pkt[7] & STICK_MASK;
     st->ry = pkt[8] & STICK_MASK;
-    st->l2 = (pkt[8] & 1) != 0;          /* matches driver: ry bit0 -> L2 */
-    st->r2 = (pkt[7] & 1) != 0;          /*              rx bit0 -> R2 */
+    st->l2 = (pkt[7] & 1) != 0;          /* rx bit0 -> BTN1 (swapped from
+                                            the driver's L2/R2 naming) */
+    st->r2 = (pkt[8] & 1) != 0;          /* ry bit0 -> BTN2 */
     st->muted = (pkt[4] & STATUS_MUTED) != 0;
     st->wifi = (pkt[4] & STATUS_WIFI) == 0;   /* bit is raw switch pos; wifi on = clear */
     st->brightness = pkt[4] & STATUS_BRIGHT;
