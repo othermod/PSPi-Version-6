@@ -691,8 +691,8 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
         if (fh > 0) fill_rect(c, body_x + 2, body_y + body_h - 2 - fh,
                               body_w - 4, fh, col);
 
-        /* bolt overlay while charging */
-        if (st->charge_state == BAT_CHARGING) {
+        /* bolt overlay while the charger is connected (charging or full) */
+        if (st->charge_state != BAT_DISCHARGING) {
             fill_triangle(c, cx + 2, body_y + 3,
                           cx - 4, body_y + 11, cx, body_y + 11, C_WHITE);
             fill_triangle(c, cx - 2, body_y + 21,
