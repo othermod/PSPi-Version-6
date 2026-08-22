@@ -31,11 +31,22 @@ jobs:
 
       - name: Build
         run: |
-          cd atmega/firmware
+          cd atmega
           make all
+
+      # Stage the three hexes flat so the artifact root contains them directly.
+      # upload-artifact v4 roots the artifact at the least common ancestor of
+      # the paths, which scripts/distros/firmware.sh relies on being flat
+      # (it reads $DRIVER_BINARIES_DIR/atmega-firmware/firmware.hex).
+      - name: Stage artifacts
+        run: |
+          mkdir -p artifact-staging
+          cp atmega/firmware/firmware.hex artifact-staging/
+          cp atmega/bootloader/bootloader.hex artifact-staging/
+          cp atmega/combined.hex artifact-staging/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: atmega-firmware
-          path: atmega/firmware/firmware.hex
+          path: artifact-staging/*
