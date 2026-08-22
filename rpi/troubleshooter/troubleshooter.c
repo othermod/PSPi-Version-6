@@ -153,6 +153,25 @@ static bool i2c_open(void)
     return true;
 }
 
+/* WiFi LED control via the firmware's CMD_WIFI (0x20): 0=off, 1=solid,
+   2=blink (~128 ms per invert, driven by the MCU's 1 ms loop). The wifi
+   monitor normally owns this; the troubleshooter uses blink while the
+   switch is on and restores off on exit. */
+#define CMD_WIFI 0x20
+
+static void wifi_led_set(uint8_t mode)
+{
+    if (i2c_fd < 0) return;
+    uint8_t cmd[4] = { CMD_WIFI, mode, 0, 0 };
+    if (write(i2c_fd, cmd, sizeof cmd) != sizeof cmd)
+        perror("wifi led cmd");
+}
+
+static void wifi_led_cleanup(void)
+{
+    wifi_led_set(0);
+}
+
 static bool parse_packet(const uint8_t *pkt, PadState *st)
 {
     if (crc16_ccitt(pkt, CRC_LEN) != (uint16_t)((pkt[9] << 8) | pkt[10]))
@@ -822,6 +841,7 @@ int main(int argc, char **argv)
 
     init_crc16_table();
     atexit(audio_cleanup);
+    atexit(wifi_led_cleanup);
     if (!i2c_open()) return 1;
 
     if (do_probe) { probe(); return 0; }
@@ -885,6 +905,21 @@ int main(int argc, char **argv)
         }
 
         double now = now_sec();
+
+        /* WiFi LED: blink while the switch is on. Re-sent every second so
+           the MCU recovers if it resets mid-run; edge-triggered otherwise. */
+        {
+            static bool sent_blink = false;
+            static double next_resend = 0.0;
+            if (st.wifi && (!sent_blink || now >= next_resend)) {
+                wifi_led_set(2);
+                sent_blink = true;
+                next_resend = now + 1.0;
+            } else if (!st.wifi && sent_blink) {
+                wifi_led_set(0);
+                sent_blink = false;
+            }
+        }
 
         /* USB presence rescan, throttled (readdir every poll is waste) */
         {
