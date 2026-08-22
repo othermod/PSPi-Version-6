@@ -575,9 +575,9 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
 
     /* shoulder triggers, centered over their stick-side cluster */
     draw_tag_rect(c, L_TAG_CX - TAG_W / 2, 10, TAG_W, 32, "L1", st->buttons & BTN_L1);
-    draw_tag_rect(c, L_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "L2", st->l2);
+    draw_tag_rect(c, L_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "BTN1", st->l2);
     draw_tag_rect(c, R_TAG_CX - TAG_W / 2, 10, TAG_W, 32, "R1", st->buttons & BTN_R1);
-    draw_tag_rect(c, R_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "R2", st->r2);
+    draw_tag_rect(c, R_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "BTN2", st->r2);
 
     /* audio-test hint, top center between the trigger tags: "ENABLE AUDIO
        TEST" while the tone is off (white), "DISABLE AUDIO TEST" once it's
