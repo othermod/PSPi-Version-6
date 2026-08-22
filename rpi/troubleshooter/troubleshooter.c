@@ -35,6 +35,7 @@
 #include <time.h>
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
+#include <dirent.h>
 
 #include "gfx_util.h"
 
@@ -139,6 +140,7 @@ typedef struct {
     uint8_t adc_sys, adc_bat;    /* raw voltage bytes from this packet */
     int      bat_percent;        /* battery estimate (from Battery struct) */
     uint8_t  charge_state;       /* BAT_DISCHARGING / CHARGING / CHARGED */
+    bool     usb;                /* a USB device is connected */
 } PadState;
 
 static int i2c_fd = -1;
@@ -369,6 +371,26 @@ static void battery_update(uint8_t sys_raw, uint8_t bat_raw)
     calc_amperage();
     calc_voltage();
     calc_battery_status();
+}
+
+/* ------------------------------ usb detection ---------------------------- */
+
+/* True when at least one real USB device is attached. /sys/bus/usb/devices
+   holds root hubs ("usbN"), interfaces ("1-0:1.0"), and devices ("1-1",
+   "2-1.3"); a dash without a colon identifies an actual device. */
+static bool usb_device_present(void)
+{
+    DIR *d = opendir("/sys/bus/usb/devices");
+    if (!d) return false;
+    struct dirent *e;
+    bool found = false;
+    while (!found && (e = readdir(d)) != NULL) {
+        const char *n = e->d_name;
+        if (strchr(n, '-') && !strchr(n, ':'))
+            found = true;
+    }
+    closedir(d);
+    return found;
 }
 
 /* ------------------------------ stick widget ---------------------------- */
@@ -654,27 +676,46 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
         uint32_t col = st->charge_state == BAT_CHARGED ? C_GREEN
                      : st->charge_state == BAT_CHARGING ? C_AMBER
                      : st->bat_percent <= 20 ? C_RED : C_WHITE;
-        const int bx = 744, by = 10, bw = 56, bh = 70;
+        const int cx = 772;
 
-        /* battery body + top terminal nub, centered in the box */
-        const int cx = bx + bw / 2;
-        const int body_w = 36, body_h = 48;
-        const int body_x = cx - body_w / 2, body_y = by + bh - 8 - body_h;
-        fill_rect(c, cx - 8, body_y - 8, 16, 8, col);            /* nub */
-        rect_outline(c, body_x, body_y, body_w, body_h, 2, col);
+        /* battery body + top terminal nub, spanning y 10..38 like the USB
+           icon (top-aligned with the R1 box) */
+        const int body_w = 18, body_h = 24;
+        const int body_x = cx - body_w / 2, body_y = 38 - body_h;
+        fill_rect(c, cx - 3, body_y - 4, 6, 4, col);             /* nub */
+        rect_outline(c, body_x, body_y, body_w, body_h, 1, col);
 
-        /* level fill, bottom-up, inset 4px inside the body */
-        int fh = (body_h - 8) * st->bat_percent / 100;
-        if (fh > 0) fill_rect(c, body_x + 4, body_y + body_h - 4 - fh,
-                              body_w - 8, fh, col);
+        /* level fill, bottom-up, inset 2px inside the body */
+        int fh = (body_h - 4) * st->bat_percent / 100;
+        if (fh > 0) fill_rect(c, body_x + 2, body_y + body_h - 2 - fh,
+                              body_w - 4, fh, col);
 
         /* bolt overlay while charging */
         if (st->charge_state == BAT_CHARGING) {
-            fill_triangle(c, cx + 3, body_y + 6,
-                          cx - 8, body_y + 22, cx - 1, body_y + 22, C_WHITE);
-            fill_triangle(c, cx - 3, body_y + 40,
-                          cx + 8, body_y + 24, cx + 1, body_y + 24, C_WHITE);
+            fill_triangle(c, cx + 2, body_y + 3,
+                          cx - 4, body_y + 11, cx, body_y + 11, C_WHITE);
+            fill_triangle(c, cx - 2, body_y + 21,
+                          cx + 4, body_y + 13, cx, body_y + 13, C_WHITE);
         }
+    }
+
+    /* USB icon, top-left corner beside L1/L2: shown only while a USB
+       device is connected (trident: arrowhead shaft, square + circle
+       branch ends, base node). Horizontally centered in the gap between
+       the screen edge and the L1 box; vertically aligned with the battery
+       icon: both span exactly y 10..38. */
+    if (st->usb) {
+        const uint32_t col = C_WHITE;
+        const int cx = 30;
+        draw_line(c, cx, 33, cx, 18, 2, col);                 /* shaft   */
+        fill_triangle(c, cx, 12, cx - 4, 18, cx + 4, 18, col);/* arrowhead */
+        fill_circle(c, cx, 35, 3, col);                       /* base node */
+        draw_line(c, cx, 29, cx - 7, 23, 2, col);             /* left branch  */
+        draw_line(c, cx - 7, 23, cx - 7, 18, 2, col);
+        fill_circle(c, cx - 7, 15, 3, col);                   /*   circle end */
+        draw_line(c, cx, 25, cx + 7, 19, 2, col);             /* right branch */
+        draw_line(c, cx + 7, 19, cx + 7, 15, 2, col);
+        fill_rect(c, cx + 5, 10, 5, 5, col);                  /*   square end */
     }
 
     if (st->power) {
@@ -844,6 +885,15 @@ int main(int argc, char **argv)
 
         double now = now_sec();
 
+        /* USB presence rescan, throttled (readdir every poll is waste) */
+        {
+            static double next_usb = 0.0;
+            if (now >= next_usb) {
+                st.usb = usb_device_present();
+                next_usb = now + 0.25;
+            }
+        }
+
         /* power key: popup while held; 500 ms consecutive hold -> shutdown */
         if (st.power && !prev.power) pwr_since = now;
         if (!st.power && prev.power) pwr_since = 0.0;
@@ -890,7 +940,8 @@ int main(int argc, char **argv)
                     abs((int)st.rx - (int)prev.rx) >= 2 ||
                     abs((int)st.ry - (int)prev.ry) >= 2 ||
                     (st.bat_percent != prev.bat_percent) ||
-                    (st.charge_state != prev.charge_state);
+                    (st.charge_state != prev.charge_state) ||
+                    (st.usb != prev.usb);
         } else {
             /* CRC failures aren't shown on screen anymore; while the bus is
                down the only thing that can change the display is the stale
