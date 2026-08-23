@@ -217,6 +217,16 @@ distro_post_patch() {
     local BIN="$4"
     local LABEL="$5"
 
+    # Purge any rfkill state baked into the base image. systemd-rfkill
+    # restores these files verbatim at every boot, so a stale "blocked" entry
+    # for the board's Bluetooth UART leaves hci0 soft-blocked and powered off
+    # -- bluetoothctl scans then report "No devices were found". Deleting the
+    # directory makes all radios come up unblocked on first boot; the directory
+    # is recreated by systemd-rfkill the first time the user changes radio
+    # state, so intentional blocking still persists normally afterward.
+    echo "  [retropie] Clearing stale rfkill state..."
+    rm -rf "$rootfs/var/lib/systemd/rfkill"
+
     local qemu_bin registered
     # "none" means the host runs this arch natively and no emulation is needed.
     read -r qemu_bin registered < <(_retropie_setup_binfmt "$BIN")
