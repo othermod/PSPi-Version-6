@@ -499,17 +499,19 @@ ESCFG
     # raspi-config and runcommand dialogs), the SDL mapper and the per-emulator
     # keymaps (mupen64plus, flycast/reicast). We preinstall es_input.cfg so the
     # wizard never runs on the device, so replay it here from the temp config
-    # ES would have written for that session. The layout mirrors
-    # scripts/config/es_input.cfg; leftshoulder/rightshoulder are the L1/R1
-    # buttons (also pageup/pagedown in ES), and no hotkeyenable is assigned so
-    # the wizard's onend rule makes select the retroarch hotkey.
+    # ES would have written for that session. The capture is Nintendo-style:
+    # 'a' = east button (id 1), 'b' = south button (id 0), which gives the
+    # correct RetroPad layout in games; combined with es_swap_a_b=1 below, a
+    # future on-device wizard re-run produces the same ES layout. hotkeyenable
+    # is the Home/PS button (id 10) so games exit with Start+Home.
     local tmp_cfg="/opt/retropie/configs/all/emulationstation/es_temporaryinput.cfg"
     cat > "$rootfs$tmp_cfg" <<'ESCFG'
 <?xml version="1.0"?>
 <inputList>
   <inputConfig type="joystick" deviceName="PS3 Controller" vendorId="1356" productId="616" deviceGUID="03007a2e4c0500006802000011810000">
-    <input name="a" type="button" id="0" value="1"/>
-    <input name="b" type="button" id="1" value="1"/>
+    <input name="a" type="button" id="1" value="1"/>
+    <input name="b" type="button" id="0" value="1"/>
+    <input name="hotkeyenable" type="button" id="10" value="1"/>
     <input name="x" type="button" id="2" value="1"/>
     <input name="y" type="button" id="3" value="1"/>
     <input name="leftshoulder" type="button" id="4" value="1"/>
@@ -539,7 +541,10 @@ ESCFG
           "$rootfs/tmp/openMSXtemp.cfg" "$rootfs/tmp/mp64tempconfig.cfg" \
           "$rootfs/tmp/flycast-input-"*.ini "$rootfs$tmp_cfg"
 
-    # Skip the ES input wizard on first boot.
+    # Skip the ES input wizard on first boot. The curated es_input.cfg maps
+    # 'a' (enter) to button 0 (X/south) and 'b' (back) to button 1 (O/east);
+    # it matches what the swap-enabled wizard would generate, but installing it
+    # explicitly keeps the first-boot layout deterministic.
     rm -f "$es_dir/es_input.cfg.bak"
     cp "$CONFIG_DIR/es_input.cfg" "$es_dir/es_input.cfg" \
         || die "[retropie] Failed to install es_input.cfg"
@@ -554,7 +559,17 @@ ESCFG
     # Restore the patcher's own EXIT trap.
     trap cleanup EXIT
 
-    # RetroArch PSPi tweaks
+    # PSPi controller layout (validated on-device with both the PSPi pad and a
+    # real DualSense). The pad is captured Nintendo-style - east pressed for
+    # "A" - so RetroPie's own swap mechanisms align every consumer:
+    #   es_swap_a_b=1                -> ES config module writes es_input.cfg
+    #                                   inverted, giving X(enter)/O(back) in ES
+    #   menu_swap_ok_cancel_buttons  -> joy2key swaps Enter/Space in console
+    #                                   dialogs so Enter lands on south/X
+    #                                   (inert upstream until a comparison bug
+    #                                   in joy2key_sdl.py is fixed; harmless)
+    # RetroArch games read the autoconfig directly: A=east, B=south, and
+    # Start+Home exits a game (hotkey = Home/PS button).
     local ra_cfg="$rootfs/opt/retropie/configs/all/retroarch.cfg"
     if [[ -f "$ra_cfg" ]]; then
         sed -i 's/^#\?\s*menu_swap_ok_cancel_buttons\s*=.*/menu_swap_ok_cancel_buttons = "true"/' "$ra_cfg"
@@ -564,8 +579,6 @@ ESCFG
     else
         echo "  [retropie] WARNING: retroarch.cfg not found"
     fi
-    # Mirrors RetroPie Setup's "Swap A/B Buttons in ES" toggle
-    # (setAutoConf es_swap_a_b 1) + the retroarch.cfg change above.
     local ac_cfg="$rootfs/opt/retropie/configs/all/autoconf.cfg"
     if [[ -f "$ac_cfg" ]]; then
         sed -i 's/^#\?\s*es_swap_a_b\s*=.*/es_swap_a_b = "1"/' "$ac_cfg"
@@ -573,7 +586,7 @@ ESCFG
             echo 'es_swap_a_b = "1"' >> "$ac_cfg"
         fi
         chown 1000:1000 "$ac_cfg"
-        echo "  [retropie] Swapped A/B buttons in ES (es_swap_a_b=1)"
+        echo "  [retropie] Set es_swap_a_b=1"
     else
         echo "  [retropie] WARNING: autoconf.cfg not found"
     fi
