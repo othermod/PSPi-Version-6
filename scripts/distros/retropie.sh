@@ -329,10 +329,12 @@ KEYBOARD
     # download() in helpers.sh hardcodes "--connect-timeout 10" with no --retry,
     # so a single SSL/connection timeout to files.retropie.org.uk aborts the
     # whole build. Add retries and a longer connect timeout so transient
-    # failures are retried instead of failing the build.
+    # failures (timeouts, connection resets) are retried instead of failing
+    # the build. --retry-all-errors is required for curl to retry mid-transfer
+    # resets (error 18), which plain --retry does not cover.
     local helpers="$rootfs/home/pi/RetroPie-Setup/scriptmodules/helpers.sh"
     if [[ -f "$helpers" ]] && ! grep -q 'RP_RETRY_DOWNLOADS' "$helpers"; then
-        sed -i 's/--connect-timeout 10 --speed-limit 1 --speed-time 60 --fail/--connect-timeout 30 --retry 5 --retry-delay 2 --speed-limit 1 --speed-time 60 --fail/' "$helpers"
+        sed -i 's/--connect-timeout 10 --speed-limit 1 --speed-time 60 --fail/--connect-timeout 30 --retry 5 --retry-delay 2 --retry-all-errors --speed-limit 1 --speed-time 60 --fail/' "$helpers"
         echo "  [retropie] Patched RetroPie download() with --retry 5 (resilient CDN downloads)"
     fi
 
