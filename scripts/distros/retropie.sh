@@ -220,12 +220,21 @@ distro_post_patch() {
     # Purge any rfkill state baked into the base image. systemd-rfkill
     # restores these files verbatim at every boot, so a stale "blocked" entry
     # for the board's Bluetooth UART leaves hci0 soft-blocked and powered off
-    # -- bluetoothctl scans then report "No devices were found". Deleting the
-    # directory makes all radios come up unblocked on first boot; the directory
-    # is recreated by systemd-rfkill the first time the user changes radio
-    # state, so intentional blocking still persists normally afterward.
+    # -- bluetoothctl scans then report "No devices were found".
     echo "  [retropie] Clearing stale rfkill state..."
     rm -rf "$rootfs/var/lib/systemd/rfkill"
+
+    # raspberrypi-sys-mods ships /etc/modprobe.d/rfkill_default.conf with
+    # "options rfkill default_state=0", registering every radio soft-blocked
+    # at creation. Upstream assumes the first-boot wizard unblocks radios once
+    # the user picks a wireless country; piwiz is masked here, so nothing ever
+    # does and hci0 stays blocked. Re-enable the kernel default (radios come
+    # up unblocked); the filename must sort after rfkill_default.conf since
+    # the last matching modprobe.d entry wins. A user can still disable a
+    # radio with rfkill block -- that choice persists via systemd-rfkill.
+    cat > "$rootfs/etc/modprobe.d/zz-pspi-rfkill.conf" <<'MODPROBE'
+options rfkill default_state=1
+MODPROBE
 
     local qemu_bin registered
     # "none" means the host runs this arch natively and no emulation is needed.
