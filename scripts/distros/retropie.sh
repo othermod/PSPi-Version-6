@@ -13,6 +13,13 @@ PATCH_METHOD="copy"
 DRIVERS_BASE="/boot/firmware"
 INIT_SYSTEM="systemd"
 
+# EmulationStation fork (adds a battery level indicator for handheld use).
+# The emulationstation scriptmodule is repointed at this repo before
+# basic_install, and ES is rebuilt from source afterward to override any
+# prebuilt binary that basic_install installed.
+ES_FORK_URL="https://github.com/othermod/EmulationStation.git"
+ES_FORK_BRANCH="master"
+
 ALL_TARGETS=(zero1 zero2 cm4 cm5)
 
 declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN TARGET_RP_PLATFORM
@@ -310,10 +317,31 @@ KEYBOARD
         echo "  [retropie] Patched RetroPie download() with --retry 5 (resilient CDN downloads)"
     fi
 
+    # Point the emulationstation scriptmodule at the PSPi6 fork. Done after
+    # cloning RetroPie-Setup and before basic_install. Hardcoding the branch
+    # (instead of the module's _get_branch function) keeps every target on the
+    # same tested code regardless of OS version.
+    local es_module="$rootfs/home/pi/RetroPie-Setup/scriptmodules/supplementary/emulationstation.sh"
+    if [[ -f "$es_module" ]]; then
+        sed -i "s|^rp_module_repo=.*|rp_module_repo=\"git ${ES_FORK_URL} ${ES_FORK_BRANCH}\"|" "$es_module"
+        echo "  [retropie] Repointed emulationstation module at othermod/EmulationStation (${ES_FORK_BRANCH})"
+    else
+        echo "  [retropie] WARNING: emulationstation.sh module not found - using stock ES"
+    fi
+
     # Run the basic install
     echo "  [retropie] Running basic_install (this will take a long time under QEMU)..."
     chroot "$rootfs" /bin/bash -c \
         "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh setup basic_install"
+
+    # Rebuild EmulationStation from the fork. basic_install installs prebuilt
+    # binaries for rpi3/rpi4/rpi5 (and builds from source for rpi1), so this
+    # explicit source build guarantees the fork's code (battery indicator)
+    # ends up in the image on every target. _source_ runs the full chain:
+    # depends sources build install configure.
+    echo "  [retropie] Rebuilding EmulationStation from the PSPi6 fork (slow, especially under QEMU)..."
+    chroot "$rootfs" /bin/bash -c \
+        "__platform=$rp_platform __user=pi /home/pi/RetroPie-Setup/retropie_packages.sh emulationstation _source_"
 
     # Install the USB ROM Service (usbromservice): the stock image's tool for
     # adding ROMs/BIOS by plugging in a USB drive. It's an opt-section module,
