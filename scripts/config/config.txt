@@ -53,7 +53,7 @@ dtoverlay=disable-pcie
 # Enable antenna
 dtparam=ant2
 
-dtoverlay=pspi-audio-cm4-kernel6+
+dtoverlay=pspi-audio-cm5-kernel6+
 dtoverlay=pspi-lcd-overlay
 
 [pi0]

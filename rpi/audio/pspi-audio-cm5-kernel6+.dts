@@ -1,0 +1,78 @@
+/dts-v1/;
+/plugin/;
+
+/*
+ * PSPi Version 6 - CM5 audio on GPIO39.
+ *
+ * On CM5 the analog/PWM audio block lives in RP1 ("rp1_audio_out"), and its
+ * pads are reached through the "aaud" pin function. On CM5 carriers the
+ * audio-capable pads are GPIO38 (AAUD_LEFT) and GPIO39 (AAUD_RIGHT); the
+ * CM4-era GPIO45 route no longer exists.
+ *
+ * This overlay routes ONLY GPIO39, which carries the RIGHT channel PWM
+ * stream. It works with the stock rp1_aout kernel module - no custom
+ * driver needed.
+ *
+ * With the patched rp1_aout module installed, adding the "mono_mix"
+ * parameter downmixes L+R into every frame so GPIO39 alone carries the
+ * full stereo image. The stock module simply ignores the property.
+ */
+
+/ {
+	compatible = "brcm,bcm2712";
+
+	fragment@0 {
+		target = <&rp1_gpio>;
+		__overlay__ {
+			rp1_audio_out_39_only: rp1_audio_out_39_only {
+				function = "aaud";
+				pins = "gpio39";
+				bias-disable;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&rp1_audio_out>;
+		audio_out_node: __overlay__ {
+			pinctrl-0 = <&rp1_audio_out_39_only>;
+			pinctrl-names = "default";
+			status = "okay";
+		};
+	};
+
+	fragment@2 {
+		target-path = "/";
+		__overlay__ {
+			rp1_audio_out_codec: rp1_audio_out_codec {
+				compatible = "linux,spdif-dit";
+				#sound-dai-cells = <0>;
+				status = "okay";
+			};
+
+			rp1_audio_out_simple_card {
+				compatible = "simple-audio-card";
+				simple-audio-card,name = "RP1-Audio-Out";
+				status = "okay";
+
+				simple-audio-card,dai-link {
+					format = "left_j";
+					bitclock-master = <&sndcpu0>;
+					frame-master = <&sndcpu0>;
+
+					sndcpu0: cpu {
+						sound-dai = <&rp1_audio_out>;
+					};
+
+					codec {
+						sound-dai = <&rp1_audio_out_codec>;
+					};
+				};
+			};
+		};
+	};
+
+	__overrides__ {
+		mono_mix = <&audio_out_node>, "mono_mix?";
+	};
+};
