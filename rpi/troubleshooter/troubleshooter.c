@@ -37,7 +37,426 @@
 #include <linux/i2c-dev.h>
 #include <dirent.h>
 
-#include "gfx_util.h"
+#include <sys/mman.h>
+#include <poll.h>
+#include <drm/drm.h>
+#include <drm/drm_mode.h>
+
+/* DRM_MODE_CONNECTED is a libdrm enum value, not in the kernel UAPI header;
+   define it for the connector-status check below. */
+#define DRM_MODE_CONNECTED 1
+
+/* ------------------------------------------------------------------ */
+/* DRM display (raw KMS ioctl UAPI -- no libdrm)                       */
+/* ------------------------------------------------------------------ */
+
+/* Double-buffered DRM display */
+typedef struct {
+    int fd;              /* drm fd (master) */
+    int w, h;            /* mode resolution */
+    int pitch;           /* buffer pitch in pixels */
+    uint32_t crtc_id;
+    uint32_t fb[2];      /* two framebuffer IDs */
+    size_t size;         /* buffer size in bytes */
+    uint8_t *map[2];     /* mmaps of the two buffers */
+    int scan, paint;     /* which buffer is displayed / being painted */
+    uint32_t *buf;       /* pixel pointer to the current paint target */
+    bool flip_ok;        /* false if flips unsupported (paints in place) */
+} Display;
+
+typedef struct { Display *d; } Canvas;
+
+/* libdrm's drmModeGetConnectorTypeName -- replicated here so we don't link
+   libdrm just for this one string lookup. */
+static const char *connector_type_name(uint32_t t)
+{
+    switch (t) {
+    case DRM_MODE_CONNECTOR_Unknown:    return "Unknown";
+    case DRM_MODE_CONNECTOR_VGA:        return "VGA";
+    case DRM_MODE_CONNECTOR_DVII:       return "DVII";
+    case DRM_MODE_CONNECTOR_DVID:       return "DVID";
+    case DRM_MODE_CONNECTOR_DVIA:       return "DVIA";
+    case DRM_MODE_CONNECTOR_Composite:  return "Composite";
+    case DRM_MODE_CONNECTOR_SVIDEO:     return "SVideo";
+    case DRM_MODE_CONNECTOR_Component:  return "Component";
+    case DRM_MODE_CONNECTOR_9PinDIN:    return "9PinDIN";
+    case DRM_MODE_CONNECTOR_DisplayPort:return "DisplayPort";
+    case DRM_MODE_CONNECTOR_HDMIA:      return "HDMIA";
+    case DRM_MODE_CONNECTOR_HDMIB:      return "HDMIB";
+    case DRM_MODE_CONNECTOR_TV:         return "TV";
+    case DRM_MODE_CONNECTOR_eDP:        return "eDP";
+    case DRM_MODE_CONNECTOR_VIRTUAL:    return "Virtual";
+    case DRM_MODE_CONNECTOR_DSI:        return "DSI";
+    case DRM_MODE_CONNECTOR_DPI:        return "DPI";
+    case DRM_MODE_CONNECTOR_WRITEBACK:  return "WriteBack";
+    case DRM_MODE_CONNECTOR_SPI:        return "SPI";
+    case DRM_MODE_CONNECTOR_USB:        return "USB";
+    default:                            return "Unknown";
+    }
+}
+
+/* Fetch a connector's full data (modes + metadata) via the two-pass
+   DRM_IOCTL_MODE_GETCONNECTOR ioctl. Caller owns and must free *modes. The
+   encoders/props arrays the ioctl also fills are discarded -- the
+   troubleshooter doesn't need them. */
+static bool get_connector(int fd, uint32_t id,
+                           uint32_t *conn_id, uint32_t *type,
+                           uint32_t *encoder_id, uint32_t *connection,
+                           uint32_t *count_modes,
+                           struct drm_mode_modeinfo **modes)
+{
+    struct drm_mode_get_connector c;
+    memset(&c, 0, sizeof c);
+    c.connector_id = id;
+    if (ioctl(fd, DRM_IOCTL_MODE_GETCONNECTOR, &c)) return false;
+
+    struct drm_mode_modeinfo *m =
+        calloc(c.count_modes ? c.count_modes : 1, sizeof *m);
+    uint32_t *encs    = calloc(c.count_encoders ? c.count_encoders : 1, sizeof *encs);
+    uint32_t *props   = calloc(c.count_props   ? c.count_props   : 1, sizeof *props);
+    uint64_t *propvals= calloc(c.count_props   ? c.count_props   : 1, sizeof *propvals);
+
+    c.modes_ptr       = (uint64_t)(uintptr_t)m;
+    c.encoders_ptr    = (uint64_t)(uintptr_t)encs;
+    c.props_ptr       = (uint64_t)(uintptr_t)props;
+    c.prop_values_ptr = (uint64_t)(uintptr_t)propvals;
+    bool ok = ioctl(fd, DRM_IOCTL_MODE_GETCONNECTOR, &c) == 0;
+
+    if (ok) {
+        *conn_id      = c.connector_id;
+        *type         = c.connector_type;
+        *encoder_id   = c.encoder_id;
+        *connection   = c.connection;
+        *count_modes  = c.count_modes;
+        *modes        = m;
+    } else {
+        free(m);
+    }
+    free(encs); free(props); free(propvals);
+    return ok;
+}
+
+bool display_init(Display *d, const char **conn_name)
+{
+    const char *cards[] = { "/dev/dri/card0", "/dev/dri/card1" };
+    d->fd = -1;
+
+    uint32_t connector_id = 0, ctype = 0, encoder_id = 0, crtc_id = 0;
+    uint32_t count_modes = 0;
+    struct drm_mode_modeinfo *modes = NULL;
+
+    for (size_t ci = 0; ci < sizeof cards / sizeof cards[0] && !connector_id; ci++) {
+        int fd = open(cards[ci], O_RDWR);
+        if (fd < 0) continue;
+        if (ioctl(fd, DRM_IOCTL_SET_MASTER, 0) != 0) { close(fd); continue; }
+
+        struct drm_mode_card_res res;
+        memset(&res, 0, sizeof res);
+        if (ioctl(fd, DRM_IOCTL_MODE_GETRESOURCES, &res)) { close(fd); continue; }
+
+        uint32_t *crtcs = calloc(res.count_crtcs       ? res.count_crtcs       : 1, sizeof *crtcs);
+        uint32_t *conns = calloc(res.count_connectors  ? res.count_connectors  : 1, sizeof *conns);
+        res.crtc_id_ptr      = (uint64_t)(uintptr_t)crtcs;
+        res.connector_id_ptr = (uint64_t)(uintptr_t)conns;
+        if (ioctl(fd, DRM_IOCTL_MODE_GETRESOURCES, &res)) { free(crtcs); free(conns); close(fd); continue; }
+
+        for (uint32_t i = 0; i < res.count_connectors && !connector_id; i++) {
+            uint32_t cid, tp, eid, conn, cm;
+            struct drm_mode_modeinfo *ms;
+            if (!get_connector(fd, conns[i], &cid, &tp, &eid, &conn, &cm, &ms)) continue;
+            if (conn == DRM_MODE_CONNECTED && cm > 0) {
+                connector_id = cid; ctype = tp; encoder_id = eid;
+                count_modes  = cm; modes = ms; d->fd = fd;
+            } else {
+                free(ms);
+            }
+        }
+
+        if (connector_id) {
+            if (encoder_id) {
+                struct drm_mode_get_encoder e;
+                memset(&e, 0, sizeof e);
+                e.encoder_id = encoder_id;
+                if (ioctl(fd, DRM_IOCTL_MODE_GETENCODER, &e) == 0 && e.crtc_id)
+                    crtc_id = e.crtc_id;
+            }
+            if (!crtc_id && res.count_crtcs > 0) crtc_id = crtcs[0];
+        }
+        free(crtcs); free(conns);
+        if (!connector_id) close(fd);
+    }
+
+    if (!connector_id) {
+        fprintf(stderr, "error: no DRM card with a connected display "
+                        "(run with sudo?)\n");
+        return false;
+    }
+    if (conn_name) *conn_name = connector_type_name(ctype);
+
+    struct drm_mode_modeinfo *mode = &modes[0];
+    for (uint32_t i = 0; i < count_modes; i++)
+        if (modes[i].type & DRM_MODE_TYPE_PREFERRED) { mode = &modes[i]; break; }
+
+    d->crtc_id = crtc_id;
+    d->w = mode->hdisplay;
+    d->h = mode->vdisplay;
+    d->pitch = 0; d->size = 0; d->scan = 0; d->paint = 1; d->flip_ok = true;
+
+    /* create two dumb framebuffers (front/back) */
+    for (int i = 0; i < 2; i++) {
+        struct drm_mode_create_dumb cd = {
+            .width = (uint32_t)d->w, .height = (uint32_t)d->h, .bpp = 32,
+        };
+        if (ioctl(d->fd, DRM_IOCTL_MODE_CREATE_DUMB, &cd) != 0) { perror("CREATE_DUMB"); free(modes); return false; }
+
+        struct drm_mode_fb_cmd fb;
+        memset(&fb, 0, sizeof fb);
+        fb.width = cd.width; fb.height = cd.height; fb.pitch = cd.pitch;
+        fb.bpp = 32; fb.depth = 24; fb.handle = cd.handle;
+        if (ioctl(d->fd, DRM_IOCTL_MODE_ADDFB, &fb) != 0) { perror("drmModeAddFB"); free(modes); return false; }
+        d->fb[i] = fb.fb_id;
+
+        struct drm_mode_map_dumb md = { .handle = cd.handle };
+        if (ioctl(d->fd, DRM_IOCTL_MODE_MAP_DUMB, &md) != 0) { perror("MAP_DUMB"); free(modes); return false; }
+        d->map[i] = mmap(NULL, cd.size, PROT_READ | PROT_WRITE, MAP_SHARED, d->fd, md.offset);
+        if (d->map[i] == MAP_FAILED) { perror("mmap"); free(modes); return false; }
+        d->pitch = cd.pitch / 4;
+        d->size = cd.size;
+    }
+    d->buf = (uint32_t *)d->map[d->paint];
+
+    struct drm_mode_crtc sc;
+    memset(&sc, 0, sizeof sc);
+    sc.crtc_id = crtc_id; sc.fb_id = d->fb[0]; sc.x = 0; sc.y = 0;
+    sc.set_connectors_ptr = (uint64_t)(uintptr_t)&connector_id;
+    sc.count_connectors = 1; sc.mode_valid = 1; sc.mode = *mode;
+    if (ioctl(d->fd, DRM_IOCTL_MODE_SETCRTC, &sc) != 0) { perror("drmModeSetCrtc"); free(modes); return false; }
+
+    struct drm_mode_cursor cur;
+    memset(&cur, 0, sizeof cur);
+    cur.crtc_id = crtc_id;            /* handle 0 hides the cursor plane */
+    ioctl(d->fd, DRM_IOCTL_MODE_CURSOR, &cur);
+
+    printf("display: %s %dx%d @%dHz\n",
+           conn_name ? *conn_name : "?", d->w, d->h, mode->vrefresh);
+    free(modes);
+    return true;
+}
+
+void present(Display *d)
+{
+    if (!d->flip_ok) return;
+
+    int issued = 0;
+    for (int t = 0; t < 3; t++) {
+        struct drm_mode_crtc_page_flip pf;
+        memset(&pf, 0, sizeof pf);
+        pf.crtc_id = d->crtc_id;
+        pf.fb_id   = d->fb[d->paint];
+        pf.flags   = DRM_MODE_PAGE_FLIP_EVENT;
+        if (ioctl(d->fd, DRM_IOCTL_MODE_PAGE_FLIP, &pf) == 0) { issued = 1; break; }
+        if (errno != EBUSY) break;
+        usleep(30000);              /* CRTC still settling after setcrtc */
+    }
+    if (!issued) {
+        d->flip_ok = false;         /* fall back to in-place painting */
+        d->buf = (uint32_t *)d->map[d->scan];
+        fprintf(stderr, "warning: page flip failed (%s), painting in place\n",
+                strerror(errno));
+        return;
+    }
+
+    /* block until the flip-complete event so the old buffer is safe to reuse,
+       then swap scan/paint. If no completion event arrives within ~2 s (the
+       only failure mode the page-flip ioctl itself can't report), the old
+       buffer may still be scanned out -- painting on it would tear. Treat a
+       silent timeout exactly like an explicit flip failure: fall back to
+       painting in place on the scan buffer. */
+    bool done = false;
+    for (int w = 0; w < 200 && !done; w++) {
+        struct pollfd pfd = { .fd = d->fd, .events = POLLIN };
+        if (poll(&pfd, 1, 10) > 0) {
+            struct drm_event_vblank ev;
+            ssize_t n = read(d->fd, &ev, sizeof ev);
+            if (n >= (ssize_t)sizeof(struct drm_event) &&
+                ev.base.type == DRM_EVENT_FLIP_COMPLETE)
+                done = true;
+        }
+    }
+    if (!done) {
+        d->flip_ok = false;
+        d->buf = (uint32_t *)d->map[d->scan];
+        fprintf(stderr, "warning: page flip event timed out, painting in place\n");
+        return;
+    }
+
+    d->scan = d->paint;
+    d->paint ^= 1;                  /* old scanout is now free to draw */
+    d->buf = (uint32_t *)d->map[d->paint];
+}
+
+/* ------------------------------------------------------------------ */
+/* Canvas primitives (32-bit packed RGB, buffers are XRGB8888)         */
+/* ------------------------------------------------------------------ */
+
+void px(Canvas *c, int x, int y, uint32_t col)
+{
+    if (x < 0 || y < 0 || x >= c->d->w || y >= c->d->h) return;
+    c->d->buf[(size_t)y * c->d->pitch + x] = col;
+}
+
+void clear(Canvas *c)
+{
+    memset(c->d->buf, 0, c->d->size);
+}
+
+void fill_rect(Canvas *c, int x, int y, int w, int h, uint32_t col)
+{
+    for (int yy = y; yy < y + h; yy++)
+        for (int xx = x; xx < x + w; xx++)
+            px(c, xx, yy, col);
+}
+
+void rect_outline(Canvas *c, int x, int y, int w, int h, int t, uint32_t col)
+{
+    fill_rect(c, x, y, w, t, col);
+    fill_rect(c, x, y + h - t, w, t, col);
+    fill_rect(c, x, y, t, h, col);
+    fill_rect(c, x + w - t, y, t, h, col);
+}
+
+void fill_circle(Canvas *c, int cx, int cy, int r, uint32_t col)
+{
+    int x0 = cx - r, x1 = cx + r, y0 = cy - r, y1 = cy + r;
+    for (int y = y0; y <= y1; y++)
+        for (int x = x0; x <= x1; x++) {
+            int dx = x - cx, dy = y - cy;
+            if (dx * dx + dy * dy <= r * r) px(c, x, y, col);
+        }
+}
+
+/* ring of thickness t, hugging the inside of radius r */
+void ring_circle(Canvas *c, int cx, int cy, int r, int t, uint32_t col)
+{
+    int r2 = r * r, ri = (r - t) * (r - t);
+    for (int y = cy - r; y <= cy + r; y++)
+        for (int x = cx - r; x <= cx + r; x++) {
+            int dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
+            if (d2 >= ri && d2 <= r2) px(c, x, y, col);
+        }
+}
+
+void draw_line(Canvas *c, int x0, int y0, int x1, int y1, int t, uint32_t col)
+{
+    int dx = abs(x1 - x0), dy = -abs(y1 - y0);
+    int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
+    for (;;) {
+        fill_rect(c, x0 - t / 2, y0 - t / 2, t, t, col);
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
+static bool in_triangle(int px_, int py_,
+                        int x0, int y0, int x1, int y1, int x2, int y2)
+{
+    int s1 = (x1 - x0) * (py_ - y0) - (px_ - x0) * (y1 - y0);
+    int s2 = (x2 - x1) * (py_ - y1) - (px_ - x1) * (y2 - y1);
+    int s3 = (x0 - x2) * (py_ - y2) - (px_ - x2) * (y0 - y2);
+    return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
+}
+
+void fill_triangle(Canvas *c, int x0, int y0, int x1, int y1, int x2, int y2, uint32_t col)
+{
+    int minx = x0, maxx = x0, miny = y0, maxy = y0;
+    int xs[3] = { x0, x1, x2 }, ys[3] = { y0, y1, y2 };
+    for (int i = 1; i < 3; i++) {
+        if (xs[i] < minx) minx = xs[i];
+        if (xs[i] > maxx) maxx = xs[i];
+        if (ys[i] < miny) miny = ys[i];
+        if (ys[i] > maxy) maxy = ys[i];
+    }
+    for (int y = miny; y <= maxy; y++)
+        for (int x = minx; x <= maxx; x++)
+            if (in_triangle(x, y, x0, y0, x1, y1, x2, y2))
+                px(c, x, y, col);
+}
+
+/* ------------------------------------------------------------------ */
+/* 5x7 bitmap font (41 glyphs: A-Z 0-9 ':' '-' '/' '+' and space)                */
+/* ------------------------------------------------------------------ */
+
+static const char F5x7[][7] = {
+/*A*/" ### ","#   #","#   #","#####","#   #","#   #","#   #",
+/*B*/"#### ","#   #","#   #","#### ","#   #","#   #","#### ",
+/*C*/" ####","#    ","#    ","#    ","#    ","#    "," ####",
+/*D*/"#### ","#   #","#   #","#   #","#   #","#   #","#### ",
+/*E*/"#####","#    ","#    ","#### ","#    ","#    ","#####",
+/*F*/"#####","#    ","#    ","#### ","#    ","#    ","#    ",
+/*G*/" ####","#    ","#    ","#  ##","#   #","#   #"," ####",
+/*H*/"#   #","#   #","#   #","#####","#   #","#   #","#   #",
+/*I*/"#####","  #  ","  #  ","  #  ","  #  ","  #  ","#####",
+/*J*/"  ###","   # ","   # ","   # ","   # ","#  # "," ##  ",
+/*K*/"#   #","#  # ","# #  ","##   ","# #  ","#  # ","#   #",
+/*L*/"#    ","#    ","#    ","#    ","#    ","#    ","#####",
+/*M*/"#   #","## ##","# # #","#   #","#   #","#   #","#   #",
+/*N*/"#   #","##  #","# # #","#  ##","#   #","#   #","#   #",
+/*O*/" ### ","#   #","#   #","#   #","#   #","#   #"," ### ",
+/*P*/"#### ","#   #","#   #","#### ","#    ","#    ","#    ",
+/*Q*/" ### ","#   #","#   #","#   #","# # #","#  # "," ## #",
+/*R*/"#### ","#   #","#   #","#### ","# #  ","#  # ","#   #",
+/*S*/" ####","#    ","#    "," ### ","    #","    #","#### ",
+/*T*/"#####","  #  ","  #  ","  #  ","  #  ","  #  ","  #  ",
+/*U*/"#   #","#   #","#   #","#   #","#   #","#   #"," ### ",
+/*V*/"#   #","#   #","#   #","#   #","#   #"," # # ","  #  ",
+/*W*/"#   #","#   #","#   #","# # #","# # #","## ##","#   #",
+/*X*/"#   #","#   #"," # # ","  #  "," # # ","#   #","#   #",
+/*Y*/"#   #","#   #"," # # ","  #  ","  #  ","  #  ","  #  ",
+/*Z*/"#####","    #","   # ","  #  "," #   ","#    ","#####",
+/*0*/" ### ","#   #","#  ##","# # #","##  #","#   #"," ### ",
+/*1*/"  #  "," ##  ","  #  ","  #  ","  #  ","  #  ","#####",
+/*2*/" ### ","#   #","    #","   # ","  #  "," #   ","#####",
+/*3*/"#####","   # ","  #  ","   # ","    #","#   #"," ### ",
+/*4*/"   # ","  ## "," # # ","#  # ","#####","   # ","   # ",
+/*5*/"#####","#    ","#### ","    #","    #","#   #"," ### ",
+/*6*/" ### ","#    ","#    ","#### ","#   #","#   #"," ### ",
+/*7*/"#####","    #","   # ","  #  "," #   "," #   "," #   ",
+/*8*/" ### ","#   #","#   #"," ### ","#   #","#   #"," ### ",
+/*9*/" ### ","#   #","#   #"," ####","    #","    #"," ### ",
+/*:*/"     ","  #  ","  #  ","     ","  #  ","  #  ","     ",
+/*-*/"     ","     ","     ","#####","     ","     ","     ",
+/*/ "    #","   # ","  #  "," #   ","#    ","     ","     ",
+/* */"     ","     ","     ","     ","     ","     ","     ",
+/*+*/"     ","  #  ","  #  ","#####","  #  ","  #  ","     ",
+};
+
+static int glyph_index(char ch)
+{
+    if (ch >= 'A' && ch <= 'Z') return ch - 'A';
+    if (ch >= '0' && ch <= '9') return 26 + (ch - '0');
+    if (ch == ':') return 36;
+    if (ch == '-') return 37;
+    if (ch == '/') return 38;
+    if (ch == '+') return 40;
+    return 39;                  /* space */
+}
+
+int draw_text(Canvas *c, int x, int y, const char *s, int scale, uint32_t col)
+{
+    for (const char *p = s; *p; p++) {
+        int gi = glyph_index(*p);
+        for (int r = 0; r < 7; r++)
+            for (int cc = 0; cc < 5; cc++)
+                if (F5x7[gi * 7 + r][cc] == '#')
+                    for (int dy = 0; dy < scale; dy++)
+                        for (int dx = 0; dx < scale; dx++)
+                            px(c, x + cc * scale + dx, y + r * scale + dy, col);
+        x += 6 * scale;
+    }
+    return x;
+}
 
 /* ----------------------------- I2C protocol ----------------------------- */
 /* 11-byte packet, little-endian:

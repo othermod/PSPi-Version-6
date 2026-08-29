@@ -1,7 +1,6 @@
 .PHONY: 32 64 clean
 
-BUILDS  := battery firmware gamepad rtc wifi
-BUILD64 := troubleshooter
+BUILDS  := battery firmware gamepad rtc troubleshooter wifi
 DTBO    := audio lcd pcie
 
 32:
@@ -10,9 +9,8 @@ DTBO    := audio lcd pcie
 
 64:
 	@for dir in $(BUILDS); do $(MAKE) -C $$dir 64 || exit 1; done
-	@for dir in $(BUILD64); do $(MAKE) -C $$dir 64 || exit 1; done
 	@for dir in $(DTBO); do $(MAKE) -C $$dir || exit 1; done
 
 clean:
-	@for dir in $(BUILDS) $(BUILD64); do $(MAKE) -C $$dir clean || exit 1; done
+	@for dir in $(BUILDS); do $(MAKE) -C $$dir clean || exit 1; done
 	@for dir in $(DTBO); do $(MAKE) -C $$dir clean || exit 1; done

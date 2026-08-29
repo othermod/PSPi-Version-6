@@ -1,4 +1,4 @@
-# Raspberry Pi OS Lite + troubleshooter (headless display — 64-bit only).
+# Raspberry Pi OS Lite + troubleshooter (headless display — 32-bit armhf).
 #
 # Same base image, layout, and process as raspioslite.sh (Trixie Lite, copy
 # method, systemd, /boot/firmware), with ONE difference: instead of running
@@ -6,13 +6,13 @@
 # controller board directly over I2C (0x10, CRC-16-CCITT packets — same
 # protocol as the gamepad driver) and renders the live pad state on the PSPi
 # LCD via KMS/DRM: pressing buttons, stick deflection with deadzone, and a
-# power-key popup (500 ms hold = poweroff). No USB HID gamepad is presented
-# and there is no desktop cursor, so gamepad input is not exposed to the OS —
-# this is a controller-display image, not an input device.
+# power-key popup (500 ms hold = poweroff). The gamepad driver is never run,
+# so it creates no virtual input devices and gamepad input is not exposed to
+# the OS — this is a controller-display image, not an input device.
 #
-# 64-bit only: troubleshooter is an aarch64 build (libdrm, via the top-level
-# rpi/Makefile's BUILD64 set), so this distro ships a single arm64 target
-# (CM4, CM5, Zero 2 W — Zero 1 is armv6 and cannot run it).
+# 32-bit: the troubleshooter binary is cross-built for armv6 (armv6+vfp2, the
+# same baseline Raspberry Pi OS armhf itself uses), so this distro ships a
+# single armhf target that boots CM4, CM5, Zero 2 W, and the original Zero.
 #
 # Everything else is carried over from raspioslite.sh, including the headless
 # first-boot login fix: Trixie Lite locks the pi user (password AND shell
@@ -27,18 +27,18 @@ PATCH_METHOD="copy"
 DRIVERS_BASE="/boot/firmware"
 INIT_SYSTEM="systemd"
 
-ALL_TARGETS=(arm64)
+ALL_TARGETS=(armhf)
 
 declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN
 
-# Same 2026-06-19 Trixie Lite arm64 image as raspioslite.sh.
-TARGET_URL[arm64]="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2026-06-19/2026-06-18-raspios-trixie-arm64-lite.img.xz"
+# Same 2026-06-19 Trixie Lite armhf image as raspioslite.sh.
+TARGET_URL[armhf]="https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2026-06-19/2026-06-18-raspios-trixie-armhf-lite.img.xz"
 
-TARGET_SHA256[arm64]="acff736ca7945e3b305f07cda4abdb870910e12634991da69783611756e381b3"
+TARGET_SHA256[armhf]="ea4e84c501d6dd4f4b1d04eb84df133a03f90a05ee2e8ab849185c17c2b0707b"
 
-TARGET_PSPI_PREFIX[arm64]="Troubleshooter-64bit-CM4-CM5-Zero2-PSPi6"
+TARGET_PSPI_PREFIX[armhf]="Troubleshooter-32bit-AllBoards-PSPi6"
 
-TARGET_BIN[arm64]=64
+TARGET_BIN[armhf]=32
 
 distro_post_patch() {
     local mnt_root="$1"
@@ -50,40 +50,17 @@ distro_post_patch() {
     # services (see write_headless_login in patcher.sh).
     write_headless_login "$mnt_boot"
 
-    # --- Swap the gamepad driver for troubleshooter. The generic patcher has
-    # already copied /boot/firmware/drivers/gamepad and boot.sh; both are
-    # replaced here so only troubleshooter ever runs.
-    rm -f "$mnt_boot/drivers/gamepad"
-
-    # Resolve the troubleshooter binary: CI supplies it via --driver-binaries
-    # (artifact "troubleshooter"; the pre-rename "gamepad-view" artifact name
-    # is still accepted), local builds produce it under the repo
-    # (patcher.sh build_drivers runs `make -C rpi/troubleshooter 64`). Try both
-    # artifact layouts: upload-artifact organizes a single-directory path
-    # differently by version (64/troubleshooter vs troubleshooter at the root).
-    local gv_src="" cand
-    if [[ -n "${DRIVER_BINARIES_DIR:-}" ]]; then
-        for cand in \
-            "$DRIVER_BINARIES_DIR/troubleshooter/64/troubleshooter" \
-            "$DRIVER_BINARIES_DIR/troubleshooter/troubleshooter" \
-            "$DRIVER_BINARIES_DIR/gamepad-view/64/gamepad_view" \
-            "$DRIVER_BINARIES_DIR/gamepad-view/gamepad_view"; do
-            [[ -f "$cand" ]] && gv_src="$cand" && break
-        done
-    else
-        gv_src="$PROJECT_DIR/rpi/troubleshooter/64/troubleshooter"
-    fi
-    [[ -n "$gv_src" && -f "$gv_src" ]] \
-        || die "[troubleshooter] troubleshooter binary not found under drivers-bin or the repo (run: make -C rpi/troubleshooter 64)"
-    cp "$gv_src" "$mnt_boot/drivers/troubleshooter"
-    chmod +x "$mnt_boot/drivers/troubleshooter"
-
-    # boot.sh: same flow as the stock one (battery_monitor, wifi_monitor via
-    # pspi-wifi.service, restart-on-crash) but troubleshooter instead of the
-    # gamepad. No pspi.conf parsing: troubleshooter takes no config args — it
-    # reads the controller board directly and draws until the power key is
-    # held 500 ms (its built-in shutdown) or the system is powered off via
-    # the gpio-poweroff overlay in config.txt.
+    # --- Replace boot.sh. The generic patcher already installed the stock
+    # boot.sh, which runs the gamepad driver; this image runs the
+    # troubleshooter instead (copied into drivers/ by the generic patcher
+    # like every other driver). The gamepad binary stays on the image but is
+    # never executed, so it creates no virtual input devices and gamepad
+    # input is not exposed to the OS. Same flow otherwise (battery_monitor,
+    # wifi_monitor via pspi-wifi.service, restart-on-crash). No pspi.conf
+    # parsing: troubleshooter takes no config args — it reads the controller
+    # board directly and draws until the power key is held 500 ms (its
+    # built-in shutdown) or the system is powered off via the gpio-poweroff
+    # overlay in config.txt.
     cat > "$mnt_boot/boot.sh" <<'BOOT'
 #!/bin/sh
 
@@ -127,5 +104,5 @@ fi
 wait
 BOOT
     chmod +x "$mnt_boot/boot.sh"
-    echo "  [troubleshooter] Swapped gamepad -> drivers/troubleshooter; boot.sh rewritten"
+    echo "  [troubleshooter] boot.sh rewritten (troubleshooter instead of gamepad)"
 }

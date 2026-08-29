@@ -71,7 +71,6 @@ gcc-14 package** (see table). Do not try to run `gcc-14-aarch64-linux-gnu`
 | `gcc-14-aarch64-linux-gnu` | **`/usr/bin/aarch64-linux-gnu-gcc-14`** (version-suffixed!) | **Ubuntu distro only.** Kernel >= 6.5 needs `-fmin-function-alignment`, unsupported by GCC 13. `ubuntu.sh` selects it via `command -v aarch64-linux-gnu-gcc-15` then `aarch64-linux-gnu-gcc-14`. |
 | `libc6-arm64-cross` | `/usr/aarch64-linux-gnu` | QEMU loader needed to run the prebuilt arm64 `modpost` on x86_64 during kernel-module builds (Ubuntu, Kali cm4). Wired via `QEMU_LD_PREFIX=/usr/aarch64-linux-gnu`. |
 | `libc6-armhf-cross` | `/usr/arm-linux-gnueabihf` | Same loader role for 32-bit kernel-module builds (Kali `zero2` → `QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf`). |
-| `libdrm-dev:arm64` | `/usr/lib/aarch64-linux-gnu/libdrm.a` | **troubleshooter only, amd64 build hosts**: static libdrm for the aarch64 cross build of `rpi/troubleshooter`. Install via `sudo dpkg --add-architecture arm64 && sudo apt update && sudo apt install libdrm-dev:arm64`. Required by `make -C rpi/troubleshooter 64` on x86 hosts (and therefore by local non-CI builds of the `troubleshooter` distro). Native arm64 hosts/runners just install plain `libdrm-dev` and use `make 64 CC_64=gcc`. |
 | `kmod` | `depmod`, `modprobe` | `depmod` regenerates module metadata after installing `pspi_battery.ko`; `modprobe` needed at runtime on images. |
 | `squashfs-tools` | `mksquashfs` | Repack step of every `squashfs` method distro. |
 | `gcc-avr`, `binutils-avr`, `avr-libc` | `avr-gcc` (7.3), `avr-g++`, `avr-objcopy`, `avr-size`, `avr-ar` | ATmega firmware build (`atmega/firmware/Makefile`). |
@@ -89,14 +88,13 @@ gcc-14 package** (see table). Do not try to run `gcc-14-aarch64-linux-gnu`
 - Ubuntu additionally needs **`ports.ubuntu.com`** — its image ships no kernel
   headers, so the patcher downloads `linux-headers-*` debs from there and
   cross-compiles `pspi_battery.ko` against them.
-- **troubleshooter CI builds on a native arm64 runner**: `build-troubleshooter.yml`
-  runs on `ubuntu-24.04-arm` (free for public repos since GA Aug 2025), so
-  libdrm and gcc resolve natively — no multiarch setup at all. If it ever
-  moves back to an amd64 runner, the machinery to make that work (pin the
-  runner's deb822 `ubuntu.sources` stanzas to amd64, append arm64 stanzas
-  for `ports.ubuntu.com` — Ubuntu publishes non-amd64 packages there — and
-  derive suites from `/etc/os-release`) is preserved in this file's git
-  history. The build-images job stays on amd64 and is unaffected: it consumes
+- **troubleshooter CI builds like the gamepad**: `build-troubleshooter.yml`
+  runs on the standard `ubuntu-latest` runner and uses the same armel
+  (32-bit) + aarch64 (64-bit) cross toolchain as every other driver. The
+  troubleshooter drives the kernel DRM/KMS ioctl UAPI directly (no libdrm)
+  and links fully static, so there is no `libdrm-dev`, no multiarch, and no
+  fetched sysroot -- nothing beyond the base cross-compiler packages.
+  The build-images job stays on amd64 and is unaffected: it consumes
   the prebuilt artifact and never enables multiarch.
 
 ---
@@ -277,7 +275,8 @@ HOME=<build-home> make -C atmega/firmware all    # produces firmware.hex
 
 Expected outputs: `rpi/{gamepad,battery,rtc,wifi}/{32,64}/<binary>`,
 `rpi/{audio,lcd,pcie}/*.dtbo`, `atmega/firmware/firmware.hex`,
-`rpi/troubleshooter/64/troubleshooter` (64-bit only; needs `libdrm-dev:arm64`).
+`rpi/troubleshooter/{32,64}/troubleshooter` (standard armel/aarch64 cross
+build, same toolchain as the gamepad; no libdrm, no sysroot -- see section 1.2).
 
 ---
 
@@ -321,7 +320,7 @@ Per-build work dirs go to `$WORK_ROOT` (`/tmp` unless `PSPI_WORK_DIR` is set
 | retropie | copy | zero1 zero2 cm4 cm5 | zero1 | zero2 cm4 cm5 |
 | raspberrpios | copy | arm64 armhf | armhf | arm64 |
 | raspioslite | copy | arm64 armhf | armhf | arm64 |
-| troubleshooter | copy | arm64 | — | arm64 |
+| troubleshooter | copy | armhf | armhf | — |
 | kali | copy | zero2 cm4 | zero2 | cm4 |
 | ubuntu | copy | all | — | all (CM4/CM5 only) |
 | firmware | copy | all | all | — |
@@ -357,12 +356,5 @@ firmware flashing script and the payloads `update_firmware` +
   section 4; nothing to do.
 - **binfmt_misc is not mounted** in this container; QEMU-executing steps
   (kernel-module builds, RetroPie) have not been run here yet. See section 5.
-- **`libdrm-dev:arm64`** (multiarch): required for the `troubleshooter` distro's
-  local `troubleshooter` cross-build (`make -C rpi/troubleshooter 64`), which
-  patcher.sh's `build_drivers` runs only when `--distro troubleshooter` is
-  requested (so local builds of other distros don't need it). Installed per the section 1.2
-  recipe (`dpkg --add-architecture arm64` + `apt install libdrm-dev:arm64`).
-  Not needed in the GitHub release job, which consumes the prebuilt
-  `troubleshooter` artifact instead (build-troubleshooter.yml has its own install).
 - Everything else matched the base recipe; all drivers, overlays, and the ATmega
   firmware were test-built successfully from this environment.

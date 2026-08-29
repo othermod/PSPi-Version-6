@@ -12,27 +12,32 @@ on:
 
 jobs:
   build:
-    # Native arm64 runner (free for public repos since GA Aug 2025; this repo
-    # is public). troubleshooter is arm64-only by design, so compiling natively
-    # avoids the whole amd64-host multiarch dance: no dpkg --add-architecture,
-    # no mirror surgery, no :arm64 package suffixes -- plain native libdrm-dev,
-    # gcc, and make.
-    runs-on: ubuntu-24.04-arm
+    # Same toolchain as the gamepad: the troubleshooter now drives the kernel
+    # DRM/KMS ioctl UAPI directly (no libdrm) and links fully static, so its
+    # 32-bit build is the plain armel (armv6 + softfp) cross-compile used by
+    # every other 32-bit PSPi driver -- no sysroot, no fetched packages, no
+    # multiarch setup. Runs on the standard amd64 runner.
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libdrm-dev gcc make
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
 
       - name: Build
         run: |
           cd rpi/troubleshooter
-          make 64 CC_64=gcc
+          make 32
+          make 64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: troubleshooter
-          path: rpi/troubleshooter/64
+          path: |
+            rpi/troubleshooter/32
+            rpi/troubleshooter/64

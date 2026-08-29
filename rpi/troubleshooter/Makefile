@@ -1,22 +1,30 @@
-# Cross-compilers. Default targets an amd64 build host (as in CI's other
-# jobs); a native arm64 host/runner builds with its own gcc via
-# `make 64 CC_64=gcc` (see build-troubleshooter.yml, which runs on
-# ubuntu-24.04-arm).
-CC_64 ?= aarch64-linux-gnu-gcc
+# Cross-compilers. The 32-bit build targets armv6 + soft-float (armel), the
+# same baseline as rpi/gamepad: Ubuntu's armel libc.a is armv4t-baseline, so
+# a fully static binary runs on the original Zero's ARM1176 with no sysroot
+# and no fetched packages.
+#
+# There is no libdrm dependency: the troubleshooter drives the kernel DRM/KMS
+# ioctl UAPI directly (<drm/drm.h>, <drm/drm_mode.h>), so there is nothing to
+# link beyond libc/libm.
+CC_32 = arm-linux-gnueabi-gcc -march=armv6zk -mfloat-abi=softfp
+CC_64 = aarch64-linux-gnu-gcc
 
-# Paths
-LIBDRM_INC = /usr/include/libdrm
+CFLAGS_COMMON = -O3 -lrt -static -lm
 
-CFLAGS_COMMON = -O3 -lrt -static -I$(LIBDRM_INC) -ldrm -lm
+# Build for 32-bit architecture (armv6; runs on every PSPi board incl. Zero 1)
+32:
+	@mkdir -p 32
+	@rm -f *.o
+	$(CC_32) -o 32/troubleshooter troubleshooter.c $(CFLAGS_COMMON)
 
 # Build for 64-bit architecture
 64:
 	@mkdir -p 64
 	@rm -f *.o
-	$(CC_64) -o 64/troubleshooter troubleshooter.c gfx_util.c $(CFLAGS_COMMON)
+	$(CC_64) -o 64/troubleshooter troubleshooter.c $(CFLAGS_COMMON)
 
 # Clean build artifacts
 clean:
-	rm -rf 64 *.o
+	rm -rf 32 64 *.o
 
-.PHONY: 64 clean
+.PHONY: 32 64 clean
