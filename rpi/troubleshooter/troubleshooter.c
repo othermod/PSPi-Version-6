@@ -158,6 +158,10 @@ bool display_init(Display *d, const char **conn_name)
         uint32_t *conns = calloc(res.count_connectors  ? res.count_connectors  : 1, sizeof *conns);
         res.crtc_id_ptr      = (uint64_t)(uintptr_t)crtcs;
         res.connector_id_ptr = (uint64_t)(uintptr_t)conns;
+        /* Arrays we provide no pointers for: zero their counts or the kernel
+           does put_user() through the NULL pointer and the call faults. */
+        res.count_fbs      = 0;
+        res.count_encoders = 0;
         if (ioctl(fd, DRM_IOCTL_MODE_GETRESOURCES, &res)) { free(crtcs); free(conns); close(fd); continue; }
 
         for (uint32_t i = 0; i < res.count_connectors && !connector_id; i++) {
