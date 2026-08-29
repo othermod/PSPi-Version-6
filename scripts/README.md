@@ -24,7 +24,7 @@ sudo apt-get install -y \
   gcc-aarch64-linux-gnu g++-aarch64-linux-gnu gcc-14-aarch64-linux-gnu \
   libc6-arm64-cross libc6-armhf-cross \
   kmod curl squashfs-tools gcc-avr binutils-avr avr-libc \
-  device-tree-compiler fdisk e2fsprogs zerofree qemu-user-static binfmt-support
+  device-tree-compiler zerofree qemu-user-static binfmt-support
 
 # 2. Arduino CLI (used to fetch/maintain the AVR core; see section 3)
 wget -qO /tmp/arduino-cli.tar.gz https://github.com/arduino/arduino-cli/releases/download/v1.5.0/arduino-cli_1.5.0_Linux_64bit.tar.gz
@@ -76,9 +76,7 @@ gcc-14 package** (see table). Do not try to run `gcc-14-aarch64-linux-gnu`
 | `gcc-avr`, `binutils-avr`, `avr-libc` | `avr-gcc` (7.3), `avr-g++`, `avr-objcopy`, `avr-size`, `avr-ar` | ATmega firmware build (`atmega/firmware/Makefile`). |
 | `device-tree-compiler` | `dtc` | Builds the .dtbo overlays (`rpi/audio`, `rpi/lcd`, `rpi/pcie`). |
 | `zerofree` | `zerofree` | Required by every `copy`-method distro; zeroes rootfs free space before xz compression. A missing/failing `zerofree` is FATAL (never a silent size blowup). |
-| `fdisk` | `fdisk` | RetroPie only (expands the base image). On Ubuntu >= 24.04 this is a package separate from `util-linux`. |
-| `qemu-user-static`, `binfmt-support` | `qemu-arm-static`, `qemu-aarch64-static` | RetroPie's QEMU chroot, and kernel-module builds that execute the binary `modpost`/`fixdep` under QEMU (Kali, Ubuntu). Both `qemu-arm` and `qemu-aarch64` must be enabled in `/proc/sys/fs/binfmt_misc` — a missing `qemu-arm` handler fails Kali's 32-bit module build with `scripts/basic/fixdep: Exec format error`. |
-| `e2fsprogs` | `mkfs.ext4`, ... | RetroPie (resize/expand). |
+| `qemu-user-static`, `binfmt-support` | `qemu-arm-static`, `qemu-aarch64-static` | Kernel-module builds that execute the prebuilt `modpost`/`fixdep` under QEMU (Kali, Ubuntu). Both `qemu-arm` and `qemu-aarch64` must be enabled in `/proc/sys/fs/binfmt_misc` — a missing `qemu-arm` handler fails Kali's 32-bit module build with `scripts/basic/fixdep: Exec format error`. |
 | `curl` | `curl` | **Ubuntu distro only**: resolves the matching `linux-headers-<kernel>` package from the Ubuntu archive. |
 
 ### 1.3 Network requirements at build time
@@ -221,11 +219,12 @@ tmpfs. Root and work dirs are overlayfs — builds must still use `/tmp`
 
 ---
 
-## 5. QEMU + binfmt (kernel-module distros and RetroPie)
+## 5. QEMU + binfmt (kernel-module distros)
 
 Needed whenever the host must *execute* ARM binaries: kernel-module builds run
-the headers' prebuilt arm64/armhf `modpost` under QEMU (Ubuntu, Kali cm4/zero2),
-and RetroPie installs packages inside a QEMU chroot.
+the headers' prebuilt arm64/armhf `modpost` under QEMU (Ubuntu, Kali cm4/zero2).
+(RetroPie used to install inside a QEMU chroot here; those images are now built
+by the separate RetroPie-Image-Builder repo and only downloaded by this one.)
 
 **Check registration:**
 
@@ -258,7 +257,7 @@ touches:
 # every binary the build invokes
 for t in arm-linux-gnueabi-gcc aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc-14 \
          arm-linux-gnueabihf-gcc avr-gcc avr-objcopy dtc mksquashfs xz \
-         python3 wget make zerofree fdisk depmod modprobe qemu-arm-static \
+         python3 wget make zerofree depmod modprobe qemu-arm-static \
          qemu-aarch64-static; do command -v "$t" >/dev/null || echo "MISSING $t"; done
 
 # AVR core reachable from the build user's HOME
@@ -318,6 +317,19 @@ Per-build work dirs go to `$WORK_ROOT` (`/tmp` unless `PSPI_WORK_DIR` is set
 | batocera | squashfs | cm4 cm5 zero2 zero1 | zero1 | cm4 cm5 zero2 |
 | recalbox | squashfs | cm4 cm5 zero2 zero1 | zero1 zero2 | cm4 cm5 |
 | retropie | copy | zero1 zero2 cm4 cm5 | zero1 | zero2 cm4 cm5 |
+
+`retropie` consumes prebuilt base images from the RetroPie-Image-Builder repo
+(`github.com/othermod/RetroPie-Image-Builder`), which builds RetroPie on stock
+Pi OS Lite in CI. It does no QEMU work itself; its base image URLs use the
+builder's `releases/latest/download` alias assets, so rebuilds pick up the
+newest published builder release. Pin `TARGET_SHA256` (empty = trust the
+cache) for reproducible release builds.
+
+Beyond the curated `es_input.cfg`, `retropie` also pre-seeds the joy2key/
+RetroArch autoconfig (`configs/all/retroarch-joypads/`) plus the flycast and
+mupen64plus keymaps captured from a device after the ES controller config
+runs — the base images otherwise ship an empty `retroarch-joypads/`, which
+makes joy2key fall back to a generic mapping with no button D-pad.
 | raspberrpios | copy | arm64 armhf | armhf | arm64 |
 | raspioslite | copy | arm64 armhf | armhf | arm64 |
 | troubleshooter | copy | armhf | armhf | — |
@@ -341,7 +353,6 @@ firmware flashing script and the payloads `update_firmware` +
 | `gcc-14-aarch64-linux-gnu: command not found` | Wrong binary name | The package installs `/usr/bin/aarch64-linux-gnu-gcc-14` (section 1.2); `ubuntu.sh` finds it itself |
 | `aarch64 gcc >= 14 not found` (ubuntu distro dies in `build_battery_module`) | `gcc-14-aarch64-linux-gnu` missing | install it per section 1; confirm `/usr/bin/aarch64-linux-gnu-gcc-14` |
 | `zerofree not installed; required to zero rootfs` | missing package | `apt-get install zerofree` — it is fatal by design |
-| `fdisk: command not found` (RetroPie) | On Ubuntu >= 24.04 `fdisk` is not pulled in by `util-linux` | `apt-get install fdisk` |
 
 ---
 
@@ -355,6 +366,6 @@ firmware flashing script and the payloads `update_firmware` +
 - **`/tmp` tmpfs** was already mounted (48 GB) — matched the requirement from
   section 4; nothing to do.
 - **binfmt_misc is not mounted** in this container; QEMU-executing steps
-  (kernel-module builds, RetroPie) have not been run here yet. See section 5.
+  (kernel-module builds) have not been run here yet. See section 5.
 - Everything else matched the base recipe; all drivers, overlays, and the ATmega
   firmware were test-built successfully from this environment.

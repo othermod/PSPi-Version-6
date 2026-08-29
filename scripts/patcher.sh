@@ -125,7 +125,7 @@ fi
 cleanup() {
     local mp
     # Overlays first, then their squashfs sources, then everything else in
-    # reverse mount order so nested mounts (the RetroPie chroot's proc/sys/dev)
+    # reverse mount order so nested mounts (e.g. a distro chroot's proc/sys/dev)
     # come down before their parents.
     awk -v root="$WORK_ROOT/pspi-build-" '$3=="overlay" && index($2,root)==1 {print $2}' /proc/mounts | while read -r mp; do
         umount "$mp" 2>/dev/null || umount -l "$mp" 2>/dev/null || true
@@ -579,7 +579,7 @@ build_image() {
             || die "Boot-partition zeroing failed (see above)"
     else
         # Deleted files leave their contents as ordinary bytes that compress
-        # no better than the originals (RetroPie clears a large apt cache here).
+        # no better than the originals (deleted apt/package cache bytes
         # zerofree needs a block device, so reattach the now-unmounted rootfs.
         command -v zerofree >/dev/null 2>&1 \
             || die "zerofree not installed; required to zero rootfs free space"
