@@ -3,9 +3,6 @@ name: Release Images
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version string (e.g. 1.0.0)'
-        required: true
       distro:
         description: 'Single distro to build (optional, for testing)'
         required: false
@@ -135,16 +132,7 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            # Strip any stray whitespace so it can't be word-split by unquoted
-            # uses (filenames, artifact patterns, release tag).
-            VERSION="${VERSION//[[:space:]]/}"
-            VERSION="${VERSION#[vV]}"
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          fi
+          echo "version=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: |
@@ -210,16 +198,7 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-            # Strip any stray whitespace so it can't be word-split by unquoted
-            # uses (filenames, artifact patterns, release tag).
-            VERSION="${VERSION//[[:space:]]/}"
-            VERSION="${VERSION#[vV]}"
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          fi
+          echo "version=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         uses: actions/checkout@v4
