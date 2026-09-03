@@ -1,0 +1,85 @@
+--- a/sound/soc/raspberrypi/rp1_aout.c
++++ b/sound/soc/raspberrypi/rp1_aout.c
+@@ -80,6 +80,7 @@
+ 	struct snd_dmaengine_dai_dma_data play_dma_data;
+ 	bool initted;
+ 	bool swap_lr;
++	bool mono_mix;
+ };
+ 
+ static inline void aout_reg_wr(struct rp1_aout *ao, unsigned int offset, u32 val)
+@@ -261,6 +262,54 @@
+ 	.startup	= rp1_aout_startup,
+ 	.hw_params	= rp1_aout_hw_params,
+ 	.trigger	= rp1_aout_trigger,
++};
++
++/*
++ * Downmix: replace both channels with (L + R) / 2, so that either AAUD pin
++ * on its own carries the whole stereo image. Runs in place on the DMA
++ * buffer via the dmaengine PCM "process" hook, after the copy from user
++ * space. Halving rather than summing keeps unity gain on mono material.
++ */
++static int rp1_aout_process(struct snd_pcm_substream *substream,
++			    int channel, unsigned long hwoff,
++			    unsigned long bytes)
++{
++	s16 *buf = (s16 *)(substream->runtime->dma_area + hwoff);
++	unsigned long frames = bytes / 4; /* S16_LE interleaved stereo */
++	unsigned long i;
++
++	for (i = 0; i < frames; i++) {
++		int m = ((int)buf[2 * i] + (int)buf[2 * i + 1]) / 2;
++
++		buf[2 * i] = (s16)m;
++		buf[2 * i + 1] = (s16)m;
++	}
++
++	return 0;
++}
++
++/*
++ * The process hook runs only on read/write transfers, so withhold the MMAP
++ * flags to stop clients writing to the buffer directly and bypassing it.
++ * Supplying pcm_hardware skips the dmaengine defaults entirely, so this
++ * restates them, minus MMAP.
++ */
++static const struct snd_pcm_hardware rp1_aout_pcm_hardware = {
++	.info = SNDRV_PCM_INFO_INTERLEAVED,
++	.periods_min = 2,
++	.periods_max = UINT_MAX,
++	.period_bytes_min = 256,
++	.period_bytes_max = 64 * 1024,
++	.buffer_bytes_max = 512 * 1024,
++	.fifo_size = 16,
++};
++
++/* prepare_slave_config is otherwise supplied by the dmaengine default */
++static const struct snd_dmaengine_pcm_config rp1_aout_mono_dma_config = {
++	.prepare_slave_config = snd_dmaengine_pcm_prepare_slave_config,
++	.process = rp1_aout_process,
++	.pcm_hardware = &rp1_aout_pcm_hardware,
++	.prealloc_buffer_size = 64 * 1024,
+ };
+ 
+ static const struct snd_soc_component_driver rp1_aout_component = {
+@@ -301,6 +350,7 @@
+ 				     "could not map registers\n");
+ 	aout->physaddr = ioresource->start;
+ 	aout->swap_lr = of_property_read_bool(pdev->dev.of_node, "swap_lr");
++	aout->mono_mix = of_property_read_bool(pdev->dev.of_node, "mono_mix");
+ 
+ 	/* Initialize playback DMA parameters */
+ 	aout->play_dma_data.addr = aout->physaddr + AUDIO_OUT_SAMPLE_FIFO;
+@@ -312,7 +362,10 @@
+ 	aout->dev = &pdev->dev;
+ 	platform_set_drvdata(pdev, aout);
+ 
+-	ret = devm_snd_dmaengine_pcm_register(&pdev->dev, NULL, 0);
++	ret = devm_snd_dmaengine_pcm_register(&pdev->dev,
++					      aout->mono_mix ?
++						&rp1_aout_mono_dma_config : NULL,
++					      0);
+ 	if (ret)
+ 		return dev_err_probe(&pdev->dev, ret, "failed to register pcm\n");
+ 

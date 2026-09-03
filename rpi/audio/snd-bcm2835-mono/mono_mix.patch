@@ -1,0 +1,42 @@
+--- a/drivers/staging/vc04_services/bcm2835-audio/bcm2835-pcm.c
++++ b/drivers/staging/vc04_services/bcm2835-audio/bcm2835-pcm.c
+@@ -231,12 +231,39 @@
+ 	return 0;
+ }
+ 
++bool snd_bcm2835_mono_mix;
++module_param_named(mono_mix, snd_bcm2835_mono_mix, bool, 0644);
++MODULE_PARM_DESC(mono_mix, "Downmix L+R to (L+R)/2 so one PWM pin carries full stereo");
++
++/*
++ * Mono downmix: replace both channels with (L + R) / 2 so that a single
++ * PWM pin carries the full stereo image. Average law never clips and keeps
++ * centered content at unity gain. Applied in place on the ALSA buffer
++ * before the samples are pushed to the VideoCore firmware.
++ */
++static void bcm2835_downmix_stereo(s16 *buf, size_t bytes)
++{
++	size_t frames = bytes / 4; /* S16_LE interleaved stereo */
++	size_t i;
++
++	for (i = 0; i < frames; i++) {
++		int m = ((int)buf[2 * i] + (int)buf[2 * i + 1]) / 2;
++
++		buf[2 * i] = m;
++		buf[2 * i + 1] = m;
++	}
++}
++
+ static void snd_bcm2835_pcm_transfer(struct snd_pcm_substream *substream,
+ 				     struct snd_pcm_indirect *rec, size_t bytes)
+ {
+ 	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct bcm2835_alsa_stream *alsa_stream = runtime->private_data;
+ 	void *src = (void *)(substream->runtime->dma_area + rec->sw_data);
++
++	if (snd_bcm2835_mono_mix && runtime->channels == 2 &&
++	    runtime->format == SNDRV_PCM_FORMAT_S16_LE)
++		bcm2835_downmix_stereo(src, bytes);
+ 
+ 	bcm2835_audio_write(alsa_stream, bytes, src);
+ }
