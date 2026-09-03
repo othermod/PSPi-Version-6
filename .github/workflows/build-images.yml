@@ -307,7 +307,7 @@ jobs:
             done < <(grep '^TARGET_PSPI_PREFIX\[' "$script")
             if [[ -n "$rows" ]]; then
               # Only generate blocks for distros the template actually references
-              if grep -q '{{DL:${distro}}}' .github/workflows/release.md; then
+              if grep -qF "{{DL:${distro}}}" .github/workflows/release.md; then
                 printf '| Boards | Arch | Download |\n|---|---|---|\n%s' "$rows" > "dl-blocks/${distro}.md"
               fi
             fi
@@ -323,11 +323,11 @@ jobs:
           open('release-notes.md', 'w').write(text)
           PY
 
-          # Fail loudly if a placeholder has no matching built image
-          if grep -q '{{DL:' release-notes.md; then
-            echo "ERROR: placeholders with no matching built image:" >&2
+          # Warn if a placeholder has no matching built image (do not fail:
+          # a finished multi-hour build must never be discarded over notes)
+          if grep -qF '{{DL:' release-notes.md; then
+            echo "WARNING: placeholders with no matching built image will appear as-is in the notes:" >&2
             grep -o '{{DL:[^}]*}}' release-notes.md | sort -u >&2
-            exit 1
           fi
 
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
