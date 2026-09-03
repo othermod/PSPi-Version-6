@@ -54,8 +54,8 @@ TARGET_URL[armhf]="https://downloads.raspberrypi.com/raspios_lite_armhf/images/r
 TARGET_SHA256[arm64]="acff736ca7945e3b305f07cda4abdb870910e12634991da69783611756e381b3"
 TARGET_SHA256[armhf]="ea4e84c501d6dd4f4b1d04eb84df133a03f90a05ee2e8ab849185c17c2b0707b"
 
-TARGET_PSPI_PREFIX[arm64]="PiOS-Trixie-Lite-64bit-CM4-CM5-Zero2-PSPi6"
-TARGET_PSPI_PREFIX[armhf]="PiOS-Trixie-Lite-32bit-AllBoards-PSPi6"
+TARGET_PSPI_PREFIX[arm64]="PiOS-Trixie-Lite-64bit-Zero2-CM4-CM5-PSPi6"
+TARGET_PSPI_PREFIX[armhf]="PiOS-Trixie-Lite-32bit-Zero1-Zero2-CM4-CM5-PSPi6"
 
 TARGET_BIN[arm64]=64
 TARGET_BIN[armhf]=32

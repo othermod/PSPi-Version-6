@@ -36,7 +36,7 @@ TARGET_URL[armhf]="https://downloads.raspberrypi.com/raspios_lite_armhf/images/r
 
 TARGET_SHA256[armhf]="ea4e84c501d6dd4f4b1d04eb84df133a03f90a05ee2e8ab849185c17c2b0707b"
 
-TARGET_PSPI_PREFIX[armhf]="Troubleshooter-32bit-AllBoards-PSPi6"
+TARGET_PSPI_PREFIX[armhf]="Troubleshooter-32bit-Zero1-Zero2-CM4-CM5-PSPi6"
 
 TARGET_BIN[armhf]=32
 

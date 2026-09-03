@@ -17,8 +17,8 @@ TARGET_URL[armhf]="https://downloads.raspberrypi.com/raspios_armhf/images/raspio
 TARGET_SHA256[arm64]="123287c05f27b0eebd8f65456f6369b8f6635fa50a3d440a4f9f6223bf58c8e2"
 TARGET_SHA256[armhf]="676b4a58a75dbbe753d0af64cc97927fdba3cd7750327c6f5fccdb52b0ecc600"
 
-TARGET_PSPI_PREFIX[arm64]="PiOS-Trixie-64bit-CM4-CM5-Zero2-PSPi6"
-TARGET_PSPI_PREFIX[armhf]="PiOS-Trixie-32bit-AllBoards-PSPi6"
+TARGET_PSPI_PREFIX[arm64]="PiOS-Trixie-64bit-Zero2-CM4-CM5-PSPi6"
+TARGET_PSPI_PREFIX[armhf]="PiOS-Trixie-32bit-Zero1-Zero2-CM4-CM5-PSPi6"
 
 TARGET_BIN[arm64]=64
 TARGET_BIN[armhf]=32

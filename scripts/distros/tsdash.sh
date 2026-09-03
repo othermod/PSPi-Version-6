@@ -46,7 +46,7 @@ declare -A TARGET_URL TARGET_SHA256 TARGET_PSPI_PREFIX TARGET_BIN
 
 TARGET_URL[all]="https://www.efianalytics.com/TSDash/download/2022-10-19_TSDash_Reference.img.gz"
 TARGET_SHA256[all]="bbcf9581227db1c3363d9d6eb9ef3219a7eb89900af684cf5e452817f89cc50f"
-TARGET_PSPI_PREFIX[all]="TSDash-Reference-32bit-CM4-Zero2-Zero1-PSPi6"
+TARGET_PSPI_PREFIX[all]="TSDash-Reference-32bit-Zero1-Zero2-CM4-PSPi6"
 TARGET_BIN[all]=32
 
 distro_post_patch() {

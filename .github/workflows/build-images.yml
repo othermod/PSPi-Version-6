@@ -244,12 +244,96 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}"
           shopt -s nullglob
           mv "release-assets/pspi-binaries.tar.gz" "release-assets/pspi-binaries-v${VERSION}.tar.gz"
+
+          # Build a per-distro download table from the actual image files, and
+          # use it to fill the {{DL:<distro>}} placeholders in the release
+          # template. This keeps links accurate even when a distro version bump
+          # changes the filename, or an image exceeds the 2 GiB asset limit and
+          # gets split into multi-part 7z volumes.
+          # Tables are built per distro: the Boards column comes from the
+          # output filename (which lists compatible boards, ordered
+          # Zero1, Zero2, CM4, CM5 - there is no AllBoards token), and the
+          # Arch column comes from TARGET_BIN in the distro script, falling
+          # back to the filename's 32bit/64bit token when present.
+          boards_label() {
+            local file="$1" tok
+            local -a parts=()
+            for tok in ${file//-/ }; do
+              case "$tok" in
+                CM4) parts+=("CM4") ;;
+                CM5) parts+=("CM5") ;;
+                Zero2) parts+=("Zero 2 W") ;;
+                Zero1) parts+=("Zero 1") ;;
+              esac
+            done
+            joined=$(printf '%s / ' "${parts[@]}")
+            echo "${joined% / }"
+          }
+          arch_label() {
+            local file="$1" script="$2" target="$3" tok bits=""
+            for tok in ${file//-/ }; do
+              case "$tok" in
+                64bit) bits="64-bit" ;;
+                32bit) bits="32-bit" ;;
+              esac
+            done
+            if [[ -z "$bits" ]]; then
+              bits=$(grep "^TARGET_BIN\[${target}\]=" "$script" 2>/dev/null \
+                | head -n1 | cut -d= -f2)
+              [[ -n "$bits" ]] && bits="${bits}-bit"
+            fi
+            echo "${bits:--}"
+          }
+
+          mkdir dl-blocks
+          for script in scripts/distros/*.sh; do
+            distro=$(basename "$script" .sh)
+            rows=""
+            while IFS= read -r line; do
+              target="${line#*\[}"; target="${target%%]*}"
+              prefix="${line#*\"}"; prefix="${prefix%\"}"
+              file="${prefix}-v${VERSION}.img.xz"
+              if [[ -f "${{ github.workspace }}/pspi/patched_images/$file" ]]; then
+                link="[img.xz](${BASE_URL}/${file})"
+              elif [[ -f "${{ github.workspace }}/pspi/patched_images/$file.7z.001" ]]; then
+                link="[7z, multi-part](${BASE_URL}/${file}.7z.001)"
+              else
+                continue
+              fi
+              rows+="| $(boards_label "$file") | $(arch_label "$file" "$script" "$target") | ${link} |"$'\n'
+            done < <(grep '^TARGET_PSPI_PREFIX\[' "$script")
+            if [[ -n "$rows" ]]; then
+              # Only generate blocks for distros the template actually references
+              if grep -q '{{DL:${distro}}}' .github/workflows/release.md; then
+                printf '| Boards | Arch | Download |\n|---|---|---|\n%s' "$rows" > "dl-blocks/${distro}.md"
+              fi
+            fi
+          done
+
+          python3 - <<'PY'
+          import glob, os
+          text = open('.github/workflows/release.md').read()
+          for path in glob.glob('dl-blocks/*.md'):
+              distro = os.path.basename(path)[:-3]
+              block = open(path).read()
+              text = text.replace('{{DL:%s}}' % distro, block)
+          open('release-notes.md', 'w').write(text)
+          PY
+
+          # Fail loudly if a placeholder has no matching built image
+          if grep -q '{{DL:' release-notes.md; then
+            echo "ERROR: placeholders with no matching built image:" >&2
+            grep -o '{{DL:[^}]*}}' release-notes.md | sort -u >&2
+            exit 1
+          fi
+
           gh release create "v${VERSION}" --draft --title "v${VERSION}" \
             ${{ github.workspace }}/pspi/patched_images/*.img.xz.7z.* \
             ${{ github.workspace }}/pspi/patched_images/*.img.xz \
             "release-assets/pspi-binaries-v${VERSION}.tar.gz" \
-            --notes-file .github/workflows/release.md \
+            --notes-file release-notes.md \
             --repo "$GITHUB_REPOSITORY"
           shopt -u nullglob
