@@ -18,6 +18,7 @@
 #define CMD_READ_INFO               0x01
 #define CMD_WRITE_PAGE              0x03  /* page number byte precedes the 64 data bytes */
 #define CMD_FINALIZE                0x05
+#define CMD_READ_PINS               0x07
 
 /* TWI slave receiver status codes (ATmega8 datasheet table 22-2) */
 #define TWI_SR_SLA_ACK              0x60    /* SLA+W received, ACK returned */
@@ -36,7 +37,6 @@
 #define BL_JUMP_APP                 0x01
 
 /* Verification status codes (bit patterns with Hamming distance 8 from each other) */
-#define VERIFY_PENDING              0x00
 #define VERIFY_FAILED               0x55
 #define VERIFY_PASSED               0xAA
 
@@ -58,8 +58,7 @@ static uint16_t         flash_addr;
 static volatile uint8_t page_write_pending       = 0;
 static volatile uint8_t page_write_ready         = 0;
 static volatile uint8_t checksum_verify_pending  = 0;
-static uint8_t          verify_status            = VERIFY_PENDING;
-static uint8_t          info_bytes[6];
+static uint8_t          info_bytes[9];
 static uint8_t          info_checksum[3];
 
 
@@ -88,7 +87,7 @@ static void write_flash_page(void)
 static void update_info_checksum(void)
 {
     uint8_t sum1 = 0, sum2 = 0, xor = 0, i;
-    for (i = 0; i < 6; i++)
+    for (i = 0; i < 9; i++)
     {
         sum1 += info_bytes[i];
         sum2 += sum1;
@@ -101,7 +100,7 @@ static void update_info_checksum(void)
 
 
 /* Checksum covers all app flash bytes except the final 3, which store the checksum itself. */
-static void compute_flash_checksum(uint8_t *f16_a, uint8_t *f16_b, uint8_t *xorsum)
+static void compute_flash_checksum(void)
 {
     uint8_t  sum1 = 0, sum2 = 0, xor = 0;
     uint16_t i;
@@ -112,20 +111,27 @@ static void compute_flash_checksum(uint8_t *f16_a, uint8_t *f16_b, uint8_t *xors
         sum2 += sum1;
         xor  ^= b;
     }
-    *f16_a  = sum1;
-    *f16_b  = sum2;
-    *xorsum = xor;
+    info_bytes[6] = sum1;
+    info_bytes[7] = sum2;
+    info_bytes[8] = xor;
 }
 
 
-/* Returns 1 if the embedded checksum at the top of app flash matches the computed value. */
+/* Returns 1 if the embedded checksum matches the last-computed value in info_bytes[6..8]. */
 static uint8_t flash_verify_checksum(void)
 {
-    uint8_t f16_a, f16_b, xorsum;
-    compute_flash_checksum(&f16_a, &f16_b, &xorsum);
-    return (f16_a  == pgm_read_byte_near(BOOTLOADER_START - 3) &&
-            f16_b  == pgm_read_byte_near(BOOTLOADER_START - 2) &&
-            xorsum == pgm_read_byte_near(BOOTLOADER_START - 1));
+    return (info_bytes[6] == pgm_read_byte_near(BOOTLOADER_START - 3) &&
+            info_bytes[7] == pgm_read_byte_near(BOOTLOADER_START - 2) &&
+            info_bytes[8] == pgm_read_byte_near(BOOTLOADER_START - 1));
+}
+
+
+/* Recompute the flash fingerprint, set the status byte, and refresh the info checksum. */
+static void refresh_info(void)
+{
+    compute_flash_checksum();
+    info_bytes[5] = flash_verify_checksum() ? VERIFY_PASSED : VERIFY_FAILED;
+    update_info_checksum();
 }
 
 
@@ -159,6 +165,7 @@ static void twi_handle(void)
                     case CMD_READ_INFO:
                     case CMD_WRITE_PAGE:
                     case CMD_FINALIZE:
+                    case CMD_READ_PINS:
                         break;
 
                     default:
@@ -245,11 +252,17 @@ static void twi_handle(void)
             switch (cmd)
             {
                 case CMD_READ_INFO:
-                    if (byte_cnt < 6)
+                    if (byte_cnt < 9)
                         tx_data = info_bytes[byte_cnt];
-                    else if (byte_cnt < 9)
-                        tx_data = info_checksum[byte_cnt - 6];
-                    if (byte_cnt == 8)
+                    else if (byte_cnt < 12)
+                        tx_data = info_checksum[byte_cnt - 9];
+                    if (byte_cnt == 11)
+                        TWI_CLEAR_ACK(twi_ctrl);
+                    break;
+
+                case CMD_READ_PINS:
+                    tx_data = byte_cnt ? PIND : PINB;
+                    if (byte_cnt == 1)
                         TWI_CLEAR_ACK(twi_ctrl);
                     break;
 
@@ -294,11 +307,12 @@ int main(void)
     page_write_pending = 0;
     page_write_ready   = 0;
 
-    /* Outputs: PB2 (LCD_CONTROL), PB3/PB7 (LED_WIFI), PB6 (EN_5V); all others inputs with pull-ups */
+    /* Outputs: PB2 (LCD_CONTROL), PB3/PB7 (LED_WIFI), PB6 (EN_5V). All other pins are inputs
+     * with pull-ups, except PD1 (RPI_DETECT), which must read low when the Pi is absent. */
     DDRB  = 0b11001100;
-    PORTB = 0b00000001;
+    PORTB = 0b00110011;
     DDRD  = 0b00000000;
-    PORTD = 0b00000000;
+    PORTD = 0b11111101;
 
     /* Timer0: F_CPU / 1024, free-running */
     TCCR0 = (1<<CS02) | (1<<CS00);
@@ -308,6 +322,7 @@ int main(void)
     TWCR  = (1<<TWEA) | (1<<TWEN);
 
     /* --- BOOT ENTRY LOGIC --- */
+    compute_flash_checksum();
     if (PINB & BTN_DISP)
     {
         /* Button not pressed: boot app only if embedded checksum is valid */
@@ -342,8 +357,7 @@ int main(void)
     info_bytes[2] = SIGNATURE_2;
     info_bytes[3] = BOOTLOADER_VERSION;
     info_bytes[4] = (uint8_t)(BOOTLOADER_START / SPM_PAGESIZE);
-    info_bytes[5] = VERIFY_PENDING;
-    update_info_checksum();
+    refresh_info();
 
     /* --- MAIN LOOP (I2C programming) --- */
     {
@@ -359,23 +373,21 @@ int main(void)
                 page_write_ready   = 0;
                 page_write_pending = 0;
                 write_flash_page();
+                /* mark flash invalid until finalize recomputes */
+                info_bytes[5] = 0;
+                info_bytes[6] = 0;
+                info_bytes[7] = 0;
+                info_bytes[8] = 0;
+                update_info_checksum();
                 TWCR = (1<<TWEN) | (1<<TWEA);
             }
 
             if (checksum_verify_pending)
             {
                 checksum_verify_pending = 0;
-                if (flash_verify_checksum())
-                {
-                    verify_status = VERIFY_PASSED;
-                    blink_fast    = 1;
-                }
-                else
-                {
-                    verify_status = VERIFY_FAILED;
-                }
-                info_bytes[5] = verify_status;
-                update_info_checksum();
+                refresh_info();
+                if (info_bytes[5] == VERIFY_PASSED)
+                    blink_fast = 1;
                 TWCR = (1<<TWEN) | (1<<TWEA);
             }
 
