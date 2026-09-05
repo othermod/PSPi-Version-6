@@ -105,19 +105,23 @@ void initHardware() {
   SET_BAT_LED = LED_FULL_GREEN;
 }
 
-void calculateCRC() {
-  // Calculate CRC16-CCITT over first 9 bytes of i2cWorking
+uint16_t crc16(const uint8_t *data, uint8_t len) {
+  // CRC16-CCITT (poly 0x1021, init 0xFFFF) -- must match the CRC the Pi
+  // computes in rpi/firmware/firmware.c and the gamepad driver
   uint16_t crc = 0xFFFF;
-  uint16_t poly = 0x1021;
 
-  // Process each byte of i2cWorking structure (excluding CRC bytes)
-  const uint8_t* data = (const uint8_t*)&i2cWorking;
-  for (uint8_t i = 0; i < 9; i++) {
+  for (uint8_t i = 0; i < len; i++) {
     crc ^= ((uint16_t)data[i] << 8);
     for (uint8_t j = 0; j < 8; j++) {
-      crc = (crc & 0x8000) ? ((crc << 1) ^ poly) : (crc << 1);
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
     }
   }
+  return crc;
+}
+
+void calculateCRC() {
+  // CRC16-CCITT over first 9 bytes of i2cWorking
+  uint16_t crc = crc16((const uint8_t*)&i2cWorking, 9);
 
   // Store CRC in i2cWorking structure. Look into making this a single uint16 (make sure order stays same as old fw)
   i2cWorking.crc16H = crc >> 8;
@@ -553,7 +557,22 @@ void processI2CCommand() {
 void onRequest() {
   if (versionRequest) {
     versionRequest = false;
-    Wire.write(FIRMWARE_VERSION);
+    // Version frame, layout in config.h. Magic + CRC make it distinguishable
+    // from an old firmware, which answers the same transaction with its
+    // normal data packet and can never validate. The bootloader trailer
+    // bytes are passed through verbatim; the reader interprets them.
+    uint8_t frame[10];
+    frame[0] = VERSION_MAGIC_0;
+    frame[1] = VERSION_MAGIC_1;
+    frame[2] = VERSION_MAGIC_2;
+    frame[3] = FIRMWARE_VERSION;
+    for (uint8_t i = 0; i < 4; i++) {
+      frame[4 + i] = pgm_read_byte_near(BOOTLOADER_MARKER_ADDR + i);
+    }
+    uint16_t crc = crc16(frame, 8);
+    frame[8] = crc >> 8;
+    frame[9] = crc & 0xFF;
+    Wire.write(frame, sizeof(frame));
   } else {
     Wire.write((const uint8_t*)&i2cTxReady, sizeof(i2cTxReady));
   }

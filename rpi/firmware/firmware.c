@@ -11,6 +11,7 @@
  *   - report bootloader/app status: signature, verify state, flash fingerprint
  *   - compare the installed firmware fingerprint against the firmware.hex
  *     bundled in the image ("same/different version")
+ *   - detect firmware too old to answer the version protocol and say so
  *   - flash the bundled firmware on a button press, with progress + verify
  *
  * Display code is ported from rpi/troubleshooter (raw KMS/DRM UAPI, no
@@ -743,6 +744,31 @@ static int bl_finalize(void)
 #define STATUS_PWR              0x10
 #define CMD_VERSION             0x25   /* must match firmware config.h */
 
+/* CMD_VERSION response frame (must match firmware config.h): 3 magic bytes,
+   firmware version, the 4 raw bootloader trailer bytes the firmware read
+   from the top of flash, then CRC-16-CCITT over the first 8 bytes, high
+   byte and low. Magic + CRC make the frame self-identifying: firmware too
+   old to know CMD_VERSION answers the same transaction with its normal data
+   packet, which can never validate. The trailer bytes are interpreted here,
+   not by the firmware: they must match the identity marker the bootloader
+   build patches at 0x1FFC (see BOOTLOADER_MARKER_* in
+   atmega/bootloader/bootloader.c), and the fourth byte is the bootloader's
+   version, meaningful only when the marker matches. */
+#define APP_FRAME_LEN           10
+#define APP_FRAME_PAYLOAD       8
+#define VERSION_MAGIC_0         0x50  /* 'P' */
+#define VERSION_MAGIC_1         0x53  /* 'S' */
+#define VERSION_MAGIC_2         0x36  /* '6' */
+#define BOOTLOADER_MARKER_0     0x50  /* 'P' */
+#define BOOTLOADER_MARKER_1     0x53  /* 'S' */
+#define BOOTLOADER_MARKER_2     0x69  /* 'i' */
+
+typedef struct {
+    uint8_t version;             /* app firmware version byte */
+    bool    bootloader_present;  /* trailer marker matches expected bytes */
+    uint8_t bootloader_version;  /* trailer version byte, when present */
+} app_version_t;
+
 static uint16_t crc16_table[256];
 static void init_crc16_table(void)
 {
@@ -773,18 +799,36 @@ static bool app_read_packet(uint8_t *pkt)
     return (uint8_t)(crc >> 8) == pkt[9] && (uint8_t)crc == pkt[10];
 }
 
-/* Asks the app for its firmware version (CMD_VERSION): after this command,
-   the app's next read returns a single version byte instead of a packet.
+/* Asks the app for its version frame (CMD_VERSION). Returns true only for a
+   frame with matching magic and valid CRC; anything else -- including the
+   data packet an old firmware sends instead -- reads as "no version frame".
    The app only processes commands in 4-byte frames, so pad the command. */
-static int app_read_version(uint8_t *ver)
+static bool app_read_version(app_version_t *out)
 {
+    static const uint8_t magic[3] = { VERSION_MAGIC_0, VERSION_MAGIC_1,
+                                      VERSION_MAGIC_2 };
+    static const uint8_t bl_marker[3] = { BOOTLOADER_MARKER_0,
+                                          BOOTLOADER_MARKER_1,
+                                          BOOTLOADER_MARKER_2 };
     uint8_t cmd[4] = { CMD_VERSION, 0, 0, 0 };
+    uint8_t buf[APP_FRAME_LEN];
+
     if (i2c_write(APP_ADDR, cmd, 4) < 0)
-        return -1;
+        return false;
     usleep(10000);  /* app processes commands in its ~1ms main loop */
     if (ioctl(i2c_fd, I2C_SLAVE, APP_ADDR) < 0)
-        return -1;
-    return read(i2c_fd, ver, 1) == 1 ? 0 : -1;
+        return false;
+    if (read(i2c_fd, buf, APP_FRAME_LEN) != APP_FRAME_LEN)
+        return false;
+    if (memcmp(buf, magic, sizeof magic) != 0)
+        return false;
+    uint16_t crc = crc16_ccitt(buf, APP_FRAME_PAYLOAD);
+    if ((uint8_t)(crc >> 8) != buf[8] || (uint8_t)crc != buf[9])
+        return false;
+    out->version = buf[3];
+    out->bootloader_present = memcmp(&buf[4], bl_marker, sizeof bl_marker) == 0;
+    out->bootloader_version = out->bootloader_present ? buf[7] : 0;
+    return true;
 }
 
 /* ------------------------------------------------------------------ */
@@ -904,7 +948,10 @@ typedef struct {
     bl_info_t info;                  /* valid when bootloader    */
     bool      bl_found;              /* seen bootloader since last NONE */
     double    next_poll;             /* monotonic time for next probe */
-    uint8_t   app_version;           /* app fw version when in MODE_APP */
+    app_version_t app;               /* app report when in MODE_APP */
+    bool      app_frame_valid;       /* app answered CMD_VERSION with a valid
+                                       frame; false in MODE_APP = firmware
+                                       predates the version protocol */
 } ui_state_t;
 
 /* monotonic seconds since some fixed point (CLOCK_MONOTONIC) */
@@ -1047,25 +1094,57 @@ static void draw_status_screen(Canvas *c, const ui_state_t *st,
         draw_text(c, fx + (fw_ - ftw) / 2, 376 + (36 - 14) / 2,
                   act, 2, disp_frac > 0 ? C_FRAME : C_WHITE);
     } else {
-        char vbuf[24];
-        if (st->mode == MODE_APP && st->app_version) {
-            snprintf(vbuf, sizeof vbuf, "APP V%d", st->app_version);
-            draw_tag_rect(c, (w - 240) / 2, 150, 240, 32, vbuf,
-                          C_UNPRESSED, C_VAL);
+        char vbuf[24], bbuf[24];
+        bool show_update_steps = true;
+
+        if (st->mode == MODE_APP && st->app_frame_valid) {
+            snprintf(vbuf, sizeof vbuf, "APP V%d", st->app.version);
+            if (st->app.bootloader_present) {
+                snprintf(bbuf, sizeof bbuf, "BOOTLOADER V%d",
+                         st->app.bootloader_version);
+                draw_tag_rect(c, w / 2 - 240, 150, 230, 32, vbuf,
+                              C_UNPRESSED, C_VAL);
+                draw_tag_rect(c, w / 2 + 10, 150, 230, 32, bbuf,
+                              C_UNPRESSED, C_VAL);
+            } else {
+                draw_tag_rect(c, (w - 240) / 2, 150, 240, 32, vbuf,
+                              C_UNPRESSED, C_VAL);
+                /* app-only install: there is no bootloader to enter, so the
+                   update steps below would lead nowhere */
+                show_update_steps = false;
+                const char *nb = "NO BOOTLOADER - ISP PROGRAMMING REQUIRED";
+                tw = (int)strlen(nb) * 12 - 2;
+                draw_text(c, (w - tw) / 2, 250, nb, 2, C_RED);
+            }
+        } else if (st->mode == MODE_APP) {
+            /* app present but nothing validated: firmware predates the
+               version protocol, so its state can't be read either */
+            draw_tag_rect(c, (w - 240) / 2, 150, 240, 32, "OLD FIRMWARE",
+                          C_UNPRESSED, C_RED);
         }
-        /* instructions for app / no-response modes: numbered steps, one
-           per line, so the sequence reads clearly */
-        const char *steps[3] = {
-            "STEP 1: POWER OFF",
-            "STEP 2: HOLD DISPLAY BUTTON",
-            "STEP 3: POWER ON",
-        };
-        const char *head = "TO UPDATE FIRMWARE:";
-        tw = (int)strlen(head) * 12 - 2;
-        draw_text(c, (w - tw) / 2, 240, head, 2, C_LABEL);
-        for (int i = 0; i < 3; i++) {
-            tw = (int)strlen(steps[i]) * 12 - 2;
-            draw_text(c, (w - tw) / 2, 290 + i * 40, steps[i], 2, C_VAL);
+
+        if (show_update_steps) {
+            /* instructions for app / no-response modes: numbered steps, one
+               per line, so the sequence reads clearly */
+            const char *steps[3] = {
+                "STEP 1: POWER OFF",
+                "STEP 2: HOLD DISPLAY BUTTON",
+                "STEP 3: POWER ON",
+            };
+            const char *head = "TO UPDATE FIRMWARE:";
+            tw = (int)strlen(head) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 240, head, 2, C_LABEL);
+            for (int i = 0; i < 3; i++) {
+                tw = (int)strlen(steps[i]) * 12 - 2;
+                draw_text(c, (w - tw) / 2, 290 + i * 40, steps[i], 2, C_VAL);
+            }
+            if (st->mode == MODE_APP) {
+                /* a board without the bootloader comes right back to this
+                   screen after the steps; say what that means */
+                const char *isp = "IF OLD FIRMWARE REAPPEARS - ISP PROGRAMMING REQUIRED";
+                tw = (int)strlen(isp) * 12 - 2;
+                draw_text(c, (w - tw) / 2, 388, isp, 2, C_LABEL);
+            }
         }
     }
 
@@ -1414,11 +1493,11 @@ int main(int argc, char **argv)
                     st.mode = MODE_BOOTLOADER;
                     st.dirty = true;
                 } else if (i2c_probe(APP_ADDR) == 0) {
-                    uint8_t v = 0;
                     for (int r = 0; r < 5; r++)
-                        if (app_read_version(&v) == 0 && v)
+                        if (app_read_version(&st.app)) {
+                            st.app_frame_valid = true;
                             break;
-                    st.app_version = v;
+                        }
                     st.mode = MODE_APP;
                     st.dirty = true;
                 }

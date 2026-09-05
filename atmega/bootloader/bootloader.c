@@ -10,6 +10,14 @@
 #define BOOTLOADER_VERSION          0x01
 #define TWI_ADDRESS                 0x29
 
+/* Identity trailer, patched into the last 4 bytes of flash (0x1FFC) by the
+ * build: these 3 marker bytes followed by BOOTLOADER_VERSION. The app
+ * firmware reports the bytes verbatim in its version frame; the flasher
+ * (rpi/firmware/firmware.c) compares them against its own copy. */
+#define BOOTLOADER_MARKER_0         0x50  /* 'P' */
+#define BOOTLOADER_MARKER_1         0x53  /* 'S' */
+#define BOOTLOADER_MARKER_2         0x69  /* 'i' */
+
 /* Timer0: F_CPU / 1024, free-running overflow period = 256 * 1024 / F_CPU */
 #define TIMER_DIVISOR               1024
 #define TIMER_OVF_PER_SEC           (F_CPU / ((uint32_t)TIMER_DIVISOR * 256))

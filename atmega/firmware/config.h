@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 1
+#define FIRMWARE_VERSION 3
 #define NORMAL_MODE_LOOP_MS 1       // Main loop interval
 #define SLEEP_MODE_LOOP_MS 5       // Sleep mode loop interval
 #define BTN_DEBOUNCE_LOOPS 10  // Buttons will remain "pressed" for this many loops
@@ -106,6 +106,23 @@
 #define CMD_MUTE 0x23
 #define CMD_CRC 0x24
 #define CMD_VERSION 0x25
+
+// CMD_VERSION response frame. Self-identifying so the flasher can tell it
+// apart from an old firmware's data packet (consumer: rpi/firmware/firmware.c):
+//   [0..2] VERSION_MAGIC_0..2   fixed bytes "PS6"
+//   [3]    FIRMWARE_VERSION
+//   [4..7] raw bootloader trailer bytes read from BOOTLOADER_MARKER_ADDR
+//          (3 marker bytes + bootloader version), passed through verbatim --
+//          interpreting them is the reader's job
+//   [8..9] CRC-16-CCITT over bytes 0..7, high byte then low
+#define VERSION_MAGIC_0 0x50  // 'P'
+#define VERSION_MAGIC_1 0x53  // 'S'
+#define VERSION_MAGIC_2 0x36  // '6'
+
+// Address of the bootloader identity trailer (last 4 bytes of flash). The
+// marker/version values are owned by the bootloader build
+// (atmega/bootloader/bootloader.c); the app only knows the address.
+#define BOOTLOADER_MARKER_ADDR 0x1FFC
 
 #define FADE_TO_ORANGE 0
 #define FADE_TO_GREEN 1
