@@ -258,7 +258,7 @@ touches:
 for t in arm-linux-gnueabi-gcc aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc-14 \
          arm-linux-gnueabihf-gcc avr-gcc avr-objcopy dtc mksquashfs xz \
          python3 wget make zerofree depmod modprobe qemu-arm-static \
-         qemu-aarch64-static; do command -v "$t" >/dev/null || echo "MISSING $t"; done
+         qemu-aarch64-static readelf; do command -v "$t" >/dev/null || echo "MISSING $t"; done
 
 # AVR core reachable from the build user's HOME
 HOME=<build-home> arduino-cli core list          # must show arduino:avr
