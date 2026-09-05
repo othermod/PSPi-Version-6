@@ -58,7 +58,7 @@ static uint16_t         flash_addr;
 static volatile uint8_t page_write_pending       = 0;
 static volatile uint8_t page_write_ready         = 0;
 static volatile uint8_t checksum_verify_pending  = 0;
-static uint8_t          info_bytes[9];
+static uint8_t          info_bytes[10];
 static uint8_t          info_checksum[3];
 
 
@@ -87,7 +87,7 @@ static void write_flash_page(void)
 static void update_info_checksum(void)
 {
     uint8_t sum1 = 0, sum2 = 0, xor = 0, i;
-    for (i = 0; i < 9; i++)
+    for (i = 0; i < 10; i++)
     {
         sum1 += info_bytes[i];
         sum2 += sum1;
@@ -99,11 +99,13 @@ static void update_info_checksum(void)
 }
 
 
-/* Checksum covers all app flash bytes except the final 3, which store the checksum itself. */
+/* Checksum covers all app flash bytes (including the version byte) except the final 3,
+ * which store the checksum itself. */
 static void compute_flash_checksum(void)
 {
     uint8_t  sum1 = 0, sum2 = 0, xor = 0;
     uint16_t i;
+    info_bytes[9] = pgm_read_byte_near(BOOTLOADER_START - 4);
     for (i = 0; i < BOOTLOADER_START - 3; i++)
     {
         uint8_t b = pgm_read_byte_near(i);
@@ -252,11 +254,11 @@ static void twi_handle(void)
             switch (cmd)
             {
                 case CMD_READ_INFO:
-                    if (byte_cnt < 9)
+                    if (byte_cnt < 10)
                         tx_data = info_bytes[byte_cnt];
-                    else if (byte_cnt < 12)
-                        tx_data = info_checksum[byte_cnt - 9];
-                    if (byte_cnt == 11)
+                    else if (byte_cnt < 13)
+                        tx_data = info_checksum[byte_cnt - 10];
+                    if (byte_cnt == 12)
                         TWI_CLEAR_ACK(twi_ctrl);
                     break;
 
@@ -378,6 +380,7 @@ int main(void)
                 info_bytes[6] = 0;
                 info_bytes[7] = 0;
                 info_bytes[8] = 0;
+                info_bytes[9] = 0;
                 update_info_checksum();
                 TWCR = (1<<TWEN) | (1<<TWEA);
             }

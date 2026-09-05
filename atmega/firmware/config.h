@@ -1,3 +1,4 @@
+#define FIRMWARE_VERSION 1
 #define NORMAL_MODE_LOOP_MS 1       // Main loop interval
 #define SLEEP_MODE_LOOP_MS 5       // Sleep mode loop interval
 #define BTN_DEBOUNCE_LOOPS 10  // Buttons will remain "pressed" for this many loops
@@ -104,6 +105,7 @@
 #define CMD_BRIGHT 0x22
 #define CMD_MUTE 0x23
 #define CMD_CRC 0x24
+#define CMD_VERSION 0x25
 
 #define FADE_TO_ORANGE 0
 #define FADE_TO_GREEN 1

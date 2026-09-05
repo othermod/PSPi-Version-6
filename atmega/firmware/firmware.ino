@@ -69,6 +69,7 @@ I2CFrame i2cWorking;
 volatile I2CFrame i2cTxReady;
 volatile byte rxData[4];
 volatile bool pendingCommand = false;
+volatile bool versionRequest = false;
 unsigned long lastUpdateTime = 0;
 
 void initHardware() {
@@ -543,10 +544,19 @@ void processI2CCommand() {
     case CMD_CRC:
       state.crcEnabled = rxData[1];
       break;
+
+    case CMD_VERSION:
+      versionRequest = true;
+      break;
   }
 }
 void onRequest() {
-  Wire.write((const uint8_t*)&i2cTxReady, sizeof(i2cTxReady));
+  if (versionRequest) {
+    versionRequest = false;
+    Wire.write(FIRMWARE_VERSION);
+  } else {
+    Wire.write((const uint8_t*)&i2cTxReady, sizeof(i2cTxReady));
+  }
 
   if (state.idle) {
     state.idle = false;
