@@ -1,4 +1,4 @@
-name: Build Firmware Tool
+name: Build Firmware Flasher
 
 on:
   workflow_call:
