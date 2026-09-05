@@ -1451,8 +1451,6 @@ int main(int argc, char **argv)
                         if (!pwr_hold_start) pwr_hold_start = t;
                         pwr_frac = (float)((t - pwr_hold_start) / 0.5);
                         if (pwr_frac >= 1) {
-                            fill_rect(&cv, 744, 444, 56, 36, C_RED);
-                            present(&disp);
                             system("poweroff");
                             sleep(10);
                             exit(0);
@@ -1495,8 +1493,6 @@ int main(int argc, char **argv)
                         if (!pwr_hold_start) pwr_hold_start = t;
                         pwr_frac = (float)((t - pwr_hold_start) / 0.5);
                         if (pwr_frac >= 1) {
-                            fill_rect(&cv, 744, 444, 56, 36, C_RED);
-                            present(&disp);
                             system("poweroff");
                             sleep(10);
                             exit(0);
