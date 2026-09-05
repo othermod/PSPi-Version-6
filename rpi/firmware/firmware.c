@@ -388,7 +388,7 @@ void fill_triangle(Canvas *c, int x0, int y0, int x1, int y1, int x2, int y2, ui
 }
 
 /* ------------------------------------------------------------------ */
-/* 5x7 bitmap font (41 glyphs: A-Z 0-9 ':' '-' '/' '+' and space)      */
+/* 5x7 bitmap font (42 glyphs: A-Z 0-9 ':' '-' '/' '+' '.' and space)  */
 /* ------------------------------------------------------------------ */
 
 static const char F5x7[][7] = {
@@ -433,6 +433,7 @@ static const char F5x7[][7] = {
 /*/*/ "    #","   # ","  #  "," #   ","#    ","     ","     ",
 /* */"     ","     ","     ","     ","     ","     ","     ",
 /*+*/"     ","  #  ","  #  ","#####","  #  ","  #  ","     ",
+/*.*/"     ","     ","     ","     ","     "," ### "," ### ",
 };
 
 static int glyph_index(char ch)
@@ -443,6 +444,7 @@ static int glyph_index(char ch)
     if (ch == '-') return 37;
     if (ch == '/') return 38;
     if (ch == '+') return 40;
+    if (ch == '.') return 41;
     return 39;                  /* space */
 }
 
@@ -640,8 +642,8 @@ static void compute_fletcher_xor(const uint8_t *data, uint16_t len,
 }
 
 /*
- * Reads the 12-byte CMD_READ_INFO response and validates the trailing
- * 3-byte Fletcher+XOR checksum over the first 9 info bytes. Retries on a
+ * Reads the 13-byte CMD_READ_INFO response and validates the trailing
+ * 3-byte Fletcher+XOR checksum over the first 10 info bytes. Retries on a
  * corrupt read to mitigate I2C unreliability.
  */
 static int bl_read_info(bl_info_t *info)
@@ -687,7 +689,7 @@ static int bl_read_info(bl_info_t *info)
 
 /*
  * Reads the 2-byte CMD_READ_PINS response: raw PINB then PIND.
- * Retries once on a short read (the response is 2 bytes, NACK after).
+ * The bootloader NACKs after the second byte, ending the transfer.
  */
 static int bl_read_pins(bl_pins_t *pins)
 {
@@ -1029,22 +1031,18 @@ static void draw_status_screen(Canvas *c, const ui_state_t *st,
     int w = c->d->w;
     clear(c);
 
-    /* title */
-    const char *title = "PSPI FIRMWARE";
-    int tw = (int)strlen(title) * 18 - 3;
-    draw_text(c, (w - tw) / 2, 14, title, 3, C_WHITE);
-
     /* mode banner */
-    const char *banner = "NO RESPONSE";
+    const char *banner = "NO RESPONSE FROM ATMEGA";
     uint32_t bcol = C_RED;
     if (st->mode == MODE_BOOTLOADER) {
-        banner = "BOOTLOADER MODE"; bcol = C_GREEN;
+        banner = "ATMEGA IN BOOTLOADER MODE"; bcol = C_GREEN;
     } else if (st->mode == MODE_APP) {
-        banner = "FIRMWARE RUNNING"; bcol = C_AMBER;
+        banner = "ATMEGA IN APPLICATION MODE"; bcol = C_AMBER;
     }
-    fill_rect(c, (w - 600) / 2, 60, 600, 64, C_DZ);
-    tw = (int)strlen(banner) * 18 - 3;   /* scale-3 text width */
-    draw_text(c, (w - tw) / 2, 60 + (64 - 21) / 2, banner, 3, bcol);
+    int tw = (int)strlen(banner) * 18 - 3;   /* scale-3 text width */
+    int bw = tw + 48;                        /* text + side padding */
+    fill_rect(c, (w - bw) / 2, 20, bw, 64, C_DZ);
+    draw_text(c, (w - tw) / 2, 20 + (64 - 21) / 2, banner, 3, bcol);
 
     if (st->mode == MODE_BOOTLOADER) {
         char bufs[4][32];
@@ -1084,7 +1082,7 @@ static void draw_status_screen(Canvas *c, const ui_state_t *st,
         draw_panel(c, 420, 150, 360, 180, "CANDIDATE", cand, 3);
 
         /* flash trigger tag: fills amber as DISP is held */
-        const char *act = "HOLD DISPLAY TO FLASH FIRMWARE";
+        const char *act = "HOLD DISPLAY BUTTON TO FLASH FIRMWARE";
         int fw_ = (int)strlen(act) * 12 - 2 + 24;   /* text + padding */
         int fx = (w - fw_) / 2;
         fill_rect(c, fx, 376, fw_, 36, C_UNPRESSED);
@@ -1098,6 +1096,9 @@ static void draw_status_screen(Canvas *c, const ui_state_t *st,
         bool show_update_steps = true;
 
         if (st->mode == MODE_APP && st->app_frame_valid) {
+            const char *note = "CANNOT UPDATE FIRMWARE IN APPLICATION MODE";
+            tw = (int)strlen(note) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 110, note, 2, C_LABEL);
             snprintf(vbuf, sizeof vbuf, "APP V%d", st->app.version);
             if (st->app.bootloader_present) {
                 snprintf(bbuf, sizeof bbuf, "BOOTLOADER V%d",
@@ -1117,34 +1118,83 @@ static void draw_status_screen(Canvas *c, const ui_state_t *st,
                 draw_text(c, (w - tw) / 2, 250, nb, 2, C_RED);
             }
         } else if (st->mode == MODE_APP) {
-            /* app present but nothing validated: firmware predates the
-               version protocol, so its state can't be read either */
-            draw_tag_rect(c, (w - 240) / 2, 150, 240, 32, "OLD FIRMWARE",
-                          C_UNPRESSED, C_RED);
+            /* App present but the version frame never validates: firmware
+               predates the version protocol. It cannot report whether a
+               bootloader is installed, so this screen walks both cases:
+               try bootloader mode first -- if this screen returns, there is
+               no bootloader and the board needs a manual ISP update. */
+            show_update_steps = false;
+
+            const char *hd = "OLD FIRMWARE DETECTED";
+            tw = (int)strlen(hd) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 126, hd, 2, C_LABEL);
+
+            const char *expl = "UNABLE TO DETECT BOOTLOADER";
+            tw = (int)strlen(expl) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 150, expl, 2, C_LABEL);
+
+            panel_row_t try_rows[3] = {
+                { "STEP 1", "POWER OFF",          C_VAL   },
+                { "STEP 2", "HOLD DISPLAY BUTTON", C_VAL   },
+                { "STEP 3", "POWER ON",           C_VAL   },
+            };
+            draw_panel(c, 20, 220, 360, 148, "TRY THE UPDATE", try_rows, 3);
+
+            panel_row_t fail_rows[3] = {
+                { "BOOTLOADER", "NOT PRESENT",     C_RED   },
+                { "BOARD",      "LIKELY PRE-1.6",  C_VAL   },
+                { "UPDATE",     "MANUAL",          C_AMBER },
+            };
+            draw_panel(c, 420, 220, 360, 148, "IF THIS SCREEN RETURNS",
+                       fail_rows, 3);
+
+            const char *isp = "THE BOOTLOADER MAY REQUIRE A ONE-TIME MANUAL FLASH";
+            tw = (int)strlen(isp) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 386, isp, 2, C_AMBER);
+        } else if (st->mode == MODE_NONE) {
+            /* Nothing answers on the bus: the ATmega is not responding at
+               all. Could be an I2C configuration problem on this image, a
+               corrupted bootloader or firmware, or hardware failure. This
+               screen should never appear in normal operation. */
+            show_update_steps = false;
+
+            const char *hd = "UNABLE TO DETECT ATMEGA";
+            tw = (int)strlen(hd) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 126, hd, 2, C_LABEL);
+
+            const char *expl = "THE ATMEGA IS NOT RESPONDING ON THE I2C BUS";
+            tw = (int)strlen(expl) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 150, expl, 2, C_LABEL);
+
+            panel_row_t cause_rows[3] = {
+                { "I2C BUS",    "CONFIG ISSUE", C_AMBER },
+                { "BOOTLOADER", "CORRUPTED",    C_RED   },
+                { "FIRMWARE",   "CORRUPTED",    C_RED   },
+            };
+            draw_panel(c, 20, 220, 360, 148, "POSSIBLE CAUSES", cause_rows, 3);
+
+            panel_row_t step_rows[3] = {
+                { "STEP 1", "POWER CYCLE",     C_VAL },
+                { "STEP 2", "REWRITE SD CARD", C_VAL },
+                { "STEP 3", "MANUAL FLASH",   C_VAL },
+            };
+            draw_panel(c, 420, 220, 360, 148, "NEXT STEPS", step_rows, 3);
+
+            const char *warn = "THIS SCREEN SHOULD NEVER APPEAR IN NORMAL OPERATION";
+            tw = (int)strlen(warn) * 12 - 2;
+            draw_text(c, (w - tw) / 2, 386, warn, 2, C_AMBER);
         }
 
         if (show_update_steps) {
-            /* instructions for app / no-response modes: numbered steps, one
-               per line, so the sequence reads clearly */
-            const char *steps[3] = {
-                "STEP 1: POWER OFF",
-                "STEP 2: HOLD DISPLAY BUTTON",
-                "STEP 3: POWER ON",
+            /* instructions for app / no-response modes: numbered steps in a
+               panel, matching the old-firmware screen's TRY THE UPDATE box */
+            panel_row_t steps[3] = {
+                { "STEP 1", "POWER OFF",           C_VAL },
+                { "STEP 2", "HOLD DISPLAY BUTTON", C_VAL },
+                { "STEP 3", "POWER ON",            C_VAL },
             };
-            const char *head = "TO UPDATE FIRMWARE:";
-            tw = (int)strlen(head) * 12 - 2;
-            draw_text(c, (w - tw) / 2, 240, head, 2, C_LABEL);
-            for (int i = 0; i < 3; i++) {
-                tw = (int)strlen(steps[i]) * 12 - 2;
-                draw_text(c, (w - tw) / 2, 290 + i * 40, steps[i], 2, C_VAL);
-            }
-            if (st->mode == MODE_APP) {
-                /* a board without the bootloader comes right back to this
-                   screen after the steps; say what that means */
-                const char *isp = "IF OLD FIRMWARE REAPPEARS - ISP PROGRAMMING REQUIRED";
-                tw = (int)strlen(isp) * 12 - 2;
-                draw_text(c, (w - tw) / 2, 388, isp, 2, C_LABEL);
-            }
+            draw_panel(c, (w - 360) / 2, 220, 360, 148, "TO UPDATE FIRMWARE",
+                       steps, 3);
         }
     }
 
@@ -1409,11 +1459,11 @@ int main(int argc, char **argv)
             if (i + 1 >= argc) { usage(argv[0]); return 2; }
             hex_path = argv[++i];
         } else if (strcmp(argv[i], "--flash") == 0) {
-        if (i + 1 >= argc) { usage(argv[0]); return 2; }
-        flash_path = argv[++i];
-    } else if (strcmp(argv[i], "--smoke") == 0) {
-        do_smoke = true;
-    } else {
+            if (i + 1 >= argc) { usage(argv[0]); return 2; }
+            flash_path = argv[++i];
+        } else if (strcmp(argv[i], "--smoke") == 0) {
+            do_smoke = true;
+        } else {
             run_secs = atoi(argv[i]);
         }
     }
