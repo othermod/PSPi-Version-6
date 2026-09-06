@@ -240,8 +240,16 @@ download_image() {
     fi
 
     echo >&2 "  Downloading $compressed..."
+    # With a torrent fallback configured, cap direct attempts at 2: a dead
+    # mirror (expired cert, outage) fails fast into the torrent -- 15s of
+    # backoff instead of 150s -- while still riding out one transient blip.
+    # Never raises attempts above DOWNLOAD_ATTEMPTS if it was set lower.
+    local attempts="$DOWNLOAD_ATTEMPTS"
+    if [[ -n "$torrent" && "$DOWNLOAD_ATTEMPTS" -gt 2 ]]; then
+        attempts=2
+    fi
     local attempt actual_sha delay ok=0
-    for ((attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++)); do
+    for ((attempt = 1; attempt <= attempts; attempt++)); do
         # Retry only incomplete transfers; a checksum failure is fatal below,
         # never a retry (re-downloading re-fetches the same bytes).
         if wget -nv --timeout=30 --tries=1 -O "$cached" "$url"; then
@@ -249,9 +257,9 @@ download_image() {
             break
         fi
         rm -f "$cached"
-        if ((attempt < DOWNLOAD_ATTEMPTS)); then
+        if ((attempt < attempts)); then
             delay=$((attempt * 15))
-            echo >&2 "  Download attempt $attempt/$DOWNLOAD_ATTEMPTS failed. Retrying in ${delay}s..."
+            echo >&2 "  Download attempt $attempt/$attempts failed. Retrying in ${delay}s..."
             sleep "$delay"
         fi
     done
@@ -708,6 +716,13 @@ build_distro() {
     local distro="$1"
     (
         DISTRO_FILE="$SCRIPT_DIR/distros/${distro}.sh"
+        # Optional per-target maps must be pre-declared as associative arrays
+        # before the config is sourced. On a never-declared name,
+        # ${TARGET_TORRENT[$label]+x} evaluates the subscript as arithmetic,
+        # and set -u turns that into "<label>: unbound variable" for configs
+        # that don't use the feature. A config's own declare + assignments
+        # land on this same array, so declaring here is a no-op for them.
+        declare -A TARGET_TORRENT
         # shellcheck source=/dev/null
         source "$DISTRO_FILE"
 

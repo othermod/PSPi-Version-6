@@ -52,12 +52,14 @@ TARGET_TORRENT[zero1]="scripts/torrents/batocera-bcm2835-43-20260507.img.gz.torr
 # CONFIG_MODVERSIONS on; the release builds carry CRCs harvested from each
 # image's stock module, so the swap is ABI-safe.
 #
-# cm4/zero2/zero1: the stock snd-bcm2835.ko is an UNCOMPRESSED file at the
-# standard path, so the release build replaces it in place -- same module
-# name and deps, shipped metadata stays valid, no depmod. Activation: the
-# pspi-audio overlay's bootargs (snd_bcm2835.mono_mix=1) land on the kernel
-# command line, and an /etc/modprobe.d option (a real directory here, unlike
-# Lakka's /storage symlink) is the deterministic second channel.
+# cm4/zero2/zero1: the stock snd-bcm2835.ko sits at the standard vc04_services
+# path (uncompressed on the 64-bit images, gzip-compressed .ko.gz on the 32-bit
+# bcm2835 image), so the release build replaces it in place, matching the
+# compression it found -- same module name and deps, shipped metadata stays
+# valid, no depmod. Activation: the pspi-audio overlay's bootargs
+# (snd_bcm2835.mono_mix=1) land on the kernel command line, and an
+# /etc/modprobe.d option (a real directory here, unlike Lakka's /storage
+# symlink) is the deterministic second channel.
 #
 # cm5: Batocera's bcm2712 kernel has NO rp1_audio_out driver at all
 # (# CONFIG_SND_RP1_AUDIO_OUT is not set), so analog audio never worked on
@@ -109,11 +111,25 @@ install_audio_module() {
             || die "[batocera] failed to enable mono_mix on the cm5 audio overlay line"
         echo "  [batocera] Installed rp1-aout-mono into updates/ for $kver (depmod'd); mono_mix enabled in config.txt"
     else
-        local stock="$modbase/$kver/kernel/drivers/staging/vc04_services/bcm2835-audio/snd-bcm2835.ko"
-        [[ -f "$stock" ]] \
-            || die "[batocera] stock module missing at $stock (kernel or overlay layout drift)"
-        cp "$ko" "$stock" \
-            || die "[batocera] failed to install $(basename "$ko") over $stock"
+        # The module dir is stable, but its compression isn't: the 64-bit
+        # images ship snd-bcm2835.ko uncompressed while the 32-bit image
+        # (bcm2835) ships every module gzip-compressed. Match whichever form
+        # is present and install the replacement in the same form -- kmod's
+        # modules.dep entries carry the suffix, and the kernel decompresses
+        # at load, so the swap stays ABI- and metadata-neutral.
+        local moddir="$modbase/$kver/kernel/drivers/staging/vc04_services/bcm2835-audio"
+        local stock="" ext
+        for ext in "" ".gz" ".xz" ".zst"; do
+            [[ -f "$moddir/snd-bcm2835.ko$ext" ]] && stock="$moddir/snd-bcm2835.ko$ext" && break
+        done
+        [[ -n "$stock" ]] \
+            || die "[batocera] stock module missing in $moddir (kernel or overlay layout drift)"
+        case "$stock" in
+            *.gz)  gzip -c "$ko" > "$stock"  || die "[batocera] failed to gzip $(basename "$ko") over $stock" ;;
+            *.xz)  xz -c   "$ko" > "$stock"  || die "[batocera] failed to xz $(basename "$ko") over $stock" ;;
+            *.zst) zstd -q -c "$ko" > "$stock" || die "[batocera] failed to zstd $(basename "$ko") over $stock" ;;
+            *)     cp "$ko" "$stock"         || die "[batocera] failed to install $(basename "$ko") over $stock" ;;
+        esac
 
         [[ -d "$rootfs/etc/modprobe.d" ]] \
             || die "[batocera] $rootfs/etc/modprobe.d missing"
@@ -123,7 +139,7 @@ install_audio_module() {
 # stereo image.
 options snd_bcm2835 enable_headphones=Y mono_mix=Y
 CONF
-        echo "  [batocera] Installed snd-bcm2835-mono for $kver; mono_mix set via modprobe.d"
+        echo "  [batocera] Installed snd-bcm2835-mono as $(basename "$stock") for $kver; mono_mix set via modprobe.d"
     fi
 }
 
