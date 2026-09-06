@@ -28,6 +28,88 @@ TARGET_BIN[cm5]=64
 TARGET_BIN[zero2]=64
 TARGET_BIN[zero1]=32
 
+# --- Mono downmix audio module (prebuilt, PSPi-6-Audio-Modules releases) ---
+# Same story as Lakka (see lakka.sh): one audio pin per board, patched
+# snd-bcm2835 / rp1_aout per target, fetched and verified by
+# fetch_audio_module (patcher.sh). All four Batocera kernels have
+# CONFIG_MODVERSIONS on; the release builds carry CRCs harvested from each
+# image's stock module, so the swap is ABI-safe.
+#
+# cm4/zero2/zero1: the stock snd-bcm2835.ko is an UNCOMPRESSED file at the
+# standard path, so the release build replaces it in place -- same module
+# name and deps, shipped metadata stays valid, no depmod. Activation: the
+# pspi-audio overlay's bootargs (snd_bcm2835.mono_mix=1) land on the kernel
+# command line, and an /etc/modprobe.d option (a real directory here, unlike
+# Lakka's /storage symlink) is the deterministic second channel.
+#
+# cm5: Batocera's bcm2712 kernel has NO rp1_audio_out driver at all
+# (# CONFIG_SND_RP1_AUDIO_OUT is not set), so analog audio never worked on
+# this image. The module is therefore NEW, not a replacement: it goes into
+# /lib/modules/<kver>/updates/ and depmod regenerates the metadata so the
+# of: alias for the DT node the cm5 overlay enables resolves to it. The
+# same overlay's mono_mix override gates the downmix at probe.
+declare -A MODULE_ASSET MODULE_VERMAGIC
+
+MODULE_ASSET[cm4]="batocera-bcm2711-43.1-20260530-snd-bcm2835-mono.ko"
+MODULE_ASSET[cm5]="batocera-bcm2712-43.1-20260529-rp1-aout-mono.ko"
+MODULE_ASSET[zero2]="batocera-bcm2837-43.1-20260530-snd-bcm2835-mono.ko"
+MODULE_ASSET[zero1]="batocera-bcm2835-43-20260507-snd-bcm2835-mono.ko"
+
+MODULE_VERMAGIC[cm4]="6.12.62-v8 SMP preempt mod_unload modversions aarch64"
+MODULE_VERMAGIC[cm5]="6.12.62 SMP preempt mod_unload modversions aarch64"
+MODULE_VERMAGIC[zero2]="6.12.62-v8 SMP preempt mod_unload modversions aarch64"
+MODULE_VERMAGIC[zero1]="6.12.62 mod_unload modversions ARMv6 p2v8"
+
+install_audio_module() {
+    local rootfs="$1" mnt_boot="$2" label="$3"
+    local ko
+    ko="$(fetch_audio_module "$label")"
+
+    local modbase="$rootfs/lib/modules"
+    local -a kvers=()
+    local kd
+    for kd in "$modbase"/*/; do
+        [[ -d "$kd" ]] && kvers+=("$(basename "$kd")")
+    done
+    [[ ${#kvers[@]} -eq 1 ]] \
+        || die "[batocera] expected exactly one kernel in $modbase, found: ${kvers[*]:-none}"
+    local kver="${kvers[0]}"
+
+    if [[ "$label" == "cm5" ]]; then
+        # New driver, not a replacement -- see the block comment above.
+        mkdir -p "$modbase/$kver/updates"
+        cp "$ko" "$modbase/$kver/updates/rp1_aout.ko" \
+            || die "[batocera] failed to install rp1_aout.ko into updates/"
+        command -v depmod >/dev/null 2>&1 \
+            || die "[batocera] depmod not found (kmod); needed to index the new rp1_aout module"
+        depmod -b "$rootfs" "$kver" || die "[batocera] depmod failed for $kver"
+
+        # Enable the DT property the patched rp1_aout reads at probe (the
+        # generic patcher appended the bare overlay line under [cm5]).
+        sed -i 's|^dtoverlay=pspi-audio-cm5-kernel6+$|dtoverlay=pspi-audio-cm5-kernel6+,mono_mix|' \
+            "$mnt_boot/config.txt"
+        grep -q '^dtoverlay=pspi-audio-cm5-kernel6+,mono_mix$' "$mnt_boot/config.txt" \
+            || die "[batocera] failed to enable mono_mix on the cm5 audio overlay line"
+        echo "  [batocera] Installed rp1-aout-mono into updates/ for $kver (depmod'd); mono_mix enabled in config.txt"
+    else
+        local stock="$modbase/$kver/kernel/drivers/staging/vc04_services/bcm2835-audio/snd-bcm2835.ko"
+        [[ -f "$stock" ]] \
+            || die "[batocera] stock module missing at $stock (kernel or overlay layout drift)"
+        cp "$ko" "$stock" \
+            || die "[batocera] failed to install $(basename "$ko") over $stock"
+
+        [[ -d "$rootfs/etc/modprobe.d" ]] \
+            || die "[batocera] $rootfs/etc/modprobe.d missing"
+        cat > "$rootfs/etc/modprobe.d/pspi-audio.conf" <<'CONF'
+# PSPi 6: one PWM pin feeds the speaker; patched snd-bcm2835 (from
+# PSPi-6-Audio-Modules) downmixes (L+R)/2 so that pin carries the full
+# stereo image.
+options snd_bcm2835 enable_headphones=Y mono_mix=Y
+CONF
+        echo "  [batocera] Installed snd-bcm2835-mono for $kver; mono_mix set via modprobe.d"
+    fi
+}
+
 distro_post_patch() {
     local overlay_target="$1"
     local mnt_boot="$2"
@@ -194,4 +276,7 @@ PACTL_EOF
     fi
 
     echo "  [batocera] Audio fix complete"
+
+    # Mono downmix audio module (see the block comment at the maps above).
+    install_audio_module "$overlay_target" "$mnt_boot" "$5"
 }
