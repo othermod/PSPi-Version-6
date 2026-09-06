@@ -56,6 +56,117 @@ TARGET_BIN[zero2]=64
 TARGET_BIN[cm4]=64
 TARGET_BIN[cm5]=64
 
+# --- Mono downmix audio module (prebuilt, PSPi-6-Audio-Modules releases) ---
+# The base image is Raspberry Pi OS Bookworm Lite 2026-04-13, which carries
+# MULTIPLE kernel trees; only one boots per board (zero1 -> v6, zero2/cm4 ->
+# v8, cm5 -> 2712), so the module is installed into just that tree. Stock
+# modules are XZ-COMPRESSED (.ko.xz): the fetched .ko is recompressed to
+# replace the stock file in place -- same module name and dependencies, so
+# the shipped modules.dep/modules.alias stay valid and no depmod is needed.
+# All these kernels have CONFIG_MODVERSIONS on; the release builds carry
+# CRCs harvested from the image's own Module.symvers.
+#
+# Activation: the pspi-audio overlay's bootargs (snd_bcm2835.mono_mix=1)
+# land on the kernel command line, and an /etc/modprobe.d option (a real
+# directory on Pi OS) is the deterministic second channel. cm5 uses the
+# overlay's mono_mix DT property instead -- rp1_aout has no parameters.
+declare -A MODULE_ASSET MODULE_VERMAGIC
+
+MODULE_ASSET[zero1]="2026-04-13-raspios-bookworm-armhf-lite-v6-snd-bcm2835-mono.ko"
+MODULE_ASSET[zero2]="2026-04-13-raspios-bookworm-arm64-lite-snd-bcm2835-mono.ko"
+MODULE_ASSET[cm4]="2026-04-13-raspios-bookworm-arm64-lite-snd-bcm2835-mono.ko"
+MODULE_ASSET[cm5]="2026-04-13-raspios-bookworm-arm64-lite-2712-rp1-aout-mono.ko"
+
+MODULE_VERMAGIC[zero1]="6.12.75+rpt-rpi-v6 mod_unload modversions ARMv6 p2v8"
+MODULE_VERMAGIC[zero2]="6.12.75+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64"
+MODULE_VERMAGIC[cm4]="6.12.75+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64"
+MODULE_VERMAGIC[cm5]="6.12.75+rpt-rpi-2712 SMP preempt mod_unload modversions aarch64"
+
+# The kernel tree each target's board actually boots.
+boot_kver_glob() {
+    case "$1" in
+        zero1)          echo '*-rpi-v6' ;;
+        zero2|cm4)      echo '*-rpi-v8' ;;
+        cm5)            echo '*-rpi-2712' ;;
+        *)              die "[retropie] no kernel tree mapping for target: $1" ;;
+    esac
+}
+
+install_audio_module() {
+    local rootfs="$1" mnt_boot="$2" label="$3"
+    local ko
+    ko="$(fetch_audio_module "$label")"
+
+    local modbase="$rootfs/lib/modules"
+    local kvers=()
+    readarray -t kvers < <(find "$modbase" -maxdepth 1 -type d \
+        -name "$(boot_kver_glob "$label")" -printf '%f\n' | sort)
+    [[ ${#kvers[@]} -eq 1 ]] \
+        || die "[retropie] expected exactly one booting kernel tree matching" \
+               " '$(boot_kver_glob "$label")' in $modbase, found: ${kvers[*]:-none}"
+    local kver="${kvers[0]}"
+
+    local dest_rel
+    case "$label" in
+        cm5) dest_rel="kernel/sound/soc/raspberrypi/rp1_aout.ko" ;;
+        *)   dest_rel="kernel/drivers/staging/vc04_services/bcm2835-audio/snd-bcm2835.ko" ;;
+    esac
+    # Pi OS trees store modules compressed (snd-bcm2835.ko.xz); locate the
+    # stock file by prefix so the format switch below drives off its real
+    # extension.
+    local stock_dir="$modbase/$kver/$(dirname "$dest_rel")"
+    local base_name
+    base_name="$(basename "$dest_rel")"
+    local -a stocks=()
+    readarray -t stocks < <(find "$stock_dir" -maxdepth 1 -type f -name "${base_name}*" | sort)
+    [[ ${#stocks[@]} -eq 1 ]] \
+        || die "[retropie] expected exactly one stock module '${base_name}*' in" \
+               " $stock_dir, found: ${stocks[*]:-none}"
+    local stock="${stocks[0]}"
+
+    # Recompress the verified module to the tree's on-disk format and swap it
+    # in place (write to a temp name first: a failed xz must not truncate the
+    # stock file).
+    case "$stock" in
+        *.ko.xz)
+            command -v xz >/dev/null 2>&1 || die "[retropie] xz not found; needed to match the tree's compressed module format"
+            xz -T0 -c "$ko" > "$stock.tmp" || die "[retropie] failed to compress $(basename "$ko")"
+            mv "$stock.tmp" "$stock"
+            ;;
+        *.ko)
+            cp "$ko" "$stock" || die "[retropie] failed to install $(basename "$ko")"
+            ;;
+        *)
+            die "[retropie] unsupported stock module format: $stock"
+            ;;
+    esac
+
+    if [[ "$label" == "cm5" ]]; then
+        # rp1_aout has no module parameters: the downmix is gated by the DT
+        # property the cm5 overlay sets via this config.txt override, read
+        # once at probe. The stock module ignores the unread property, so
+        # the line stays valid either way.
+        sed -i 's|^dtoverlay=pspi-audio-cm5-kernel6+$|dtoverlay=pspi-audio-cm5-kernel6+,mono_mix|' \
+            "$mnt_boot/config.txt"
+        grep -q '^dtoverlay=pspi-audio-cm5-kernel6+,mono_mix$' "$mnt_boot/config.txt" \
+            || die "[retropie] failed to enable mono_mix on the cm5 audio overlay line"
+        echo "  [retropie] Installed rp1-aout-mono into $kver; mono_mix enabled in config.txt"
+    else
+        # snd_bcm2835 auto-loads via udev (vchiq alias), so a modprobe.d
+        # option applies wherever the module loads from. /etc/modprobe.d is a
+        # real directory on Pi OS (unlike Lakka's /storage symlink).
+        [[ -d "$rootfs/etc/modprobe.d" ]] \
+            || die "[retropie] $rootfs/etc/modprobe.d missing"
+        cat > "$rootfs/etc/modprobe.d/pspi-audio.conf" <<'CONF'
+# PSPi 6: one PWM pin feeds the speaker; patched snd-bcm2835 (from
+# PSPi-6-Audio-Modules) downmixes (L+R)/2 so that pin carries the full
+# stereo image.
+options snd_bcm2835 enable_headphones=Y mono_mix=Y
+CONF
+        echo "  [retropie] Installed snd-bcm2835-mono into $kver; mono_mix set via modprobe.d"
+    fi
+}
+
 distro_post_patch() {
     local rootfs="$1"
     local mnt_boot="$2"
@@ -205,4 +316,7 @@ ESCFG
     chown -R 1000:1000 "$ra_auto_dir" "$dc_maps" "$rootfs/opt/retropie/configs/n64"
     [[ -L "$joy2k_dir" ]] || chown -R 1000:1000 "$joy2k_dir"
     echo "  [retropie] Seeded joy2key autoconfig + emulator keymaps (retroarch, flycast, mupen64plus)"
+
+    # Mono downmix audio module (see the block comment at the maps above).
+    install_audio_module "$rootfs" "$mnt_boot" "$5"
 }
