@@ -283,10 +283,26 @@ download_image() {
 
     actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
     if [[ "$actual_sha" != "$sha256" ]]; then
-        # Transfer completed; these are the bytes upstream serves, so a retry
-        # would fetch the same file. If upstream changed, update TARGET_SHA256
-        # and delete the cached file, then rerun.
-        die "Downloaded $compressed fails SHA256: expected $sha256, got $actual_sha. If the upstream file changed, update TARGET_SHA256 and delete $cached before rerunning."
+        if [[ -n "$torrent" ]]; then
+            # Completed transfer of the wrong bytes: upstream moved under a
+            # fixed URL (Recalbox serves version bumps from "latest" paths).
+            # The torrent pins the exact bytes TARGET_SHA256 describes; fetch
+            # those instead. Mismatched web-seed pieces are discarded by the
+            # client, so a drifted web seed degrades to peers, never corrupt.
+            echo >&2 "  Downloaded $compressed fails SHA256 (upstream file changed); fetching pinned bytes via torrent..."
+            rm -f "$cached"
+            download_via_torrent "$torrent" \
+                || die "Failed to download $compressed via torrent fallback (direct URL was: $url)"
+            actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
+            if [[ "$actual_sha" != "$sha256" ]]; then
+                die "Torrent-fetched $compressed fails SHA256: expected $sha256, got $actual_sha. The torrent does not match TARGET_SHA256; regenerate it from the pinned image."
+            fi
+        else
+            # Transfer completed; these are the bytes upstream serves, so a retry
+            # would fetch the same file. If upstream changed, update TARGET_SHA256
+            # and delete the cached file, then rerun.
+            die "Downloaded $compressed fails SHA256: expected $sha256, got $actual_sha. If the upstream file changed, update TARGET_SHA256 and delete $cached before rerunning."
+        fi
     fi
     echo >&2 "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
 }

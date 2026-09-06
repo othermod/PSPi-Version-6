@@ -78,7 +78,7 @@ gcc-14 package** (see table). Do not try to run `gcc-14-aarch64-linux-gnu`
 | `zerofree` | `zerofree` | Required by every `copy`-method distro; zeroes rootfs free space before xz compression. A missing/failing `zerofree` is FATAL (never a silent size blowup). |
 | `qemu-user-static`, `binfmt-support` | `qemu-arm-static`, `qemu-aarch64-static` | Kernel-module builds that execute the prebuilt `modpost`/`fixdep` under QEMU (Kali, Ubuntu). Both `qemu-arm` and `qemu-aarch64` must be enabled in `/proc/sys/fs/binfmt_misc` — a missing `qemu-arm` handler fails Kali's 32-bit module build with `scripts/basic/fixdep: Exec format error`. |
 | `curl` | `curl` | **Ubuntu distro only**: resolves the matching `linux-headers-<kernel>` package from the Ubuntu archive. |
-| `aria2` | `aria2c` | Optional: torrent fallback when a stock-image URL fails. Only Batocera sets `TARGET_TORRENT` today (its `updates.batocera.org` redirects to a mirror whose TLS certificate has lapsed); the torrents live in `scripts/torrents/`. Without aria2 the patcher just dies on the normal download error. |
+| `aria2` | `aria2c` | Optional: torrent fallback when a stock-image URL fails or (Recalbox) serves different bytes than the pinned SHA256. Batocera and Recalbox set `TARGET_TORRENT`; the torrents live in `scripts/torrents/`. Without aria2 the patcher just dies on the normal download error. |
 
 ### 1.3 Network requirements at build time
 
