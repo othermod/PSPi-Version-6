@@ -4,7 +4,7 @@ set -euo pipefail
 [[ $EUID -ne 0 ]] && echo "ERROR: This script must be run as root (use sudo)" && exit 1
 
 # Usage:
-#   ./scripts/patcher.sh --distro <name> [--version X.Y.Z] [--driver-binaries PATH] [--target TARGET]
+#   ./scripts/patcher.sh --distro <name>[,<name>...] [--version X.Y.Z] [--driver-binaries PATH] [--target TARGET]
 #
 # ---------------------------------------------------------------------------
 # Distro config contract
@@ -69,7 +69,7 @@ set -euo pipefail
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
-DISTRO=""
+DISTROS=()
 VERSION=""
 DRIVER_BINARIES_DIR=""
 TARGET=""
@@ -90,7 +90,7 @@ WORK_ROOT="${PSPI_WORK_DIR:-/tmp}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --distro)          DISTRO="$2";              shift 2 ;;
+        --distro)          DISTROS+=("$2");          shift 2 ;;
         --version)         VERSION="$2";             shift 2 ;;
         --driver-binaries) DRIVER_BINARIES_DIR="$2"; shift 2 ;;
         --target)          TARGET="$2";              shift 2 ;;
@@ -99,28 +99,28 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -z "$DISTRO" ]] && die "No distro specified. Use --distro <name>"
-# gamepadview.sh was renamed to troubleshooter.sh (the image runs the
-# troubleshooter display tool for diagnosing the controller). Accept the old
-# name so existing local invocations and scripts keep working; CI derives the
-# distro name from the config filename (troubleshooter) and never passes it.
-[[ "$DISTRO" == "gamepadview" ]] && DISTRO="troubleshooter"
-DISTRO_FILE="$SCRIPT_DIR/distros/${DISTRO}.sh"
-[[ -f "$DISTRO_FILE" ]] || die "Distro config not found: $DISTRO_FILE"
-# shellcheck source=/dev/null
-source "$DISTRO_FILE"
-
-# Validate required distro vars
-: "${PATCH_METHOD:?$DISTRO_FILE must set PATCH_METHOD (squashfs or copy)}"
-: "${DRIVERS_BASE:?$DISTRO_FILE must set DRIVERS_BASE}"
-: "${INIT_SYSTEM:?$DISTRO_FILE must set INIT_SYSTEM (systemd or sysv)}"
-: "${ALL_TARGETS:?$DISTRO_FILE must set ALL_TARGETS}"
-[[ "$PATCH_METHOD" == "squashfs" || "$PATCH_METHOD" == "copy" ]] \
-    || die "PATCH_METHOD must be 'squashfs' or 'copy'"
-if [[ "$PATCH_METHOD" == "squashfs" ]]; then
-    : "${SQUASHFS_PATH:?$DISTRO_FILE must set SQUASHFS_PATH for squashfs method}"
-    SQUASHFS_COMP_ARGS="${SQUASHFS_COMP_ARGS:-}"
-fi
+[[ ${#DISTROS[@]} -eq 0 ]] && die "No distro specified. Use --distro <name>[,<name>...]"
+# Distros may be given as a comma-separated list (--distro lakka,batocera) and
+# repeated flags. Split into one entry per distro; gamepadview.sh was renamed
+# to troubleshooter.sh (the image runs the troubleshooter display tool for
+# diagnosing the controller). Accept the old name so existing local invocations
+# and scripts keep working; CI derives the distro name from the config filename
+# (troubleshooter) and never passes it.
+split_distros=()
+for spec in "${DISTROS[@]}"; do
+    IFS=',' read -ra names <<< "$spec"
+    for name in "${names[@]}"; do
+        name="${name//[[:space:]]/}"
+        [[ -z "$name" ]] && continue
+        [[ "$name" == "gamepadview" ]] && name="troubleshooter"
+        split_distros+=("$name")
+    done
+done
+DISTROS=("${split_distros[@]}")
+for distro in "${DISTROS[@]}"; do
+    [[ -f "$SCRIPT_DIR/distros/${distro}.sh" ]] \
+        || die "Distro config not found: $SCRIPT_DIR/distros/${distro}.sh"
+done
 
 if [[ -z "$VERSION" ]]; then
     LAST_TAG="$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null || true)"
@@ -665,33 +665,75 @@ build_image() {
 cleanup
 trap cleanup EXIT
 
-# The squashfs method stacks an overlay on top of the mounted squashfs, and
-# overlayfs refuses an upperdir that is itself on overlayfs. Containers whose
-# root is overlayfs hit this, and the kernel's error names neither cause nor
-# cure, so check up front.
-if [[ "$PATCH_METHOD" == "squashfs" ]]; then
-    mkdir -p "$WORK_ROOT"
-    work_fs="$(stat -f -c %T "$WORK_ROOT" 2>/dev/null || echo unknown)"
-    if [[ "$work_fs" == "overlayfs" ]]; then
-        die "Work directory $WORK_ROOT is on overlayfs, which cannot host the
-       overlay mount the squashfs method needs. Either set PSPI_WORK_DIR to a
-       path on a real filesystem, or give the container a volume for /tmp
-       (docker run -v /tmp ...). GitHub runners are unaffected."
-    fi
-fi
-
-echo "PSPi Version 6 | distro=$DISTRO method=$PATCH_METHOD version=$VERSION output=$OUTPUT_DIR"
-
+# Driver binaries are distro-independent; build them once for the whole run.
 if [[ -z "$DRIVER_BINARIES_DIR" ]]; then
     build_drivers
 fi
 
-if [[ -z "$TARGET" ]]; then
-    for t in "${ALL_TARGETS[@]}"; do
-        build_image "$t"
-    done
-else
-    build_image "$TARGET"
-fi
+# Each distro builds in a subshell so its config's variables can't leak into
+# the next one (re-sourcing assoc arrays like TARGET_URL doesn't clear stale
+# entries). A failed distro doesn't abort the remaining ones, mirroring the
+# workflow's fail-fast: false matrix; the run still exits non-zero.
+build_distro() {
+    local distro="$1"
+    (
+        DISTRO_FILE="$SCRIPT_DIR/distros/${distro}.sh"
+        # shellcheck source=/dev/null
+        source "$DISTRO_FILE"
+
+        # Validate required distro vars
+        : "${PATCH_METHOD:?$DISTRO_FILE must set PATCH_METHOD (squashfs or copy)}"
+        : "${DRIVERS_BASE:?$DISTRO_FILE must set DRIVERS_BASE}"
+        : "${INIT_SYSTEM:?$DISTRO_FILE must set INIT_SYSTEM (systemd or sysv)}"
+        : "${ALL_TARGETS:?$DISTRO_FILE must set ALL_TARGETS}"
+        [[ "$PATCH_METHOD" == "squashfs" || "$PATCH_METHOD" == "copy" ]] \
+            || die "PATCH_METHOD must be 'squashfs' or 'copy'"
+        if [[ "$PATCH_METHOD" == "squashfs" ]]; then
+            : "${SQUASHFS_PATH:?$DISTRO_FILE must set SQUASHFS_PATH for squashfs method}"
+            SQUASHFS_COMP_ARGS="${SQUASHFS_COMP_ARGS:-}"
+        fi
+
+        # The squashfs method stacks an overlay on top of the mounted squashfs,
+        # and overlayfs refuses an upperdir that is itself on overlayfs.
+        # Containers whose root is overlayfs hit this, and the kernel's error
+        # names neither cause nor cure, so check per distro before downloading.
+        if [[ "$PATCH_METHOD" == "squashfs" ]]; then
+            mkdir -p "$WORK_ROOT"
+            work_fs="$(stat -f -c %T "$WORK_ROOT" 2>/dev/null || echo unknown)"
+            if [[ "$work_fs" == "overlayfs" ]]; then
+                die "Work directory $WORK_ROOT is on overlayfs, which cannot host the
+       overlay mount the squashfs method needs. Either set PSPI_WORK_DIR to a
+       path on a real filesystem, or give the container a volume for /tmp
+       (docker run -v /tmp ...). GitHub runners are unaffected."
+            fi
+        fi
+
+        echo "PSPi Version 6 | distro=$distro method=$PATCH_METHOD version=$VERSION output=$OUTPUT_DIR"
+
+        if [[ -z "$TARGET" ]]; then
+            for t in "${ALL_TARGETS[@]}"; do
+                build_image "$t"
+            done
+        else
+            build_image "$TARGET"
+        fi
+    )
+}
+
+rc=0
+for distro in "${DISTROS[@]}"; do
+    # set +e/-e rather than an if/|| context: errexit is suppressed inside a
+    # subshell invoked from a condition, which would let a failed build_image
+    # fall through and mark the distro as built.
+    set +e
+    build_distro "$distro"
+    status=$?
+    set -e
+    if (( status != 0 )); then
+        echo "ERROR: distro '$distro' failed; continuing with the remaining distros" >&2
+        rc=1
+    fi
+done
 
 echo "Done. Artifacts in: $OUTPUT_DIR"
+exit "$rc"

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       distro:
-        description: 'Single distro to build (optional, for testing)'
+        description: 'Comma-separated distros to build (optional, for testing; e.g. lakka,batocera)'
         required: false
       target:
         description: 'Single target to build (optional, for testing)'
@@ -76,14 +76,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Restrict to one distro if requested, otherwise use every distro config
-          distro_files=(scripts/distros/*.sh)
+          # Restrict to the requested distros (comma-separated) if given,
+          # otherwise use every distro config
+          distro_files=()
           if [[ -n "$INPUT_DISTRO" ]]; then
-            if [[ ! -f "scripts/distros/${INPUT_DISTRO}.sh" ]]; then
-              echo "ERROR: Unknown distro '$INPUT_DISTRO'. Available: $(basename -a -s .sh scripts/distros/*.sh | tr '\n' ' ')" >&2
-              exit 1
-            fi
-            distro_files=("scripts/distros/${INPUT_DISTRO}.sh")
+            IFS=',' read -ra requested_distros <<< "$INPUT_DISTRO"
+            for distro in "${requested_distros[@]}"; do
+              # Tolerate whitespace around the commas ("lakka, batocera")
+              distro="${distro//[[:space:]]/}"
+              [[ -z "$distro" ]] && continue
+              if [[ ! -f "scripts/distros/${distro}.sh" ]]; then
+                echo "ERROR: Unknown distro '$distro'. Available: $(basename -a -s .sh scripts/distros/*.sh | tr '\n' ' ')" >&2
+                exit 1
+              fi
+              distro_files+=("scripts/distros/${distro}.sh")
+            done
+          else
+            distro_files=(scripts/distros/*.sh)
           fi
 
           pairs=()
