@@ -34,19 +34,15 @@ TARGET_BIN[zero1]=32
 # The PSPi amp is wired to one audio pin per board, so stereo content needs
 # the patched snd-bcm2835 (cm4/zero2/zero1) or rp1_aout (cm5) driver, built
 # by the PSPi-6-Audio-Modules repo against each image's exact kernel. The
-# asset is fetched at build time and replaces the stock module in place
-# inside the SYSTEM squashfs: same module name and dependencies, so the
-# shipped modules.dep/modules.alias stay valid and no depmod is needed.
+# asset is fetched and verified by fetch_audio_module (patcher.sh) and
+# replaces the stock module in place inside the SYSTEM squashfs: same module
+# name and dependencies, so the shipped modules.dep/modules.alias stay valid
+# and no depmod is needed.
 #
 # One artifact per target -- the RPi3 kernel (zero2) is a different build
 # (preempt, modversions) and zero1 is ARMv6, so none are interchangeable.
-# AUDIO_MODULES_TAG names the release to fetch from; override it to pin or
-# bump. Assets are verified against the release's SHA256SUMS, and vermagic
-# is checked per target -- on Lakka it is the only ABI gate (no modversions,
-# no signing), so a wrong-artifact download must fail the build, not boot.
-AUDIO_MODULES_REPO="${AUDIO_MODULES_REPO:-othermod/PSPi-6-Audio-Modules}"
-AUDIO_MODULES_TAG="${AUDIO_MODULES_TAG:-latest}"
-
+# Vermagic is the only ABI gate here (no modversions, no signing), so a
+# wrong-artifact download must fail the build, not boot.
 declare -A MODULE_ASSET MODULE_VERMAGIC
 
 MODULE_ASSET[cm4]="Lakka-RPi4.aarch64-6.1-snd-bcm2835-mono.ko"
@@ -54,8 +50,6 @@ MODULE_ASSET[cm5]="Lakka-RPi5.aarch64-6.1-rp1-aout-mono.ko"
 MODULE_ASSET[zero2]="Lakka-RPi3.aarch64-6.1-snd-bcm2835-mono.ko"
 MODULE_ASSET[zero1]="Lakka-RPi.arm-6.1-snd-bcm2835-mono.ko"
 
-# Verified against the facts files in PSPi-6-Audio-Modules; vermagic values
-# must match exactly (modulo trailing whitespace, normalized below).
 MODULE_VERMAGIC[cm4]="6.12.66 SMP mod_unload aarch64"
 MODULE_VERMAGIC[cm5]="6.12.66 SMP mod_unload aarch64"
 MODULE_VERMAGIC[zero2]="6.12.66 SMP preempt mod_unload modversions aarch64"
@@ -63,35 +57,8 @@ MODULE_VERMAGIC[zero1]="6.12.66 mod_unload ARMv6 p2v8"
 
 install_audio_module() {
     local rootfs="$1" mnt_boot="$2" label="$3"
-    [[ -n "${MODULE_ASSET[$label]+x}" ]] \
-        || die "[lakka] no audio module asset defined for target: $label"
-    local asset="${MODULE_ASSET[$label]}"
-    local base="https://github.com/${AUDIO_MODULES_REPO}/releases/download/${AUDIO_MODULES_TAG}"
-
-    # Tag in the cache name: a bumped release reuses the same asset filename
-    # with new bytes, and download_image trusts a cache hit, so an untagged
-    # name would silently keep shipping the old module.
-    download_image "$base/$asset" "" "${AUDIO_MODULES_TAG}--$asset"
-    download_image "$base/SHA256SUMS" "" "${AUDIO_MODULES_TAG}--SHA256SUMS"
-
-    # Verify against the release's own checksums (catches partial/corrupt
-    # transfers; a transfer that never completes dies in download_image).
-    local expected actual
-    expected="$(awk -v n="$asset" '$2==n {print $1}' \
-        "$CACHE_DIR/${AUDIO_MODULES_TAG}--SHA256SUMS")"
-    [[ -n "$expected" ]] \
-        || die "[lakka] $asset is not listed in ${AUDIO_MODULES_TAG}/SHA256SUMS"
-    actual="$(sha256sum "$CACHE_DIR/${AUDIO_MODULES_TAG}--$asset" | awk '{print $1}')"
-    [[ "$actual" == "$expected" ]] \
-        || die "[lakka] $asset fails SHA256SUMS: expected $expected, got $actual"
-
-    command -v readelf >/dev/null 2>&1 \
-        || die "[lakka] readelf not found (binutils); needed to verify module vermagic"
-    local got want="${MODULE_VERMAGIC[$label]}"
-    got="$(readelf -p .modinfo "$CACHE_DIR/${AUDIO_MODULES_TAG}--$asset" 2>/dev/null \
-        | sed -n 's/.*vermagic=//p' | sed 's/ *$//')"
-    [[ "$got" == "$want" ]] \
-        || die "[lakka] $asset vermagic mismatch: want '$want', got '${got:-none}'"
+    local ko
+    ko="$(fetch_audio_module "$label")"
 
     # Locate the stock module; its parent tree fixes the kernel version.
     local modbase="$rootfs/usr/lib/kernel-overlays/base/lib/modules"
@@ -112,8 +79,8 @@ install_audio_module() {
     local stock="$modbase/$kver/$dest_rel"
     [[ -f "$stock" ]] \
         || die "[lakka] stock module missing at $stock (kernel or overlay layout drift)"
-    cp "$CACHE_DIR/${AUDIO_MODULES_TAG}--$asset" "$stock" \
-        || die "[lakka] failed to install $asset over $stock"
+    cp "$ko" "$stock" \
+        || die "[lakka] failed to install $(basename "$ko") over $stock"
 
     if [[ "$label" == "cm5" ]]; then
         # rp1_aout has no module parameters: the downmix is gated by the DT

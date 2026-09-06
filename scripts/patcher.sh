@@ -34,6 +34,12 @@ set -euo pipefail
 #                                  partition root. Default "overlays". Set this for A/B
 #                                  layouts where the firmware reads from elsewhere.
 #
+# Optional per-target maps for prebuilt module delivery (see
+# fetch_audio_module below):
+#   MODULE_ASSET[<target>]       - asset filename in the PSPi-6-Audio-Modules
+#                                  release, eg. "<IMAGE>-<module>.ko"
+#   MODULE_VERMAGIC[<target>]    - expected vermagic of that asset
+#
 # Optional hooks. Argument lists below are exact; every config implementing
 # distro_post_patch uses the same slot meanings.
 #   distro_pre_patch  <img_path> <work_dir> <BIN> <label>
@@ -57,6 +63,9 @@ set -euo pipefail
 #   set_input_mouse <mnt_boot>
 #   build_battery_module_from_headers <hdr> <kver> <rootfs> <work_dir> <BIN>
 #   enable_battery_module_at_boot <rootfs>
+#   fetch_audio_module <label>     - fetch+verify the prebuilt module for
+#                                    <target> from MODULE_ASSET/MODULE_VERMAGIC;
+#                                    prints the verified file path on stdout
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -199,22 +208,22 @@ download_image() {
             local actual_sha
             actual_sha="$(sha256sum "$cached" | awk '{print $1}')"
             if [[ "$actual_sha" == "$sha256" ]]; then
-                echo "  Cached: $compressed"
+                echo >&2 "  Cached: $compressed"
                 return 0
             fi
             # Stale cache (eg. moved "latest" URL). Fetch fresh; its
             # checksum is verified once, below.
-            echo "  Cached $compressed fails SHA256. Deleting stale copy..."
+            echo >&2 "  Cached $compressed fails SHA256. Deleting stale copy..."
             rm -f "$cached"
         else
             # No SHA256 set: trust the cached file as-is. Never re-download
             # based on age; refresh via a SHA256 mismatch above.
-            echo "  Cached (no SHA256 set): $compressed"
+            echo >&2 "  Cached (no SHA256 set): $compressed"
             return 0
         fi
     fi
 
-    echo "  Downloading $compressed..."
+    echo >&2 "  Downloading $compressed..."
     local attempt actual_sha delay ok=0
     for ((attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++)); do
         # Retry only incomplete transfers; a checksum failure is fatal below,
@@ -226,7 +235,7 @@ download_image() {
         rm -f "$cached"
         if ((attempt < DOWNLOAD_ATTEMPTS)); then
             delay=$((attempt * 15))
-            echo "  Download attempt $attempt/$DOWNLOAD_ATTEMPTS failed. Retrying in ${delay}s..."
+            echo >&2 "  Download attempt $attempt/$DOWNLOAD_ATTEMPTS failed. Retrying in ${delay}s..."
             sleep "$delay"
         fi
     done
@@ -235,7 +244,7 @@ download_image() {
     fi
 
     if [[ -z "$sha256" ]]; then
-        echo "  WARNING: downloaded $compressed ($(du -h "$cached" | cut -f1))" \
+        echo >&2 "  WARNING: downloaded $compressed ($(du -h "$cached" | cut -f1))" \
              "UNVERIFIED -- no SHA256 set for this target"
         return 0
     fi
@@ -247,7 +256,56 @@ download_image() {
         # and delete the cached file, then rerun.
         die "Downloaded $compressed fails SHA256: expected $sha256, got $actual_sha. If the upstream file changed, update TARGET_SHA256 and delete $cached before rerunning."
     fi
-    echo "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
+    echo >&2 "  Downloaded: $compressed ($(du -h "$cached" | cut -f1)), SHA256 OK"
+}
+
+# --- Prebuilt audio modules (PSPi-6-Audio-Modules releases) ---
+# Distro configs declare per-target MODULE_ASSET (release asset filename,
+# "<IMAGE>-<module>.ko") and MODULE_VERMAGIC (expected vermagic) maps, then
+# call fetch_audio_module <target-label> from a hook. Prints the verified
+# file path on stdout; any verification failure is fatal.
+
+AUDIO_MODULES_REPO="${AUDIO_MODULES_REPO:-othermod/PSPi-6-Audio-Modules}"
+AUDIO_MODULES_TAG="${AUDIO_MODULES_TAG:-latest}"
+
+fetch_audio_module() {
+    local label="$1"
+    [[ -n "${MODULE_ASSET[$label]+x}" ]] \
+        || die "no audio module asset defined for target: $label"
+    [[ -n "${MODULE_VERMAGIC[$label]+x}" ]] \
+        || die "no audio module vermagic defined for target: $label"
+    local asset="${MODULE_ASSET[$label]}"
+    local want="${MODULE_VERMAGIC[$label]}"
+    local base="https://github.com/${AUDIO_MODULES_REPO}/releases/download/${AUDIO_MODULES_TAG}"
+
+    # Tag in the cache name: a bumped release reuses the same asset filename
+    # with new bytes, and download_image trusts a cache hit, so an untagged
+    # name would silently keep shipping the old module.
+    download_image "$base/$asset" "" "${AUDIO_MODULES_TAG}--$asset"
+    download_image "$base/SHA256SUMS" "" "${AUDIO_MODULES_TAG}--SHA256SUMS"
+
+    # Verify against the release's own checksums (catches partial/corrupt
+    # transfers; a transfer that never completes dies in download_image).
+    local expected actual
+    expected="$(awk -v n="$asset" '$2==n {print $1}' \
+        "$CACHE_DIR/${AUDIO_MODULES_TAG}--SHA256SUMS")"
+    [[ -n "$expected" ]] \
+        || die "$asset is not listed in ${AUDIO_MODULES_TAG}/SHA256SUMS"
+    actual="$(sha256sum "$CACHE_DIR/${AUDIO_MODULES_TAG}--$asset" | awk '{print $1}')"
+    [[ "$actual" == "$expected" ]] \
+        || die "$asset fails SHA256SUMS: expected $expected, got $actual"
+
+    # Vermagic is the only ABI gate on distros without modversions/signing;
+    # a wrong-artifact download must die at build time, not at boot.
+    command -v readelf >/dev/null 2>&1 \
+        || die "readelf not found (binutils); needed to verify module vermagic"
+    local got
+    got="$(readelf -p .modinfo "$CACHE_DIR/${AUDIO_MODULES_TAG}--$asset" 2>/dev/null \
+        | sed -n 's/.*vermagic=//p' | sed 's/ *$//')"
+    [[ "$got" == "$want" ]] \
+        || die "$asset vermagic mismatch: want '$want', got '${got:-none}'"
+
+    echo "$CACHE_DIR/${AUDIO_MODULES_TAG}--$asset"
 }
 
 # Print "<offset_bytes> <size_bytes>" for MBR partition <n> (1-based).
