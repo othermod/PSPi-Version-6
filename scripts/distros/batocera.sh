@@ -187,6 +187,30 @@ defaults.ctl.card 0
 EOF
     echo "  [batocera] Set ALSA default to card 0"
 
+    # The RP1 analog output on cm5 is fixed-rate 48 kHz, and clients ask for
+    # other rates (EmulationStation/SDL opens at 44100 with no fallback).
+    # The mono module withholds MMAP so mmap clients can't bypass its
+    # downmix process hook, but the rate plugin only transfers through an
+    # mmap slave (pcm_rate.c uses snd_pcm_mmap_begin/commit on it), so
+    # plain plug->hw refuses to convert. Insert mmap_emul explicitly: it
+    # presents the mmap the rate plugin needs and copies through read/
+    # write, so converted samples still pass the kernel downmix. With
+    # defaults.pcm.card alone, "default" resolves to raw hw:0,0 and 44.1k
+    # clients fail hw_params outright; dmix is not usable here (it needs a
+    # real shared mmap buffer).
+    if [[ "$5" == "cm5" ]]; then
+        cat > "${overlay_target}/etc/asound.conf" << 'EOF'
+pcm.!default {
+    type plug
+    slave.pcm {
+        type mmap_emul
+        slave.pcm "hw:0,0"
+    }
+}
+EOF
+        echo "  [batocera] Set /etc/asound.conf default=plug/mmap_emul (cm5 48k conversion)"
+    fi
+
     local s31es="${overlay_target}/etc/init.d/S31emulationstation"
     if [[ -f "$s31es" ]]; then
         if ! grep -q "SDL_AUDIODRIVER" "$s31es"; then
