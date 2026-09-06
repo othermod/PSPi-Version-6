@@ -24,6 +24,9 @@ set -euo pipefail
 #                                  force a re-download).
 #   TARGET_PSPI_PREFIX[<target>] - output filename prefix; -v<version>.img.xz appended automatically
 #   TARGET_BIN[<target>]         - 32 or 64
+#   TARGET_TORRENT[<target>]     - optional .torrent path (relative to the repo
+#                                  root) for the stock image; used as a fallback
+#                                  when the URL download fails (aria2c required)
 #
 # Required for PATCH_METHOD=squashfs:
 #   SQUASHFS_PATH                - path to squashfs within the mounted boot partition
@@ -198,8 +201,21 @@ build_drivers() {
     done
 }
 
+download_via_torrent() {
+    local torrent="$1"
+    command -v aria2c >/dev/null 2>&1 \
+        || die "aria2c not found (install aria2); required for the torrent fallback"
+    echo >&2 "  Falling back to torrent: $(basename "$torrent")"
+    # --check-integrity: piece-verify whatever exists (resumes a partial file)
+    # --seed-time=0: exit once complete -- this is a fetch, not a seeder
+    # --file-allocation=none: avoid preallocating multi-GB placeholders
+    aria2c --seed-time=0 --continue=true --allow-overwrite=true \
+           --check-integrity=true --file-allocation=none \
+           --dir="$CACHE_DIR" "$torrent" 1>&2
+}
+
 download_image() {
-    local url="$1" sha256="$2" compressed="$3"
+    local url="$1" sha256="$2" compressed="$3" torrent="${4:-}"
     local cached="$CACHE_DIR/$compressed"
     mkdir -p "$CACHE_DIR"
 
@@ -240,7 +256,15 @@ download_image() {
         fi
     done
     if [[ "$ok" != 1 ]]; then
-        die "Failed to download $url after $DOWNLOAD_ATTEMPTS attempts (transfer never completed)"
+        if [[ -n "$torrent" ]]; then
+            # Direct download failed every attempt (bad mirror, TLS error,
+            # outage). The torrent's web seed/pieces ride a different path,
+            # and the SHA256 gate below still applies to the result.
+            download_via_torrent "$torrent" \
+                || die "Failed to download $compressed via torrent fallback (direct URL was: $url)"
+        else
+            die "Failed to download $url after $DOWNLOAD_ATTEMPTS attempts (transfer never completed)"
+        fi
     fi
 
     if [[ -z "$sha256" ]]; then
@@ -599,13 +623,19 @@ build_image() {
     local T_PSPI_NAME="${TARGET_PSPI_PREFIX[$label]}-v${VERSION}.img.xz"
     local T_BIN="${TARGET_BIN[$label]}"
     local T_COMPRESSED="${T_URL##*/}"
+    local T_TORRENT=""
+    if [[ -n "${TARGET_TORRENT[$label]+x}" ]]; then
+        T_TORRENT="$PROJECT_DIR/${TARGET_TORRENT[$label]}"
+        [[ -f "$T_TORRENT" ]] \
+            || die "TARGET_TORRENT file not found: $T_TORRENT (path is relative to the repo root)"
+    fi
 
     echo "Building $label..."
     local work_dir
     work_dir="$(mktemp -d "$WORK_ROOT/pspi-build-XXXXXX")"
     mkdir -p "$OUTPUT_DIR"
 
-    download_image "$T_URL" "$T_SHA256" "$T_COMPRESSED"
+    download_image "$T_URL" "$T_SHA256" "$T_COMPRESSED" "$T_TORRENT"
 
     local ext="${T_COMPRESSED##*.}"
     local img_path="$work_dir/${T_COMPRESSED%.$ext}"

@@ -28,6 +28,23 @@ TARGET_BIN[cm5]=64
 TARGET_BIN[zero2]=64
 TARGET_BIN[zero1]=32
 
+# --- Stock-image torrent fallback ---
+# updates.batocera.org redirects to mirrors.o2switch.fr, whose TLS certificate
+# expired 2026-09-05; when direct download fails, the patcher falls back to
+# these torrents (scripts/torrents/, committed to the repo). The bcm2711 and
+# bcm2712 torrents are Batocera's official ones with the mirror injected as a
+# web seed -- url-list lives outside the info dict, so the infohash (and thus
+# Batocera's swarm) is preserved. bcm2837/bcm2835 have no official torrent;
+# theirs were created with mktorrent. The web seed is deliberately plain
+# http: torrent pieces are hash-verified by the client as they arrive, and
+# the patcher's TARGET_SHA256 gate still applies to the assembled file.
+declare -A TARGET_TORRENT
+
+TARGET_TORRENT[cm4]="scripts/torrents/batocera-bcm2711-43.1-20260530.img.gz.torrent"
+TARGET_TORRENT[cm5]="scripts/torrents/batocera-bcm2712-43.1-20260529.img.gz.torrent"
+TARGET_TORRENT[zero2]="scripts/torrents/batocera-bcm2837-43.1-20260530.img.gz.torrent"
+TARGET_TORRENT[zero1]="scripts/torrents/batocera-bcm2835-43-20260507.img.gz.torrent"
+
 # --- Mono downmix audio module (prebuilt, PSPi-6-Audio-Modules releases) ---
 # Same story as Lakka (see lakka.sh): one audio pin per board, patched
 # snd-bcm2835 / rp1_aout per target, fetched and verified by
