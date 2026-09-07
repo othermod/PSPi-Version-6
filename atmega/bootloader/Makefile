@@ -54,7 +54,7 @@ $(TARGET).hex: $(TARGET).elf
 	 $(OBJCOPY) -I binary -O ihex --change-addresses=$(BOOT_START) $(TARGET).bin $@; \
 	 echo "Flash:   $$PROGSIZE bytes used of $(CODE_LIMIT) for bootloader [$$(( $(CODE_LIMIT) - $$PROGSIZE )) bytes free]"; \
 	 echo "         (4 bytes reserved for identity trailer at 0x1FFC-0x1FFF)"; \
-	 echo "Trailer: marker $$M0 $$M1 $$M2, version $$BLV written at 0x1FFC"; \
+	 printf "Trailer: marker %02X %02X %02X, version %02X written at 0x1FFC\n" $$M0 $$M1 $$M2 $$BLV; \
 	 echo "RAM:     $$DATASIZE bytes used of 1024 [$$(( 1024 - $$DATASIZE )) bytes free]"
 
 clean:

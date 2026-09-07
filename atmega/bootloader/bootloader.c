@@ -341,8 +341,11 @@ int main(void)
     }
     else
     {
-        /* Button pressed: wait up to 1 second for release.
-         * Releasing early boots the app (if checksum valid); holding the full second stays in bootloader. */
+        /* Button pressed: power the Pi immediately so its boot overlaps the
+         * entry wait. Releasing early drops EN_5V back to its cold-boot state
+         * and jumps to the app (if checksum valid); holding the full second
+         * stays in bootloader with power applied. */
+        PORTB |= EN_5V_PIN;
         uint8_t ovf_count = 0;
         while (ovf_count < (uint8_t)TIMER_OVF_PER_SEC)
         {
@@ -353,7 +356,10 @@ int main(void)
             if (PINB & BTN_DISP)
             {
                 if (flash_verify_checksum())
+                {
+                    PORTB &= ~EN_5V_PIN;
                     bl_mode = BL_JUMP_APP;
+                }
                 break;
             }
         }
