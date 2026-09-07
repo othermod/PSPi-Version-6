@@ -1,26 +1,12 @@
-/*
- * troubleshooter.c — PSPi V6 gamepad visualizer
- *
- * Reads the PSPi controller board over I2C (addr 0x10, /dev/i2c-1), validates
- * every packet with a CRC-16-CCITT over the first 9 bytes (required because
- * of the BCM2835 I2C clock-stretch bug on this board), and renders:
- *   - every button (PSP layout: face diamond △○✕□, L1/L2/R1/R2 shoulders,
- *     d-pad, bottom row HOME VOL- VOL+ MUTE SEL START), changing colour
- *     while pressed; MUTE reflects the muted state from the status byte
- *   - both analog stick positions as overlapping-circle indicators
- *   - a bottom strip: WiFi state (green/red), backlight level (8 segments),
- *     and the power-key popup (PWR, fills amber->red as the shutdown hold
- *     progresses; red = shutdown imminent)
- * on the display via KMS/DRM with double buffering (no cursor, no flicker).
- * The screen is only repainted when input actually changes, so the static
- * image never flickers.
- *
- * Usage:
- *   ./troubleshooter --probe          one-shot I2C read + CRC check (no display)
- *   sudo ./troubleshooter [seconds]   live view until Ctrl-C or N seconds
- *
- * Build: make            (see Makefile; also supports cross-compiling)
- */
+/* troubleshooter.c -- PSPi V6 gamepad visualizer for the diagnostic image. */
+/* Reads the controller board over I2C (addr 0x10), validates every packet */
+/* with CRC-16-CCITT, and renders buttons, sticks, WiFi switch, backlight, */
+/* battery and power-key state on a KMS/DRM display. It is the only daemon */
+/* running on the image, so it owns the display, the bus and the WiFi LED. */
+/* The left stick also shows its measured full-deflection travel circle.   */
+/* Usage:  ./troubleshooter --probe     one-shot I2C read + CRC check      */
+/*         sudo ./troubleshooter [secs] live view until Ctrl-C or N secs  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -42,15 +28,13 @@
 #include <drm/drm.h>
 #include <drm/drm_mode.h>
 
-/* DRM_MODE_CONNECTED is a libdrm enum value, not in the kernel UAPI header;
-   define it for the connector-status check below. */
+/* libdrm enum value, not present in the kernel UAPI header. */
 #define DRM_MODE_CONNECTED 1
 
 /* ------------------------------------------------------------------ */
-/* DRM display (raw KMS ioctl UAPI -- no libdrm)                       */
+/* DRM display (raw KMS ioctl UAPI -- no libdrm)                      */
 /* ------------------------------------------------------------------ */
 
-/* Double-buffered DRM display */
 typedef struct {
     int fd;              /* drm fd (master) */
     int w, h;            /* mode resolution */
@@ -66,8 +50,7 @@ typedef struct {
 
 typedef struct { Display *d; } Canvas;
 
-/* libdrm's drmModeGetConnectorTypeName -- replicated here so we don't link
-   libdrm just for this one string lookup. */
+/* libdrm's drmModeGetConnectorTypeName, replicated to avoid a libdrm link. */
 static const char *connector_type_name(uint32_t t)
 {
     switch (t) {
@@ -95,10 +78,7 @@ static const char *connector_type_name(uint32_t t)
     }
 }
 
-/* Fetch a connector's full data (modes + metadata) via the two-pass
-   DRM_IOCTL_MODE_GETCONNECTOR ioctl. Caller owns and must free *modes. The
-   encoders/props arrays the ioctl also fills are discarded -- the
-   troubleshooter doesn't need them. */
+/* Fetch a connector's modes via the two-pass GETCONNECTOR ioctl; caller frees *modes. */
 static bool get_connector(int fd, uint32_t id,
                            uint32_t *conn_id, uint32_t *type,
                            uint32_t *encoder_id, uint32_t *connection,
@@ -158,8 +138,7 @@ bool display_init(Display *d, const char **conn_name)
         uint32_t *conns = calloc(res.count_connectors  ? res.count_connectors  : 1, sizeof *conns);
         res.crtc_id_ptr      = (uint64_t)(uintptr_t)crtcs;
         res.connector_id_ptr = (uint64_t)(uintptr_t)conns;
-        /* Arrays we provide no pointers for: zero their counts or the kernel
-           does put_user() through the NULL pointer and the call faults. */
+        /* zero counts for arrays we pass no pointers for, or the kernel faults on NULL. */
         res.count_fbs      = 0;
         res.count_encoders = 0;
         if (ioctl(fd, DRM_IOCTL_MODE_GETRESOURCES, &res)) { free(crtcs); free(conns); close(fd); continue; }
@@ -191,8 +170,7 @@ bool display_init(Display *d, const char **conn_name)
     }
 
     if (!connector_id) {
-        fprintf(stderr, "error: no DRM card with a connected display "
-                        "(run with sudo?)\n");
+        fprintf(stderr, "error: no DRM card with a connected display (run with sudo?)\n");
         return false;
     }
     if (conn_name) *conn_name = connector_type_name(ctype);
@@ -206,7 +184,7 @@ bool display_init(Display *d, const char **conn_name)
     d->h = mode->vdisplay;
     d->pitch = 0; d->size = 0; d->scan = 0; d->paint = 1; d->flip_ok = true;
 
-    /* create two dumb framebuffers (front/back) */
+    /* create and map two dumb framebuffers (front/back) */
     for (int i = 0; i < 2; i++) {
         struct drm_mode_create_dumb cd = {
             .width = (uint32_t)d->w, .height = (uint32_t)d->h, .bpp = 32,
@@ -236,9 +214,9 @@ bool display_init(Display *d, const char **conn_name)
     sc.count_connectors = 1; sc.mode_valid = 1; sc.mode = *mode;
     if (ioctl(d->fd, DRM_IOCTL_MODE_SETCRTC, &sc) != 0) { perror("drmModeSetCrtc"); free(modes); return false; }
 
-    struct drm_mode_cursor cur;
+    struct drm_mode_cursor cur;   /* handle 0 hides the cursor plane */
     memset(&cur, 0, sizeof cur);
-    cur.crtc_id = crtc_id;            /* handle 0 hides the cursor plane */
+    cur.crtc_id = crtc_id;
     ioctl(d->fd, DRM_IOCTL_MODE_CURSOR, &cur);
 
     printf("display: %s %dx%d @%dHz\n",
@@ -263,19 +241,14 @@ void present(Display *d)
         usleep(30000);              /* CRTC still settling after setcrtc */
     }
     if (!issued) {
-        d->flip_ok = false;         /* fall back to in-place painting */
+        d->flip_ok = false;         /* fall back to painting in place */
         d->buf = (uint32_t *)d->map[d->scan];
         fprintf(stderr, "warning: page flip failed (%s), painting in place\n",
                 strerror(errno));
         return;
     }
 
-    /* block until the flip-complete event so the old buffer is safe to reuse,
-       then swap scan/paint. If no completion event arrives within ~2 s (the
-       only failure mode the page-flip ioctl itself can't report), the old
-       buffer may still be scanned out -- painting on it would tear. Treat a
-       silent timeout exactly like an explicit flip failure: fall back to
-       painting in place on the scan buffer. */
+    /* wait for the flip-complete event so the old buffer is safe to reuse. */
     bool done = false;
     for (int w = 0; w < 200 && !done; w++) {
         struct pollfd pfd = { .fd = d->fd, .events = POLLIN };
@@ -287,7 +260,7 @@ void present(Display *d)
                 done = true;
         }
     }
-    if (!done) {
+    if (!done) {                    /* no event: treat exactly like a flip failure */
         d->flip_ok = false;
         d->buf = (uint32_t *)d->map[d->scan];
         fprintf(stderr, "warning: page flip event timed out, painting in place\n");
@@ -300,7 +273,7 @@ void present(Display *d)
 }
 
 /* ------------------------------------------------------------------ */
-/* Canvas primitives (32-bit packed RGB, buffers are XRGB8888)         */
+/* Canvas primitives (32-bit packed RGB, buffers are XRGB8888)        */
 /* ------------------------------------------------------------------ */
 
 void px(Canvas *c, int x, int y, uint32_t col)
@@ -388,8 +361,24 @@ void fill_triangle(Canvas *c, int x0, int y0, int x1, int y1, int x2, int y2, ui
                 px(c, x, y, col);
 }
 
+/* solid arrow: tip at (tx,ty) pointing along unit (dx,dy), base len behind, half-width hw */
+static void draw_arrow(Canvas *c, int tx, int ty, int dx, int dy, int len, int hw, uint32_t col)
+{
+    int bx = tx - dx * len, by = ty - dy * len;   /* base center */
+    int px = dy, py = -dx;                        /* perpendicular */
+    fill_triangle(c, tx, ty, bx + px * hw, by + py * hw, bx - px * hw, by - py * hw, col);
+}
+
+/* bottom-up level fill inset 2px inside the rect, frac clamped to 0..1 */
+static void fill_level(Canvas *c, int x, int y, int w, int h, double frac, uint32_t col)
+{
+    if (frac > 1.0) frac = 1.0;
+    int fh = (int)((h - 4) * frac);
+    if (fh > 0) fill_rect(c, x + 2, y + h - 2 - fh, w - 4, fh, col);
+}
+
 /* ------------------------------------------------------------------ */
-/* 5x7 bitmap font (41 glyphs: A-Z 0-9 ':' '-' '/' '+' and space)                */
+/* 5x7 bitmap font (41 glyphs: A-Z 0-9 ':' '-' '/' '+' and space)      */
 /* ------------------------------------------------------------------ */
 
 static const char F5x7[][7] = {
@@ -431,9 +420,9 @@ static const char F5x7[][7] = {
 /*9*/" ### ","#   #","#   #"," ####","    #","    #"," ### ",
 /*:*/"     ","  #  ","  #  ","     ","  #  ","  #  ","     ",
 /*-*/"     ","     ","     ","#####","     ","     ","     ",
-/*/*/ "    #","   # ","  #  "," #   ","#    ","     ","     ",
-/* */"     ","     ","     ","     ","     ","     ","     ",
-/*+*/"     ","  #  ","  #  ","#####","  #  ","  #  ","     ",
+/*slash*/"    #","   # ","  #  "," #   ","#    ","     ","     ",
+/*space*/"     ","     ","     ","     ","     ","     ","     ",
+/*plus*/"     ","  #  ","  #  ","#####","  #  ","  #  ","     ",
 };
 
 static int glyph_index(char ch)
@@ -462,12 +451,18 @@ int draw_text(Canvas *c, int x, int y, const char *s, int scale, uint32_t col)
     return x;
 }
 
+/* draw_text horizontally centered on cx */
+static void center_text(Canvas *c, int cx, int y, const char *s, int scale, uint32_t col)
+{
+    int tw = (int)strlen(s) * 6 * scale - (scale == 2 ? 2 : 1);
+    draw_text(c, cx - tw / 2, y, s, scale, col);
+}
+
 /* ----------------------------- I2C protocol ----------------------------- */
-/* 11-byte packet, little-endian:
- *  [0..1] buttons bitfield      [2] system voltage   [3] battery voltage
- *  [4]    status flags          [5..6] left stick X/Y
- *  [7..8] right stick X/Y: 7-bit position (bit0 masked off) + button bits
- *  [9..10] CRC-16-CCITT over bytes 0..8                                 */
+/* 11-byte packet, little-endian:                                        */
+/* [0..1] buttons  [2] sys voltage  [3] battery voltage  [4] status byte */
+/* [5..6] left stick X/Y  [7..8] right stick X/Y (8-bit, LSB=button)      */
+/* [9..10] CRC-16-CCITT over bytes 0..8                                  */
 
 #define I2C_BUS       "/dev/i2c-1"
 #define I2C_ADDR      0x10
@@ -492,14 +487,13 @@ int draw_text(Canvas *c, int x, int y, const char *s, int scale, uint32_t col)
 #define BTN_VOL_M     0x4000
 #define BTN_HOME      0x8000
 
-#define STATUS_PWR    0x10         /* status byte (pkt[4]) bit 4: power/SD key */
-#define STATUS_WIFI   0x40         /* status byte (pkt[4]) bit 6: left switch =
-                                       raw WiFi switch position; the wifi
-                                       monitor treats WIFI ENABLED as !leftSwitch */
-#define STATUS_BRIGHT 0x07         /* status byte (pkt[4]) bits 0-2: backlight */
-#define STATUS_MUTED  0x80         /* status byte (pkt[4]) bit 7 */
+#define STATUS_PWR    0x10         /* pkt[4] bit 4: power/SD key */
+#define STATUS_WIFI   0x40         /* pkt[4] bit 6: raw WiFi switch (active-low) */
+#define STATUS_BRIGHT 0x07         /* pkt[4] bits 0-2: backlight level 0..7 */
+#define STATUS_MUTED  0x80         /* pkt[4] bit 7 */
 
-#define STICK_MASK    0xFE         /* right sticks: 7-bit position, bit0=btn */
+/* right sticks: full 8-bit position like the left, LSB replaced by a button */
+#define STICK_MASK    0xFE
 #define AXIS_CENTER   127
 #define AXIS_DEADZONE 20           /* matches driver's default axis_flat */
 
@@ -520,6 +514,7 @@ int draw_text(Canvas *c, int x, int y, const char *s, int scale, uint32_t col)
 #define C_CIRCLE       0xFF3B5C
 #define C_SQUARE       0xFF6EC7
 #define C_TRIANGLE     0x33CC66
+#define C_PATH         0x36648C     /* measured stick travel path */
 
 /* ------------------------------ CRC-16-CCITT ---------------------------- */
 
@@ -549,14 +544,11 @@ static uint16_t crc16_ccitt(const uint8_t *data, int len)
 typedef struct {
     uint16_t buttons;            /* raw button bitfield */
     uint8_t sx, sy;              /* left stick X/Y (0..255) */
-    uint8_t rx, ry;              /* right stick X/Y (7-bit, masked) */
-    bool l2, r2;                 /* extra buttons in right-stick bytes */
+    uint8_t rx, ry;              /* right stick X/Y (0..254, even) */
+    bool btn1, btn2;             /* extra buttons in the right-stick bytes' LSBs */
     bool muted;                  /* status flag: audio muted */
-    bool wifi;                   /* status flag: WiFi link switch is ON (the
-                                    raw bit is active-low — monitor does
-                                    set_wifi_enabled(!left_switch)) */
-    uint8_t brightness;          /* backlight level from status bits 0-2 (0..7,
-                                    dimmest..brightest); the bar shows +1 */
+    bool wifi;                   /* status flag: WiFi switch position (active-low bit) */
+    uint8_t brightness;          /* backlight level 0..7; the bar shows +1 */
     bool power;                  /* status flag: power/SD key held */
     bool pwr_critical;           /* power held, shutdown imminent */
     unsigned crc_ok, crc_fail;   /* link statistics */
@@ -576,10 +568,7 @@ static bool i2c_open(void)
     return true;
 }
 
-/* WiFi LED control via the firmware's CMD_WIFI (0x20): 0=off, 1=solid,
-   2=blink (~128 ms per invert, driven by the MCU's 1 ms loop). The wifi
-   monitor normally owns this; the troubleshooter uses blink while the
-   switch is on and restores off on exit. */
+/* WiFi LED control via the firmware's CMD_WIFI (0x20): 0=off, 1=solid, 2=blink. */
 #define CMD_WIFI 0x20
 
 static void wifi_led_set(uint8_t mode)
@@ -590,9 +579,26 @@ static void wifi_led_set(uint8_t mode)
         perror("wifi led cmd");
 }
 
+/* true once we switched the LED to blink; cleanup only touches the LED then. */
+static bool wifi_led_claimed = false;
+
+/* wlan0 IFF_RUNNING (0x40) via sysfs -- the same carrier the wifi monitor uses. */
+static bool wifi_link_up(void)
+{
+    char buf[16];
+    int fd = open("/sys/class/net/wlan0/flags", O_RDONLY);
+    if (fd < 0) return false;
+    ssize_t n = read(fd, buf, sizeof buf - 1);
+    close(fd);
+    if (n <= 0) return false;
+    buf[n] = '\0';
+    return (strtol(buf, NULL, 0) & 0x40) != 0;
+}
+
 static void wifi_led_cleanup(void)
 {
-    wifi_led_set(0);
+    /* leave the LED the way a connected system would show it */
+    if (wifi_led_claimed) wifi_led_set(wifi_link_up() ? 1 : 0);
 }
 
 static bool parse_packet(const uint8_t *pkt, PadState *st)
@@ -604,11 +610,10 @@ static bool parse_packet(const uint8_t *pkt, PadState *st)
     st->sy = pkt[6];
     st->rx = pkt[7] & STICK_MASK;
     st->ry = pkt[8] & STICK_MASK;
-    st->l2 = (pkt[7] & 1) != 0;          /* rx bit0 -> BTN1 (swapped from
-                                            the driver's L2/R2 naming) */
-    st->r2 = (pkt[8] & 1) != 0;          /* ry bit0 -> BTN2 */
+    st->btn1 = (pkt[7] & 1) != 0;   /* byte 7 bit 0 = BTN_EXTRA1 */
+    st->btn2 = (pkt[8] & 1) != 0;   /* byte 8 bit 0 = BTN_EXTRA2 */
     st->muted = (pkt[4] & STATUS_MUTED) != 0;
-    st->wifi = (pkt[4] & STATUS_WIFI) == 0;   /* bit is raw switch pos; wifi on = clear */
+    st->wifi = (pkt[4] & STATUS_WIFI) == 0;   /* raw switch pos; wifi on = clear */
     st->brightness = pkt[4] & STATUS_BRIGHT;
     st->power = (pkt[4] & STATUS_PWR) != 0;
     st->adc_sys = pkt[2];
@@ -648,10 +653,10 @@ static void probe(void)
 
         PadState st = {0};
         parse_packet(pkt, &st);
-        printf("  buttons 0x%04X  L1=%d R1=%d L2=%d R2=%d SEL=%d START=%d "
+        printf("  buttons 0x%04X  L1=%d R1=%d BTN1=%d BTN2=%d SEL=%d START=%d "
                "dpad=%d%d%d%d home=%d vol=%d%d mute=%d muted_state=%d power=%d\n",
                st.buttons, !!(st.buttons & BTN_L1), !!(st.buttons & BTN_R1),
-               st.l2, st.r2, !!(st.buttons & BTN_SELECT), !!(st.buttons & BTN_START),
+               st.btn1, st.btn2, !!(st.buttons & BTN_SELECT), !!(st.buttons & BTN_START),
                !!(st.buttons & BTN_DPAD_U), !!(st.buttons & BTN_DPAD_D),
                !!(st.buttons & BTN_DPAD_L), !!(st.buttons & BTN_DPAD_R),
                !!(st.buttons & BTN_HOME),
@@ -661,18 +666,15 @@ static void probe(void)
                !!(st.buttons & BTN_CROSS), !!(st.buttons & BTN_SQUARE),
                !!(st.buttons & BTN_TRIANGLE), !!(st.buttons & BTN_CIRCLE));
         printf("  left  stick: X=%3d Y=%3d\n", st.sx, st.sy);
-        printf("  right stick: X=%3d Y=%3d (7-bit, bit0=%d/%d)\n",
-               st.rx, st.ry, st.r2, st.l2);
+        printf("  right stick: X=%3d Y=%3d (bit0=%d/%d)\n", st.rx, st.ry, st.btn1, st.btn2);
         return;
     }
     printf("  probe failed: no CRC-valid packet after 20 tries\n");
 }
 
 /* --------------------------- battery estimation -------------------------- */
-/* Ported from rpi/battery/battery_monitor.c: estimates charge state and
-   percent from the two ADC channels in every gamepad packet (bytes 2/3 are
-   senseSys/senseBat). Runs once per poll (~8 ms), faster than the
-   monitor's 50 ms tick. See battery_init() for the scaling note. */
+/* Ported 1:1 from rpi/battery/battery_monitor.c (bytes 2/3 of every packet) */
+/* so the percent shown here tracks the monitor exactly.                    */
 
 #define SENSE_RESISTOR_MILLIOHM                     50
 #define RESISTOR_A_KOHM                             150
@@ -699,11 +701,7 @@ typedef struct {
 static Battery battery;
 static uint16_t sys_mv, bat_mv;
 
-/* Voltage (mV) corresponding to each SOC level 0..99%.
-   soc_mv_table[i] = voltage at which the battery is considered i% full.
-   Derived from a real discharge log: 11891 samples split into 100 equal
-   time-buckets, median display_mv taken per bucket, ties nudged +1mV
-   to preserve strict monotonicity. */
+/* SOC lookup: median discharge voltage per 1% bucket, from a real discharge log. */
 static const uint16_t soc_mv_table[100] = {
     3270, 3288, 3295, 3301, 3323, // 0-4%
     3333, 3340, 3341, 3360, 3377, // 5-9%
@@ -739,8 +737,7 @@ static int percent_from_voltage(uint16_t mv)
 
 static int get_internal_resistance_milliohm(void)
 {
-    /* Internal resistance scales with SOC. Uses battery.percent from the
-       previous iteration, self-correcting on each pass. */
+    /* scales with SOC; uses the previous iteration's percent, self-correcting */
     if (battery.percent <= 0)   return BATTERY_INTERNAL_RESISTANCE_EMPTY_MILLIOHM;
     if (battery.percent >= 100) return BATTERY_INTERNAL_RESISTANCE_FULL_MILLIOHM;
 
@@ -751,12 +748,11 @@ static int get_internal_resistance_milliohm(void)
 
 static void calc_amperage(void)
 {
-    /* Update IIR low-pass filters (weight ~1/8 new sample) */
+    /* IIR low-pass filters (weight ~1/8 new sample) */
     battery.sys_mv_filtered = battery.sys_mv_filtered - (battery.sys_mv_filtered / 8) + sys_mv;
     battery.bat_mv_filtered = battery.bat_mv_filtered - (battery.bat_mv_filtered / 8) + bat_mv;
 
-    /* Derive current from voltage drop across the sense resistor,
-       corrected for the voltage divider ratio */
+    /* current from the sense resistor drop, corrected for the divider ratio */
     battery.sense_drop_mv = (battery.bat_mv_filtered - battery.sys_mv_filtered) / 16;
     battery.sense_drop_mv = battery.sense_drop_mv * (RESISTOR_A_KOHM + RESISTOR_B_KOHM) / RESISTOR_A_KOHM;
     battery.current_ma    = battery.sense_drop_mv * (1000 / SENSE_RESISTOR_MILLIOHM);
@@ -764,15 +760,13 @@ static void calc_amperage(void)
 
 static void calc_voltage(void)
 {
-    /* Remove the sense resistor drop to get closer to true battery voltage,
-       then compensate for SOC-dependent internal resistance */
+    /* true battery voltage: remove the sense drop, then the IR drop */
     battery.adjusted_sys_mv = battery.sys_mv_filtered - battery.sense_drop_mv;
 
     battery.open_circuit_mv = battery.adjusted_sys_mv
     - battery.current_ma * get_internal_resistance_milliohm() / 1000;
 
-    /* Nudge the display voltage one step toward open_circuit_mv,
-       ignoring noise within a +/-25mV hysteresis band */
+    /* nudge the display voltage one step, ignoring noise within +/-25mV */
     if      (battery.open_circuit_mv > battery.display_mv + 25) battery.display_mv++;
     else if (battery.open_circuit_mv < battery.display_mv - 25) battery.display_mv--;
 }
@@ -781,17 +775,14 @@ static void calc_battery_status(void)
 {
     battery.percent = percent_from_voltage(battery.display_mv);
 
-    /* Determine charge state from current flow */
     if (battery.current_ma < -60)  battery.charge_state = BAT_DISCHARGING;
     if (battery.current_ma >= 0)   battery.charge_state = BAT_CHARGING;
     if (battery.display_mv > 4000 && abs(battery.current_ma) < 50)
         battery.charge_state = BAT_CHARGED;
 }
 
-/* The monitor reads these same bytes from shared memory and converts them
-   as if they were full 10-bit ADC samples (*3000/1024), then seeds its
-   filters at 8x that value. The 8x cancels at steady state, so we must use
-   the identical (non-obvious) scaling for bit-identical results. */
+/* scaling must match battery_monitor.c (8-bit sample converted as 10-bit, */
+/* filters seeded at 8x) so results stay identical to the monitor          */
 static void battery_init(uint8_t sys_raw, uint8_t bat_raw)
 {
     sys_mv = (uint16_t)sys_raw * 3000 / 1024;
@@ -806,7 +797,7 @@ static void battery_init(uint8_t sys_raw, uint8_t bat_raw)
     battery.display_mv = battery.open_circuit_mv;
 }
 
-/* One pipeline step per gamepad packet */
+/* one pipeline step per gamepad packet */
 static void battery_update(uint8_t sys_raw, uint8_t bat_raw)
 {
     sys_mv = (uint16_t)sys_raw * 3000 / 1024;
@@ -818,9 +809,7 @@ static void battery_update(uint8_t sys_raw, uint8_t bat_raw)
 
 /* ------------------------------ usb detection ---------------------------- */
 
-/* True when at least one real USB device is attached. /sys/bus/usb/devices
-   holds root hubs ("usbN"), interfaces ("1-0:1.0"), and devices ("1-1",
-   "2-1.3"); a dash without a colon identifies an actual device. */
+/* true when /sys/bus/usb/devices holds a real device ("1-1"), not a root hub or interface. */
 static bool usb_device_present(void)
 {
     DIR *d = opendir("/sys/bus/usb/devices");
@@ -852,21 +841,23 @@ static uint32_t lerp_rgb(uint32_t c0, uint32_t c1, int t, int span)
     return ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
 }
 
-/* stick dot colour: white in the centre zone, then a smooth
-   green -> yellow -> red gradient with deflection (no banding) */
-static uint32_t stick_dot_color(int mag, int maxd)
+/* stick dot colour: white in the centre, solid green at the travel circle */
+static uint32_t stick_dot_color(int mag, int maxd, int travel_r)
 {
-    if (mag < maxd / 6) return C_WHITE;                  /* effectively centred */
-    if (mag < maxd * 2 / 3)                              /* green -> yellow */
-        return lerp_rgb(C_GREEN, 0xFFCC00, mag - maxd / 6,
-                        maxd * 2 / 3 - maxd / 6);
-    return lerp_rgb(0xFFCC00, C_RED, mag - maxd * 2 / 3, /* yellow -> red */
-                    maxd - maxd * 2 / 3);
+    int start = maxd / 6;    /* deadzone edge */
+    int limit = travel_r ? travel_r * maxd / AXIS_CENTER : maxd;
+    if (mag <= start) return C_WHITE;
+    if (mag >= limit) return C_GREEN;
+    return lerp_rgb(C_WHITE, C_GREEN, mag - start, limit - start);
 }
+
+/* left-stick full-deflection travel radius, measured on hardware: a circle */
+/* of 102 counts from electrical center 127 encloses the captured rim sweep */
+#define TRAVEL_RADIUS 102
 
 static void draw_stick(Canvas *c, int cx, int cy, int R, int maxd, int dotr,
                        int vx, int vy, const char *label, int ty,
-                       const char *readout)
+                       const char *readout, int travel_r)
 {
     /* rim + axis ticks + deadzone ring + center dot */
     ring_circle(c, cx, cy, R, 3, C_FRAME);
@@ -878,6 +869,10 @@ static void draw_stick(Canvas *c, int cx, int cy, int R, int maxd, int dotr,
     ring_circle(c, cx, cy, dz, 1, C_DZ);
     fill_circle(c, cx, cy, 3, C_CENTER);
 
+    /* full-deflection travel circle (raw-count radius; 0 = not shown) */
+    if (travel_r)
+        ring_circle(c, cx, cy, travel_r * maxd / AXIS_CENTER, 1, C_PATH);
+
     /* position dot (scaled from the ADC range, deadzone in the color) */
     int ox = (vx - AXIS_CENTER) * maxd / AXIS_CENTER;
     int oy = (vy - AXIS_CENTER) * maxd / AXIS_CENTER;
@@ -886,15 +881,14 @@ static void draw_stick(Canvas *c, int cx, int cy, int R, int maxd, int dotr,
     if (oy > maxd) oy = maxd;
     if (oy < -maxd) oy = -maxd;
     int mag = (int)hypot(ox, oy);
-    uint32_t dot_col = stick_dot_color(mag, maxd);
-    if (mag > maxd * AXIS_DEADZONE / AXIS_CENTER)
+    uint32_t dot_col = stick_dot_color(mag, maxd, travel_r);
+    if (mag > dz)
         ring_circle(c, cx + ox, cy + oy, dotr + 5, 2, dot_col);   /* halo */
     fill_circle(c, cx + ox, cy + oy, dotr, dot_col);
 
-    /* labels centered above the stick; the readout sits a few px below the
-       scale-2 label (14px tall) so the two lines don't touch */
-    draw_text(c, cx - ((int)strlen(label) * 12 - 2) / 2, ty, label, 2, C_LABEL);
-    draw_text(c, cx - ((int)strlen(readout) * 12 - 2) / 2, ty + 20, readout, 2, C_VAL);
+    /* label above the stick, readout below it */
+    center_text(c, cx, ty, label, 2, C_LABEL);
+    center_text(c, cx, ty + 20, readout, 2, C_VAL);
 }
 
 /* ------------------------------ button widgets -------------------------- */
@@ -905,10 +899,10 @@ static void draw_face_button(Canvas *c, Btn *b)
 {
     uint32_t fill, sym;
     switch (b->tag[0]) {
-        case 'X': fill = C_CROSS;    sym = C_WHITE; break;   /* cross   */
-        case 'O': fill = C_CIRCLE;   sym = C_WHITE; break;   /* circle  */
-        case 'S': fill = C_SQUARE;   sym = C_WHITE; break;   /* square  */
-        case 'T': fill = C_TRIANGLE; sym = C_WHITE; break;   /* triangle*/
+        case 'X': fill = C_CROSS;    sym = C_WHITE; break;   /* cross    */
+        case 'O': fill = C_CIRCLE;   sym = C_WHITE; break;   /* circle   */
+        case 'S': fill = C_SQUARE;   sym = C_WHITE; break;   /* square   */
+        case 'T': fill = C_TRIANGLE; sym = C_WHITE; break;   /* triangle */
         default:  fill = C_AMBER;    sym = C_WHITE; break;
     }
     if (!b->pressed) { fill = C_UNPRESSED; sym = C_EDGE; }
@@ -927,7 +921,7 @@ static void draw_face_button(Canvas *c, Btn *b)
         case 'S':
             rect_outline(c, b->x - s, b->y - s, s * 2, s * 2, 4, sym);
             break;
-        case 'T':   /* triangle, 2px high so its visual mass stays centered */
+        case 'T':   /* 2px high so its visual mass stays centered */
             fill_triangle(c, b->x, b->y - s - 2, b->x - s, b->y + s - 2,
                           b->x + s, b->y + s - 2, sym);
             break;
@@ -941,47 +935,49 @@ static void draw_tag_rect(Canvas *c, int x, int y, int w, int h,
     rect_outline(c, x, y, w, h, 2, pressed ? C_WHITE : C_FRAME);
     int len = (int)strlen(tag);
     int scale = (len * 12 - 2 <= w) ? 2 : 1;    /* largest scale that fits */
-    int tw = len * 6 * scale - (scale == 2 ? 2 : 1);
-    int ty = y + (h - 7 * scale) / 2;
-    draw_text(c, x + (w - tw) / 2, ty, tag, scale, pressed ? C_WHITE : C_LABEL);
+    center_text(c, x + w / 2, y + (h - 7 * scale) / 2, tag, scale,
+                pressed ? C_WHITE : C_LABEL);
+}
+
+/* horizontal leader at row y ending in an arrowhead at x=to (dir: +1 right, -1 left) */
+static void draw_leader(Canvas *c, int x, int y, int to, int dir)
+{
+    int len = dir > 0 ? to - x : x - to;    /* total span */
+    int head = 10;                          /* arrowhead length */
+    draw_line(c, x, y, x + dir * (len - head), y, 5, C_EDGE);
+
+    /* arrowhead: tip at x=to, base at to - dir*head */
+    int tip_x = x + dir * len;
+    fill_triangle(c, tip_x, y, tip_x - dir * head, y - 6, tip_x - dir * head, y + 6, C_EDGE);
 }
 
 /* --------------------------------- layout -------------------------------- */
-
-static void draw_leader(Canvas *c, int x, int y, int to, int dir);  /* defined below */
 
 #define LX 115                          /* left stick anchor (center) */
 #define LY 400
 #define RX 685                          /* right stick anchor (center) */
 #define RY 400
-#define ROW_Y (LY - 16)                 /* bottom button row (32px tall),
-                                           vertically centered on the sticks */
+#define ROW_Y (LY - 16)                 /* bottom button row (32px tall) */
 
 /* trigger tags, centered on their stick-side cluster (d-pad / face diamond) */
 #define TAG_W    110
 #define L_TAG_CX 115
 #define R_TAG_CX 685
 
-/* d-pad: centered on (DPAD_X, DPAD_Y); arms DPAD_ARM long, DPAD_TH thick
-   (10% bigger than the original layout) */
+/* d-pad: centered on (DPAD_X, DPAD_Y); arms DPAD_ARM long, DPAD_TH thick */
 #define DPAD_X   115
 #define DPAD_Y   180
 #define DPAD_ARM 66
 #define DPAD_TH  38
 
-/* LCD data-line bit-slice band, always on. Eight swatches per row each show
-   exactly one bit of its channel (bit 7 leftmost -> bit 0 rightmost). Rows
-   R, G, B set that bit on a single channel; row W sets it on ALL three at
-   once, so a broken line there turns the swatch a tint of the remaining
-   channels (e.g. dead RED bit 4 => dark cyan) -- never black or white --
-   which is visible against the pure-black screen. No bezel, no per-swatch
-   outlines: swatches sit directly on the cleared black framebuffer so color
-   differences show clearly. Vertically centered on the d-pad (DPAD_Y). */
-#define LCD_CX    393   /* band center x (in the free gap, x 181..606) */
-#define LCD_CY    DPAD_Y /* band center y: aligned with the d-pad center */
-#define LCD_W     34    /* swatch width */
-#define LCD_H     28    /* swatch height */
-#define LCD_GAP   4     /* gap between swatches */
+/* LCD data-line bit-slice band, always on, centered in the free gap x 181..606. */
+/* Rows R, G, B set one bit of a single channel; row W sets it on all three, so  */
+/* a broken line shows as a tint instead of black or white. Bit 7 swatch leftmost. */
+#define LCD_CX    393
+#define LCD_CY    DPAD_Y               /* aligned with the d-pad center */
+#define LCD_W     34                   /* swatch width */
+#define LCD_H     28                   /* swatch height */
+#define LCD_GAP   4                    /* gap between swatches */
 
 static void draw_lcd_test(Canvas *c)
 {
@@ -994,7 +990,6 @@ static void draw_lcd_test(Canvas *c)
     int gy = LCD_CY - grid_h / 2;
 
     for (int row = 0; row < 4; row++) {
-        /* label, vertically centered on the row */
         draw_text(c, gx - 24, gy + row * (LCD_H + LCD_GAP) + (LCD_H - 14) / 2,
                   label[row], 2, rowcol[row]);
 
@@ -1018,16 +1013,11 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
 
     /* shoulder triggers, centered over their stick-side cluster */
     draw_tag_rect(c, L_TAG_CX - TAG_W / 2, 10, TAG_W, 32, "L1", st->buttons & BTN_L1);
-    draw_tag_rect(c, L_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "BTN1", st->l2);
+    draw_tag_rect(c, L_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "BTN1", st->btn1);
     draw_tag_rect(c, R_TAG_CX - TAG_W / 2, 10, TAG_W, 32, "R1", st->buttons & BTN_R1);
-    draw_tag_rect(c, R_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "BTN2", st->r2);
+    draw_tag_rect(c, R_TAG_CX - TAG_W / 2, 48, TAG_W, 32, "BTN2", st->btn2);
 
-    /* audio-test hint, top center between the trigger tags: "ENABLE AUDIO
-       TEST" while the tone is off (white), "DISABLE AUDIO TEST" once it's
-       playing (amber). Thick horizontal leaders run from the text's left/right
-       edges straight out to just short of the L1/R1 boxes — all at y=26, the
-       common vertical center of the text AND the boxes — with the arrowhead
-       pointing AT each box. */
+    /* audio-test hint, top center, with leaders pointing at the L1/R1 boxes */
     {
         const char *label = audio_on ? "DISABLE AUDIO TEST" : "ENABLE AUDIO TEST";
         uint32_t col = audio_on ? C_AMBER : C_WHITE;
@@ -1036,12 +1026,11 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
         draw_text(c, xl, 19, label, 2, col);
 
         int ty = 26;                              /* text & L1/R1 box center */
-        draw_leader(c, xl + w + 14, ty, 618, 1);  /* -> R1: arrowhead stays at 618 (box edge x=630) */
-        draw_leader(c, xl - 14, ty, 182, -1);     /* -> L1: arrowhead stays at 182 (box edge x=170) */
+        draw_leader(c, xl + w + 14, ty, R_TAG_CX - TAG_W / 2 - 12, 1);
+        draw_leader(c, xl - 14, ty, L_TAG_CX + TAG_W / 2 + 12, -1);
     }
 
-    /* bottom row between the sticks: HOME VOL- VOL+ MUTE SEL START, raised
-       to sit vertically centered on the stick axis */
+    /* bottom row between the sticks: HOME VOL- VOL+ MUTE SEL START */
     draw_tag_rect(c, 198, ROW_Y, 64, 32, "HOME",  st->buttons & BTN_HOME);
     draw_tag_rect(c, 270, ROW_Y, 56, 32, "VOL-",  st->buttons & BTN_VOL_M);
     draw_tag_rect(c, 334, ROW_Y, 56, 32, "VOL+",  st->buttons & BTN_VOL_P);
@@ -1049,35 +1038,40 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
     draw_tag_rect(c, 470, ROW_Y, 64, 32, "SEL",   st->buttons & BTN_SELECT);
     draw_tag_rect(c, 542, ROW_Y, 64, 32, "START", st->buttons & BTN_START);
 
-    /* d-pad, centered on (DPAD_X, DPAD_Y): two crossing bars, arms
-       DPAD_ARM long, thickness DPAD_TH */
+    /* d-pad: two crossing bars; a press lights its arm from rim to the hub */
     {
-        bool up = st->buttons & BTN_DPAD_U, down = st->buttons & BTN_DPAD_D;
-        bool left = st->buttons & BTN_DPAD_L, right = st->buttons & BTN_DPAD_R;
-        fill_rect(c, DPAD_X - DPAD_TH / 2, DPAD_Y - DPAD_ARM, DPAD_TH, DPAD_ARM * 2, C_UNPRESSED);   /* vertical  bar */
-        fill_rect(c, DPAD_X - DPAD_ARM, DPAD_Y - DPAD_TH / 2, DPAD_ARM * 2, DPAD_TH, C_UNPRESSED);   /* horizontal bar */
+        fill_rect(c, DPAD_X - DPAD_TH / 2, DPAD_Y - DPAD_ARM, DPAD_TH, DPAD_ARM * 2, C_UNPRESSED);
+        fill_rect(c, DPAD_X - DPAD_ARM, DPAD_Y - DPAD_TH / 2, DPAD_ARM * 2, DPAD_TH, C_UNPRESSED);
         rect_outline(c, DPAD_X - DPAD_TH / 2, DPAD_Y - DPAD_ARM, DPAD_TH, DPAD_ARM * 2, 2, C_FRAME);
         rect_outline(c, DPAD_X - DPAD_ARM, DPAD_Y - DPAD_TH / 2, DPAD_ARM * 2, DPAD_TH, 2, C_FRAME);
-        fill_circle(c, DPAD_X, DPAD_Y, 4, C_EDGE);       /* center hub dot */
-        /* press highlights light the arm only, stopping at the + hub */
-        if (up)    fill_rect(c, DPAD_X - DPAD_TH / 2, DPAD_Y - DPAD_ARM, DPAD_TH, DPAD_ARM - DPAD_TH / 2, C_AMBER);
-        if (down)  fill_rect(c, DPAD_X - DPAD_TH / 2, DPAD_Y + DPAD_TH / 2, DPAD_TH, DPAD_ARM - DPAD_TH / 2, C_AMBER);
-        if (left)  fill_rect(c, DPAD_X - DPAD_ARM, DPAD_Y - DPAD_TH / 2, DPAD_ARM - DPAD_TH / 2, DPAD_TH, C_AMBER);
-        if (right) fill_rect(c, DPAD_X + DPAD_TH / 2, DPAD_Y - DPAD_TH / 2, DPAD_ARM - DPAD_TH / 2, DPAD_TH, C_AMBER);
+        fill_circle(c, DPAD_X, DPAD_Y, 4, C_EDGE);   /* hub dot */
 
-        /* direction arrows on the resting arms */
-        fill_triangle(c, 115, 130, 106, 144, 124, 144, C_LABEL);  /* up    */
-        fill_triangle(c, 115, 230, 106, 216, 124, 216, C_LABEL);  /* down  */
-        fill_triangle(c,  65, 180,  79, 171,  79, 189, C_LABEL);  /* left  */
-        fill_triangle(c, 164, 180, 150, 171, 150, 189, C_LABEL);  /* right */
+        static const int dirs[4][2] = { {0,-1},{0,1},{-1,0},{1,0} };   /* U D L R */
+        const bool pressed[4] = { st->buttons & BTN_DPAD_U, st->buttons & BTN_DPAD_D,
+                                  st->buttons & BTN_DPAD_L, st->buttons & BTN_DPAD_R };
+        for (int i = 0; i < 4; i++) {
+            if (!pressed[i]) continue;
+            int dx = dirs[i][0], dy = dirs[i][1];
+            if (dy) fill_rect(c, DPAD_X - DPAD_TH / 2,
+                              DPAD_Y + (dy < 0 ? -DPAD_ARM : DPAD_TH / 2),
+                              DPAD_TH, DPAD_ARM - DPAD_TH / 2, C_AMBER);
+            else    fill_rect(c, DPAD_X + (dx < 0 ? -DPAD_ARM : DPAD_TH / 2),
+                              DPAD_Y - DPAD_TH / 2,
+                              DPAD_ARM - DPAD_TH / 2, DPAD_TH, C_AMBER);
+        }
+
+        /* resting direction arrows on the arms */
+        draw_arrow(c, DPAD_X, DPAD_Y - 50, 0, -1, 14, 9, C_LABEL);  /* up    */
+        draw_arrow(c, DPAD_X, DPAD_Y + 50, 0,  1, 14, 9, C_LABEL);  /* down  */
+        draw_arrow(c, DPAD_X - 50, DPAD_Y, -1, 0, 14, 9, C_LABEL);  /* left  */
+        draw_arrow(c, DPAD_X + 50, DPAD_Y,  1, 0, 14, 9, C_LABEL);  /* right */
     }
 
-    /* face buttons: PSP diamond (△ top, ○ right, ✕ bottom, □ left),
-       centered on the right stick's column (x=685) */
-    Btn tri = { 685, 125, 24, st->buttons & BTN_TRIANGLE, "T" };
-    Btn sq  = { 630, 180, 24, st->buttons & BTN_SQUARE,   "S" };
-    Btn circ = { 740, 180, 24, st->buttons & BTN_CIRCLE,  "O" };
-    Btn crs = { 685, 235, 24, st->buttons & BTN_CROSS,    "X" };
+    /* face buttons: PSP diamond centered on the right stick's column */
+    Btn tri  = { 685, 125, 24, st->buttons & BTN_TRIANGLE, "T" };
+    Btn sq   = { 630, 180, 24, st->buttons & BTN_SQUARE,   "S" };
+    Btn circ = { 740, 180, 24, st->buttons & BTN_CIRCLE,   "O" };
+    Btn crs  = { 685, 235, 24, st->buttons & BTN_CROSS,    "X" };
     draw_face_button(c, &tri);
     draw_face_button(c, &sq);
     draw_face_button(c, &circ);
@@ -1087,21 +1081,19 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
     char lr[32], rr[32];
     snprintf(lr, sizeof lr, "LX %3d LY %3d", st->sx, st->sy);
     snprintf(rr, sizeof rr, "RX %3d RY %3d", st->rx, st->ry);
-    draw_stick(c, LX, LY, 49, 31, 7, st->sx, st->sy, "LEFT STICK", 285, lr);
-    draw_stick(c, RX, RY, 49, 31, 7, st->rx, st->ry, "RIGHT STICK", 285, rr);
+    draw_stick(c, LX, LY, 49, 31, 7, st->sx, st->sy, "LEFT STICK", 285, lr, TRAVEL_RADIUS);
+    draw_stick(c, RX, RY, 49, 31, 7, st->rx, st->ry, "RIGHT STICK", 285, rr, 0);
 
-    /* bottom strip: WiFi state (left), backlight level (center),
-       power-key indicator (right corner, only while held); the wifi bit is
-       active-low (see parse_packet) */
+    /* WiFi state (left): green when the switch is on (bit is active-low) */
     {
         uint32_t wc = st->wifi ? C_GREEN : C_RED;
         fill_rect(c, 0, 444, 56, 36, C_UNPRESSED);      /* flush w/ edges */
         rect_outline(c, 0, 444, 56, 36, 2, wc);
-        draw_text(c, (56 - (4 * 12 - 2)) / 2, 444 + (36 - 14) / 2, "WIFI", 2, wc);
+        center_text(c, 28, 444 + (36 - 14) / 2, "WIFI", 2, wc);
     }
+
+    /* backlight level (center): status holds 0..7, show 1..8 blocks */
     {
-        /* status holds 0..7; show 1..8 blocks so the lowest setting still
-           leaves one segment lit and brightest shows all 8 */
         int lvl = st->brightness + 1;
         if (lvl > 8) lvl = 8;
         int total = 8 * 14 + 7 * 4;             /* 8 segments, 14px + 4px gaps */
@@ -1111,30 +1103,20 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
         for (int i = 0; i < 8; i++)
             fill_rect(c, x0 + i * 18, 454, 14, 16, i < lvl ? C_WHITE : C_DZ);
     }
-    /* battery indicator, top-right corner beside R1/R2: a battery icon
-       filled bottom-up by percent (color: green=charged/full, amber=charging
-       with a bolt overlay, white while discharging above 20%, red at or
-       below) */
+
+    /* battery (top-right): filled bottom-up by percent; bolt while charging */
     {
         uint32_t col = st->charge_state == BAT_CHARGED ? C_GREEN
                      : st->charge_state == BAT_CHARGING ? C_AMBER
                      : st->bat_percent <= 20 ? C_RED : C_WHITE;
         const int cx = 772;
-
-        /* battery body + top terminal nub, spanning y 10..38 like the USB
-           icon (top-aligned with the R1 box) */
-        const int body_w = 18, body_h = 24;
+        const int body_w = 18, body_h = 24;              /* spans y 14..38 */
         const int body_x = cx - body_w / 2, body_y = 38 - body_h;
-        fill_rect(c, cx - 3, body_y - 4, 6, 4, col);             /* nub */
+        fill_rect(c, cx - 3, body_y - 4, 6, 4, col);     /* terminal nub */
         rect_outline(c, body_x, body_y, body_w, body_h, 1, col);
+        fill_level(c, body_x, body_y, body_w, body_h, st->bat_percent / 100.0, col);
 
-        /* level fill, bottom-up, inset 2px inside the body */
-        int fh = (body_h - 4) * st->bat_percent / 100;
-        if (fh > 0) fill_rect(c, body_x + 2, body_y + body_h - 2 - fh,
-                              body_w - 4, fh, col);
-
-        /* bolt overlay while the charger is connected (charging or full) */
-        if (st->charge_state != BAT_DISCHARGING) {
+        if (st->charge_state != BAT_DISCHARGING) {       /* bolt overlay */
             fill_triangle(c, cx + 2, body_y + 3,
                           cx - 4, body_y + 11, cx, body_y + 11, C_WHITE);
             fill_triangle(c, cx - 2, body_y + 21,
@@ -1142,40 +1124,32 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
         }
     }
 
-    /* USB icon, top-left corner beside L1/L2: shown only while a USB
-       device is connected (trident: arrowhead shaft, square + circle
-       branch ends, base node). Horizontally centered in the gap between
-       the screen edge and the L1 box; vertically aligned with the battery
-       icon: both span exactly y 10..38. */
+    /* USB trident (top-left), shown only while a USB device is connected */
     if (st->usb) {
         const uint32_t col = C_WHITE;
         const int cx = 30;
-        draw_line(c, cx, 33, cx, 18, 2, col);                 /* shaft   */
-        fill_triangle(c, cx, 12, cx - 4, 18, cx + 4, 18, col);/* arrowhead */
+        draw_line(c, cx, 33, cx, 18, 2, col);                 /* shaft */
+        draw_arrow(c, cx, 12, 0, -1, 6, 4, col);              /* arrowhead */
         fill_circle(c, cx, 35, 3, col);                       /* base node */
-        draw_line(c, cx, 29, cx - 7, 23, 2, col);             /* left branch  */
+        draw_line(c, cx, 29, cx - 7, 23, 2, col);             /* left branch */
         draw_line(c, cx - 7, 23, cx - 7, 18, 2, col);
-        fill_circle(c, cx - 7, 15, 3, col);                   /*   circle end */
+        fill_circle(c, cx - 7, 15, 3, col);                   /* circle end */
         draw_line(c, cx, 25, cx + 7, 19, 2, col);             /* right branch */
         draw_line(c, cx + 7, 19, cx + 7, 15, 2, col);
-        fill_rect(c, cx + 5, 10, 5, 5, col);                  /*   square end */
+        fill_rect(c, cx + 5, 10, 5, 5, col);                  /* square end */
     }
 
+    /* power-key popup (right corner): fills amber->red while held */
     if (st->power) {
         uint32_t pc = st->pwr_critical ? C_RED : C_AMBER;
         const int bx = 744, by = 444, bw = 56, bh = 36;
         fill_rect(c, bx, by, bw, bh, C_UNPRESSED);    /* flush w/ edges */
         rect_outline(c, bx, by, bw, bh, 2, pc);
-        /* fill bottom-up by power-hold progress (0..1); 0.25 s => half full,
-           0.50 s => full (then shutdown). White text stays readable on the
-           fill. */
-        int fh = (int)((bh - 4) * (pwr_fill > 1.0 ? 1.0 : pwr_fill));
-        if (fh > 0) fill_rect(c, bx + 2, by + bh - 2 - fh, bw - 4, fh, pc);
-        draw_text(c, bx + (bw - 34) / 2, by + (bh - 14) / 2, "PWR", 2, C_WHITE);   /* same y as WIFI (455) */
+        fill_level(c, bx, by, bw, bh, pwr_fill, pc);
+        center_text(c, bx + bw / 2, by + (bh - 14) / 2, "PWR", 2, C_WHITE);
     }
 
-    /* LCD data-line band, drawn last so it sits on top of the frame */
-    draw_lcd_test(c);
+    draw_lcd_test(c);   /* LCD band last, on top of the frame */
 }
 
 /* ---------------------------- audio test loop --------------------------- */
@@ -1189,11 +1163,7 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
 static pid_t audio_pid = -1;
 static bool  audio_on = false;
 
-/* Spawn a continuous, single-channel sine tone. speaker-test ships with the
-   base image (raspios-trixie arm64-lite includes /usr/bin/speaker-test), so
-   the patcher needs no extra provisioning and nothing here adds build deps.
-   forked + setsid so troubleshooter's own death doesn't kill the tone;
-   audio_cleanup() and the boot.sh restart loop remove strays. */
+/* speaker-test ships with the base image; forked + setsid so the tone survives us. */
 static void audio_start(void)
 {
     pid_t pid = fork();
@@ -1228,22 +1198,6 @@ static void audio_toggle(void) { if (audio_on) audio_stop(); else audio_start();
 
 static void audio_cleanup(void) { if (audio_pid > 0) audio_stop(); }
 
-/* Leader line + arrowhead, drawn HORIZONTALLY at row y. The shaft runs from
-   (x, y) toward x=to (dir +1 = arrow points right, -1 = left), stopping at
-   the arrowhead's BASE so the arrow sits at the very end of the line; the
-   arrowhead itself then spans base..to. Used to point at the L1/R1 trigger
-   boxes from the audio-test hint text. */
-static void draw_leader(Canvas *c, int x, int y, int to, int dir)
-{
-    int len = dir > 0 ? to - x : x - to;    /* total span */
-    int head = 10;                          /* arrowhead length */
-    draw_line(c, x, y, x + dir * (len - head), y, 5, C_EDGE);  /* shaft stops at head base */
-
-    /* arrowhead: tip at x=to, base at to - dir*head */
-    int tip_x = x + dir * len;
-    fill_triangle(c, tip_x, y, tip_x - dir * head, y - 6, tip_x - dir * head, y + 6, C_EDGE);
-}
-
 /* --------------------------------- main --------------------------------- */
 
 static double now_sec(void)
@@ -1264,7 +1218,7 @@ int main(int argc, char **argv)
 
     init_crc16_table();
     atexit(audio_cleanup);
-    atexit(wifi_led_cleanup);
+    atexit(wifi_led_cleanup);   /* no-op unless we claimed the LED */
     if (!i2c_open()) return 1;
 
     if (do_probe) { probe(); return 0; }
@@ -1302,7 +1256,7 @@ int main(int argc, char **argv)
     double pwr_since = 0.0;      /* time power key became pressed */
     double trig_since = 0.0;     /* time L1+R1 became pressed */
     bool prev_audio = false;     /* audio-test state for redraw detection */
-    unsigned link_fail = 0;      /* consecutive CRC-valid-less polls */
+    unsigned link_fail = 0;      /* consecutive failed polls */
 
     while (1) {
         /* poll up to 3 times; keep last good state on failure */
@@ -1314,12 +1268,7 @@ int main(int argc, char **argv)
             st.bat_percent   = battery.percent;
             st.charge_state  = battery.charge_state;
         } else {
-            /* The screen intentionally freezes on the last good state while
-               the link is down (that is the point of the display), but a
-               stale power flag must never power the system off: if the board
-               drops off the I2C bus mid-hold we can't tell "still held" from
-               "disconnected", so once the link has been dead for a while,
-               drop the power flag and let a later good packet re-raise it. */
+            /* keep the last good frame, but drop a held power flag after ~0.4 s */
             link_fail++;
             if (link_fail >= 50) {
                 st.power = false;
@@ -1329,19 +1278,13 @@ int main(int argc, char **argv)
 
         double now = now_sec();
 
-        /* WiFi LED: blink while the switch is on. Re-sent every second so
-           the MCU recovers if it resets mid-run; edge-triggered otherwise. */
-        {
-            static bool sent_blink = false;
-            static double next_resend = 0.0;
-            if (st.wifi && (!sent_blink || now >= next_resend)) {
-                wifi_led_set(2);
-                sent_blink = true;
-                next_resend = now + 1.0;
-            } else if (!st.wifi && sent_blink) {
-                wifi_led_set(0);
-                sent_blink = false;
-            }
+        /* WiFi LED: blink while the switch is on; strictly edge-triggered */
+        if (st.wifi && !wifi_led_claimed) {
+            wifi_led_set(2);
+            wifi_led_claimed = true;
+        } else if (!st.wifi && wifi_led_claimed) {
+            wifi_led_set(0);
+            wifi_led_claimed = false;
         }
 
         /* USB presence rescan, throttled (readdir every poll is waste) */
@@ -1364,9 +1307,7 @@ int main(int argc, char **argv)
             return 0;
         }
 
-        /* audio test: hold L1+R1 ~0.6 s toggles the speaker sine. Gated on
-           ok so a dead link with the triggers still held can't toggle by
-           surprise; once fired, release the triggers before it can retoggle. */
+        /* audio test: hold L1+R1 ~0.6 s toggles the speaker sine */
         if (ok) {
             bool both = (st.buttons & (BTN_L1 | BTN_R1)) == (BTN_L1 | BTN_R1);
             bool both_prev = (prev.buttons & (BTN_L1 | BTN_R1)) == (BTN_L1 | BTN_R1);
@@ -1387,7 +1328,7 @@ int main(int argc, char **argv)
         if (ok) {
             st.crc_ok++;
             dirty = (st.buttons != prev.buttons) ||
-                    (st.l2 != prev.l2) || (st.r2 != prev.r2) ||
+                    (st.btn1 != prev.btn1) || (st.btn2 != prev.btn2) ||
                     (st.muted != prev.muted) ||
                     (audio_on != prev_audio) ||
                     (st.wifi != prev.wifi) ||
@@ -1402,16 +1343,12 @@ int main(int argc, char **argv)
                     (st.charge_state != prev.charge_state) ||
                     (st.usb != prev.usb);
         } else {
-            /* CRC failures aren't shown on screen anymore; while the bus is
-               down the only thing that can change the display is the stale
-               power flag being dropped (link dead >50 polls) */
             st.crc_fail++;
             dirty = (st.power != prev.power) ||
                     (st.pwr_critical != prev.pwr_critical);
         }
         if (dirty || st.power) {
-            /* st.power forces a redraw every poll while held so the PWR fill
-               animates continuously; on release the power change dirtys. */
+            /* st.power forces a redraw every poll so the PWR fill animates */
             prev = st;
             prev_audio = audio_on;
             draw_frame(&cv, &st, audio_on, pwr_fill);
