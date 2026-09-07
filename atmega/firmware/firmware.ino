@@ -459,6 +459,7 @@ void enterSleep() {
   } else {
     state.powerLED = LED_FULL_GREEN;
   }
+  setPinLow(LED_WIFI); // WiFi LED stays dark while asleep
 }
 
 void exitSleep() {
@@ -466,6 +467,8 @@ void exitSleep() {
   state.sleeping = false;
   toggleAudioCircuit();
   setBatteryLED();
+  state.wifiBlinkCounter = 127; // restore the WiFi LED from a defined OFF level
+  toggleWiFiLED();
   enableDisplay();
 }
 
@@ -519,9 +522,11 @@ void checkRPi() {
 void processI2CCommand() {
   switch (rxData[0]) {
     case CMD_WIFI:
-      state.wifiState = rxData[1];
-      state.wifiBlinkCounter = 127; // ensures the blinking LED always starts OFF
-      toggleWiFiLED();
+      if (state.wifiState != rxData[1]) { // ignore repeats so the blink phase never resets mid-cycle
+        state.wifiState = rxData[1];
+        state.wifiBlinkCounter = 127; // ensures the blinking LED always starts OFF
+        if (!state.sleeping) toggleWiFiLED(); // never light the LED while asleep
+      }
       break;
 
     case CMD_LED:
