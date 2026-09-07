@@ -317,12 +317,14 @@ int main(void)
     page_write_pending = 0;
     page_write_ready   = 0;
 
-    /* Outputs: PB2 (LCD_CONTROL), PB3/PB7 (LED_WIFI), PB6 (EN_5V). All other pins are inputs
-     * with pull-ups, except PD1 (RPI_DETECT), which must read low when the Pi is absent. */
+    /* Outputs: PB2 (LCD_CONTROL), PB3/PB7 (LED_WIFI), PB6 (EN_5V), and PD0/PD7
+     * (EN_AMP/EN_AUDIO_POWER) driven low so audio stays off. All other pins are
+     * inputs with pull-ups, except PD1 (RPI_DETECT), which must read low when
+     * the Pi is absent. */
     DDRB  = 0b11001100;
     PORTB = 0b00110011;
-    DDRD  = 0b00000000;
-    PORTD = 0b11111101;
+    DDRD  = 0b10000001;
+    PORTD = 0b01111100;
 
     /* Timer0: F_CPU / 1024, free-running */
     TCCR0 = (1<<CS02) | (1<<CS00);
