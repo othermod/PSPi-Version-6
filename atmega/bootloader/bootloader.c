@@ -16,7 +16,7 @@
  * (rpi/firmware/firmware.c) compares them against its own copy. */
 #define BOOTLOADER_MARKER_0         0x50  /* 'P' */
 #define BOOTLOADER_MARKER_1         0x53  /* 'S' */
-#define BOOTLOADER_MARKER_2         0x69  /* 'i' */
+#define BOOTLOADER_MARKER_2         0x50  /* 'P' */
 
 /* Timer0: F_CPU / 1024, free-running overflow period = 256 * 1024 / F_CPU */
 #define TIMER_DIVISOR               1024

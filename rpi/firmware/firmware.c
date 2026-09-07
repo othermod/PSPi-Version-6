@@ -760,10 +760,10 @@ static int bl_finalize(void)
 #define APP_FRAME_PAYLOAD       8
 #define VERSION_MAGIC_0         0x50  /* 'P' */
 #define VERSION_MAGIC_1         0x53  /* 'S' */
-#define VERSION_MAGIC_2         0x36  /* '6' */
+#define VERSION_MAGIC_2         0x50  /* 'P' */
 #define BOOTLOADER_MARKER_0     0x50  /* 'P' */
 #define BOOTLOADER_MARKER_1     0x53  /* 'S' */
-#define BOOTLOADER_MARKER_2     0x69  /* 'i' */
+#define BOOTLOADER_MARKER_2     0x50  /* 'P' */
 
 typedef struct {
     uint8_t version;             /* app firmware version byte */

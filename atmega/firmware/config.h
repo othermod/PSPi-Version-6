@@ -109,7 +109,7 @@
 
 // CMD_VERSION response frame. Self-identifying so the flasher can tell it
 // apart from an old firmware's data packet (consumer: rpi/firmware/firmware.c):
-//   [0..2] VERSION_MAGIC_0..2   fixed bytes "PS6"
+//   [0..2] VERSION_MAGIC_0..2   fixed bytes "PSP"
 //   [3]    FIRMWARE_VERSION
 //   [4..7] raw bootloader trailer bytes read from BOOTLOADER_MARKER_ADDR
 //          (3 marker bytes + bootloader version), passed through verbatim --
@@ -117,7 +117,7 @@
 //   [8..9] CRC-16-CCITT over bytes 0..7, high byte then low
 #define VERSION_MAGIC_0 0x50  // 'P'
 #define VERSION_MAGIC_1 0x53  // 'S'
-#define VERSION_MAGIC_2 0x36  // '6'
+#define VERSION_MAGIC_2 0x50  // 'P'
 
 // Address of the bootloader identity trailer (last 4 bytes of flash). The
 // marker/version values are owned by the bootloader build
