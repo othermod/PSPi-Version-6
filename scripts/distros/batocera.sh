@@ -1,3 +1,11 @@
+# Batocera variant carrying ONLY the stereo mono-downmix kernel module --
+# batocera-noaudio.sh (stock PipeWire/ALSA/RetroArch userspace, no pactl
+# wrapper, no asound.conf) with the prebuilt module from PSPi-6-Audio-Modules
+# added back. The PSPi feeds one audio pin per board, so the patched
+# snd-bcm2835 / rp1_aout downmixes (L+R)/2 and that pin carries the full
+# stereo image; everything else stays exactly as Batocera ships it. Compare
+# with batocera.sh, which additionally rewrites the userspace audio stack
+# (pipewire off, ALSA defaults, retroarch/SDL drivers, pactl wrapper).
 PATCH_METHOD="squashfs"
 SQUASHFS_PATH="boot/batocera"
 DRIVERS_BASE="/boot"
@@ -46,11 +54,10 @@ TARGET_TORRENT[zero2]="scripts/torrents/batocera-bcm2837-43.1-20260530.img.gz.to
 TARGET_TORRENT[zero1]="scripts/torrents/batocera-bcm2835-43-20260507.img.gz.torrent"
 
 # --- Mono downmix audio module (prebuilt, PSPi-6-Audio-Modules releases) ---
-# Same story as Lakka (see lakka.sh): one audio pin per board, patched
-# snd-bcm2835 / rp1_aout per target, fetched and verified by
-# fetch_audio_module (patcher.sh). All four Batocera kernels have
-# CONFIG_MODVERSIONS on; the release builds carry CRCs harvested from each
-# image's stock module, so the swap is ABI-safe.
+# One audio pin per board, patched snd-bcm2835 / rp1_aout per target, fetched
+# and verified by fetch_audio_module (patcher.sh). All four Batocera kernels
+# have CONFIG_MODVERSIONS on; the release builds carry CRCs harvested from
+# each image's stock module, so the swap is ABI-safe.
 #
 # cm4/zero2/zero1: the stock snd-bcm2835.ko sits at the standard vc04_services
 # path (uncompressed on the 64-bit images, gzip-compressed .ko.gz on the 32-bit
@@ -158,163 +165,6 @@ distro_post_patch() {
            "${overlay_target}/lib/firmware/rtw89"
     echo "  [batocera] Removed unused firmware"
 
-    echo "  [batocera] Applying bcm2835 audio fix..."
-
-    local s06audio="${overlay_target}/etc/init.d/S06audio"
-    if [[ -f "$s06audio" ]]; then
-        sed -i 's/^\([[:space:]]*\)start_pipewire[[:space:]]*$/\1# start_pipewire/' "$s06audio"
-        echo "  [batocera] Disabled Pipewire in S06audio"
-    else
-        echo "  [batocera] WARNING: S06audio not found, skipping"
-    fi
-
-    echo "  [batocera] Disabling PipeWire ALSA plugins..."
-    if [[ -f "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pipewire-default.conf" ]]; then
-        mv "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pipewire-default.conf" \
-           "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pipewire-default.conf.disabled"
-        echo "  [batocera] Disabled 99-pipewire-default.conf"
-    fi
-    if [[ -L "${overlay_target}/etc/alsa/conf.d/99-pipewire-default.conf" ]]; then
-        rm "${overlay_target}/etc/alsa/conf.d/99-pipewire-default.conf"
-        echo "  [batocera] Removed pipewire symlink from etc/alsa/conf.d"
-    fi
-    echo "  [batocera] PipeWire ALSA plugins disabled"
-
-    mkdir -p "${overlay_target}/usr/share/alsa/alsa.conf.d"
-    cat > "${overlay_target}/usr/share/alsa/alsa.conf.d/99-pspi-default.conf" << 'EOF'
-defaults.pcm.card 0
-defaults.ctl.card 0
-EOF
-    echo "  [batocera] Set ALSA default to card 0"
-
-    # The RP1 analog output on cm5 is fixed-rate 48 kHz, and clients ask for
-    # other rates (EmulationStation/SDL opens at 44100 with no fallback).
-    # The mono module withholds MMAP so mmap clients can't bypass its
-    # downmix process hook, but the rate plugin only transfers through an
-    # mmap slave (pcm_rate.c uses snd_pcm_mmap_begin/commit on it), so
-    # plain plug->hw refuses to convert. Insert mmap_emul explicitly: it
-    # presents the mmap the rate plugin needs and copies through read/
-    # write, so converted samples still pass the kernel downmix. With
-    # defaults.pcm.card alone, "default" resolves to raw hw:0,0 and 44.1k
-    # clients fail hw_params outright; dmix is not usable here (it needs a
-    # real shared mmap buffer).
-    if [[ "$5" == "cm5" ]]; then
-        cat > "${overlay_target}/etc/asound.conf" << 'EOF'
-pcm.!default {
-    type plug
-    slave.pcm {
-        type mmap_emul
-        slave.pcm "hw:0,0"
-    }
-}
-EOF
-        echo "  [batocera] Set /etc/asound.conf default=plug/mmap_emul (cm5 48k conversion)"
-    fi
-
-    local s31es="${overlay_target}/etc/init.d/S31emulationstation"
-    if [[ -f "$s31es" ]]; then
-        if ! grep -q "SDL_AUDIODRIVER" "$s31es"; then
-            sed -i '/\. \/etc\/profile\.d\/dbus\.sh/a export SDL_AUDIODRIVER=alsa' "$s31es"
-            echo "  [batocera] Set SDL_AUDIODRIVER=alsa in S31emulationstation"
-        fi
-    else
-        echo "  [batocera] WARNING: S31emulationstation not found, skipping"
-    fi
-
-    local retroarch_cfg="${overlay_target}/etc/retroarch.cfg"
-    if [[ -f "$retroarch_cfg" ]]; then
-        sed -i 's/^#\?\s*audio_driver\s*=.*/audio_driver = alsathread/' "$retroarch_cfg"
-        echo "  [batocera] Set audio_driver in retroarch.cfg"
-    else
-        echo "  [batocera] WARNING: retroarch.cfg not found, skipping"
-    fi
-
-    local seed="${overlay_target}/usr/share/batocera/datainit/system/batocera.conf"
-    if [[ -f "$seed" ]]; then
-        if grep -q "global.retroarch.audio_driver" "$seed"; then
-            sed -i 's/global\.retroarch\.audio_driver=.*/global.retroarch.audio_driver=alsathread/' "$seed"
-        else
-            echo "global.retroarch.audio_driver=alsathread" >> "$seed"
-        fi
-        echo "  [batocera] Set RetroArch audio driver in datainit seed"
-    else
-        echo "  [batocera] WARNING: datainit batocera.conf not found, skipping"
-    fi
-
-    local pactl_bin="${overlay_target}/usr/bin/pactl"
-    local pactl_fallback="exec /usr/bin/pactl.real \"\$@\""
-    if [[ -f "$pactl_bin" ]]; then
-        mv "$pactl_bin" "${pactl_bin}.real"
-    else
-        # No real pactl to fall through to; unknown commands become a no-op.
-        pactl_fallback=":"
-    fi
-    cat > "$pactl_bin" << 'PACTL_EOF'
-#!/bin/bash
-# pactl -> amixer wrapper for bcm2835 PWM audio (PSPi)
-# Translates Pipewire/PulseAudio volume commands to amixer.
-# Unknown commands are forwarded to the real pactl binary.
-
-CARD=0
-CONTROL="PCM"
-SINK_NAME="alsa_output.bcm2835"
-
-get_volume() {
-    amixer -c $CARD get "$CONTROL" 2>/dev/null | grep -o '[0-9]*%' | head -1 | tr -d '%'
-}
-
-get_mute() {
-    amixer -c $CARD get "$CONTROL" 2>/dev/null | grep -o '\[on\]\|\[off\]' | head -1
-}
-
-case "$1" in
-    info)
-        echo "Default Sink: ${SINK_NAME}"
-        ;;
-    list)
-        case "$2" in
-            sinks-raw)
-                VOL=$(get_volume)
-                MUTE=$(get_mute)
-                [ "$MUTE" = "[off]" ] && MUTE_VAL=1 || MUTE_VAL=0
-                echo "sink=\"0\" name=\"${SINK_NAME}\" description=\"bcm2835 Headphones\" volume=\"${VOL}\" mute=\"${MUTE_VAL}\""
-                ;;
-            short)
-                [ "$3" = "sinks" ] && echo "0	${SINK_NAME}	ALSA	s16le 2ch 44100Hz	RUNNING"
-                ;;
-            cards-profiles-raw)
-                ;;
-        esac
-        ;;
-    get-default-sink)
-        echo "${SINK_NAME}"
-        ;;
-    set-default-sink|set-card-profile)
-        ;;
-    set-sink-volume)
-        VOL="${3//%/}"
-        amixer -c $CARD set "$CONTROL" "${VOL}%" -q 2>/dev/null
-        ;;
-    set-sink-mute)
-        case "$3" in
-            toggle) amixer -c $CARD set "$CONTROL" toggle -q 2>/dev/null ;;
-            1)      amixer -c $CARD set "$CONTROL" mute -q 2>/dev/null ;;
-            0)      amixer -c $CARD set "$CONTROL" unmute -q 2>/dev/null ;;
-        esac
-        ;;
-    get-sink-mute)
-        MUTE=$(get_mute)
-        [ "$MUTE" = "[off]" ] && echo "Mute: yes" || echo "Mute: no"
-        ;;
-    *)
-        __PACTL_FALLBACK__
-        ;;
-esac
-PACTL_EOF
-    sed -i "s|__PACTL_FALLBACK__|$pactl_fallback|" "$pactl_bin"
-    chmod +x "$pactl_bin"
-    echo "  [batocera] Installed pactl amixer wrapper"
-
     # Seed a Moonlight launcher so the system appears in EmulationStation on
     # first boot without needing a terminal. EmulationStation only lists a
     # system when it has at least one ROM, so this single .moonlight file is
@@ -332,8 +182,7 @@ PACTL_EOF
         echo "  [batocera] WARNING: datainit roms/moonlight not found, skipping Moonlight"
     fi
 
-    echo "  [batocera] Audio fix complete"
-
-    # Mono downmix audio module (see the block comment at the maps above).
+    # Mono downmix stereo module -- the only audio modification in this
+    # variant (see the block comment at the maps above).
     install_audio_module "$overlay_target" "$mnt_boot" "$5"
 }

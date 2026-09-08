@@ -4,8 +4,11 @@ rpi/*/64/
 rpi/*/*.dtbo
 rpi/lcd/linux/
 atmega/firmware/build/
-atmega/firmware/*.hex
-
+scripts/docker/
+*.hex
+*.bin
+*.elf
 # Python caches
 __pycache__/
 *.pyc
+scripts/README.md
