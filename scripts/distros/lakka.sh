@@ -125,10 +125,11 @@ distro_post_patch() {
     local cfg="$overlay_target/etc/retroarch.cfg"
     sed -i 's/menu_swap_ok_cancel_buttons = "false"/menu_swap_ok_cancel_buttons = "true"/'  "$cfg"
     sed -i 's/xmb_layout = "0"/xmb_layout = "2"/'                                          "$cfg"
-    sed -i 's/xmb_menu_color_theme = .*/xmb_menu_color_theme = "2"/'                       "$cfg"
-    sed -i 's/menu_shader_pipeline = .*/menu_shader_pipeline = "0"/'                        "$cfg"
+    sed -i 's/xmb_menu_color_theme = .*/xmb_menu_color_theme = "7"/'                       "$cfg"
+    sed -i 's/menu_shader_pipeline = .*/menu_shader_pipeline = "1"/'                        "$cfg"
     sed -i 's/input_volume_up = "add"/input_volume_up = "volumeup"/'                        "$cfg"
     sed -i 's/input_volume_down = "subtract"/input_volume_down = "volumedown"/'             "$cfg"
+    sed -i 's/input_audio_mute = "f9"/input_audio_mute = "mute"/'                           "$cfg"
 
     # Patched mono-downmix audio module, fetched from PSPi-6-Audio-Modules
     # and installed over the stock driver inside the squashfs.
