@@ -1,7 +1,7 @@
 # Out-of-tree build of the snd-bcm2835 mono-downmix module.
 #
 # Upstream source is fetched and patched at build time. Nothing is vendored.
-# Requires git and patch on the build machine.
+# Requires git on the build machine.
 #
 # Inputs (normally supplied by PSPi-6-Audio-Modules/build.sh, but settable by hand):
 #   UPSTREAM_COMMIT   exact raspberrypi/linux commit matching the target kernel
@@ -14,6 +14,11 @@
 #                     (safe when the target has CONFIG_MODVERSIONS off)
 
 UPSTREAM_REPO   ?= https://github.com/raspberrypi/linux
+
+# Default source pin (rpi-6.18.y era, matches the README verification target).
+# Build orchestration (PSPi-6-Audio-Modules facts files) overrides this per
+# image kernel; a plain on-target make uses this default.
+UPSTREAM_COMMIT ?= 16f1da3c4e94437449d6aa151589ca0ad4b388bb
 UPSTREAM_PATH   := drivers/staging/vc04_services
 
 # The whole vc04_services tree is taken so the driver's relative includes
@@ -49,9 +54,13 @@ upstream/.fetched:
 	  git checkout -q FETCH_HEAD
 	touch $@
 
-upstream/.patched: upstream/.fetched mono_mix.patch
+PATCHES := mono_mix.patch pipewire_hwptr_interpolation.patch
+
+upstream/.patched: upstream/.fetched $(PATCHES)
 	cd upstream && git checkout -q -- $(UPSTREAM_PATH)
-	cd upstream && patch -p1 -s < $(CURDIR)/mono_mix.patch
+	@for p in $(PATCHES); do \
+	  (cd upstream && git apply $(CURDIR)/$$p) || exit 1; \
+	done
 	printf '%s\n%s\n' '$(KBUILD_LINE)' '$(KBUILD_EXTRA)' > $(SRC)/Kbuild
 	touch $@
 

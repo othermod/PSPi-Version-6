@@ -1,0 +1,249 @@
+--- a/drivers/staging/vc04_services/bcm2835-audio/bcm2835-pcm.c
++++ b/drivers/staging/vc04_services/bcm2835-audio/bcm2835-pcm.c
+@@ -49,6 +49,10 @@
+ 	kfree(runtime->private_data);
+ }
+ 
++static bool snd_bcm2835_interp = true;
++module_param_named(interp, snd_bcm2835_interp, bool, 0644);
++MODULE_PARM_DESC(interp, "Interpolate the reported PCM position between GPU notifications (fixes PipeWire underruns on the PWM audio output)");
++
+ void bcm2835_playback_fifo(struct bcm2835_alsa_stream *alsa_stream,
+ 			   unsigned int bytes)
+ {
+@@ -60,6 +64,9 @@
+ 
+ 	if (bytes >= alsa_stream->buffer_size) {
+ 		snd_pcm_stream_lock(substream);
++		write_seqlock(&alsa_stream->pcm_seq);
++		alsa_stream->interpolate_start = 0; /* freeze pointer interpolation */
++		write_sequnlock(&alsa_stream->pcm_seq);
+ 		snd_pcm_stop(substream,
+ 			     alsa_stream->draining ?
+ 			     SNDRV_PCM_STATE_SETUP :
+@@ -73,8 +80,24 @@
+ 	pos %= alsa_stream->buffer_size;
+ 	atomic_set(&alsa_stream->pos, pos);
+ 
+-	alsa_stream->period_offset += bytes;
++	/*
++	 * Publish the confirmed-consumption counter and its time anchor as
++	 * a pair under the seqlock, for two reasons: its spinlock
++	 * serialises this path against the write sites that do hold the
++	 * stream lock (prepare, the start/stop triggers, the abnormal path
++	 * above) - a straggler completion can race any of them - and its
++	 * write section is non-preemptible, so a real-time pointer reader
++	 * can never spin behind a preempted writer. The read side stays
++	 * lock-free, and the stream lock itself must not be taken here: the
++	 * blocking bulk transfer in the write path waits on the same VCHIQ
++	 * thread that delivers completions.
++	 */
++	write_seqlock(&alsa_stream->pcm_seq);
++	atomic_add(bytes, &alsa_stream->consumed_cum);
+ 	alsa_stream->interpolate_start = ktime_get();
++	write_sequnlock(&alsa_stream->pcm_seq);
++
++	alsa_stream->period_offset += bytes;
+ 	if (alsa_stream->period_offset >= alsa_stream->period_size) {
+ 		alsa_stream->period_offset %= alsa_stream->period_size;
+ 		snd_pcm_period_elapsed(substream);
+@@ -118,6 +141,7 @@
+ 	alsa_stream->chip = chip;
+ 	alsa_stream->substream = substream;
+ 	alsa_stream->idx = idx;
++	seqlock_init(&alsa_stream->pcm_seq);
+ 
+ 	err = bcm2835_audio_open(alsa_stream);
+ 	if (err) {
+@@ -177,6 +201,8 @@
+ 
+ 	alsa_stream->period_size = 0;
+ 	alsa_stream->buffer_size = 0;
++	alsa_stream->reported_pos = 0;
++	atomic_set(&alsa_stream->reported_cum, 0);
+ 
+ 	bcm2835_audio_close(alsa_stream);
+ 	alsa_stream->chip->alsa_stream[alsa_stream->idx] = NULL;
+@@ -224,9 +250,14 @@
+ 	alsa_stream->buffer_size = snd_pcm_lib_buffer_bytes(substream);
+ 	alsa_stream->period_size = snd_pcm_lib_period_bytes(substream);
+ 	atomic_set(&alsa_stream->pos, 0);
++	atomic_set(&alsa_stream->reported_cum, 0);
++	alsa_stream->reported_pos = 0;
+ 	alsa_stream->period_offset = 0;
+ 	alsa_stream->draining = false;
++	write_seqlock(&alsa_stream->pcm_seq);
++	atomic_set(&alsa_stream->consumed_cum, 0);
+ 	alsa_stream->interpolate_start = ktime_get();
++	write_sequnlock(&alsa_stream->pcm_seq);
+ 
+ 	return 0;
+ }
+@@ -286,11 +317,20 @@
+ 
+ 	switch (cmd) {
+ 	case SNDRV_PCM_TRIGGER_START:
++		/* re-anchor pointer interpolation at actual stream start */
++		if (snd_bcm2835_interp) {
++			write_seqlock(&alsa_stream->pcm_seq);
++			alsa_stream->interpolate_start = ktime_get();
++			write_sequnlock(&alsa_stream->pcm_seq);
++		}
+ 		return bcm2835_audio_start(alsa_stream);
+ 	case SNDRV_PCM_TRIGGER_DRAIN:
+ 		alsa_stream->draining = true;
+ 		return bcm2835_audio_drain(alsa_stream);
+ 	case SNDRV_PCM_TRIGGER_STOP:
++		write_seqlock(&alsa_stream->pcm_seq);
++		alsa_stream->interpolate_start = 0; /* freeze interpolation */
++		write_sequnlock(&alsa_stream->pcm_seq);
+ 		return bcm2835_audio_stop(alsa_stream);
+ 	default:
+ 		return -EINVAL;
+@@ -303,28 +343,116 @@
+ {
+ 	struct snd_pcm_runtime *runtime = substream->runtime;
+ 	struct bcm2835_alsa_stream *alsa_stream = runtime->private_data;
++	struct snd_pcm_indirect *rec = &alsa_stream->pcm_indirect;
++	int last = atomic_read(&alsa_stream->reported_cum);
++	int confirmed = 0;
++	ktime_t anchor = 0;
+ 	ktime_t now = ktime_get();
++	unsigned int seq;
++
++	/*
++	 * Read the confirmed-consumption counter and its time anchor as a
++	 * pair under the seqlock. A torn pair - a fresh counter with a
++	 * stale anchor - would add a whole extra interval of interpolation
++	 * on top of an already-advanced count, and the monotonic guard
++	 * would lock that overshoot in. The lock-free retry also makes the
++	 * 64-bit anchor safe to read on 32-bit kernels.
++	 */
++	do {
++		seq = read_seqbegin(&alsa_stream->pcm_seq);
++		confirmed = atomic_read(&alsa_stream->consumed_cum);
++		anchor = alsa_stream->interpolate_start;
++	} while (read_seqretry(&alsa_stream->pcm_seq, seq));
+ 
+ 	/* Give userspace better delay reporting by interpolating between GPU
+ 	 * notifications, assuming audio speed is close enough to the clock
+ 	 * used for ktime
+ 	 */
+ 
+-	if ((ktime_to_ns(alsa_stream->interpolate_start)) &&
+-	    (ktime_compare(alsa_stream->interpolate_start, now) < 0)) {
+-		u64 interval =
+-			(ktime_to_ns(ktime_sub(now,
+-				alsa_stream->interpolate_start)));
++	if (alsa_stream->period_size &&
++	    (ktime_to_ns(anchor)) &&
++	    (ktime_compare(anchor, now) < 0)) {
++		u64 interval = ktime_to_ns(ktime_sub(now, anchor));
+ 		u64 frames_output_in_interval =
+ 			div_u64((interval * runtime->rate), 1000000000);
+-		snd_pcm_sframes_t frames_output_in_interval_sized =
+-			-frames_output_in_interval;
+-		runtime->delay = frames_output_in_interval_sized;
++		u64 interp =
++			div_u64(frames_output_in_interval *
++				runtime->frame_bits, 8);
++		int target;
++		int delta;
++
++		if (snd_bcm2835_interp) {
++			/* The interpolated position already accounts for the
++			 * elapsed time, so the delay must not carry the same
++			 * correction: the PCM core computes the reported
++			 * delay as hw_avail + runtime->delay, and counting
++			 * the elapsed-time correction in both terms would
++			 * count it twice.
++			 */
++			runtime->delay = 0;
++		} else {
++			/* stock behavior: staircase pointer, legacy delay ramp */
++			interp = 0;
++			runtime->delay = -(snd_pcm_sframes_t)frames_output_in_interval;
++		}
++
++		/* Clamp the advance to the bytes pushed to the GPU but not
++		 * yet confirmed: hw_ready is pushed-minus-reported, so
++		 * adding reported-minus-confirmed yields pushed-minus-
++		 * confirmed. That is unambiguous even when the ring is
++		 * completely full, which a ring-distance comparison
++		 * against the pushed watermark cannot distinguish from
++		 * empty. Never claim consumption of samples we do not
++		 * hold. The GPU reports consumption through COMPLETE
++		 * messages whose cadence jitters with VideoCore load
++		 * (measured 30-44 ms on a busy system, against a nominal
++		 * 10 ms), and clients such as PipeWire pace their refills
++		 * on the reported position; when a notification is late
++		 * the stock position freezes, userspace sees no free
++		 * space, stops writing, and the firmware-side FIFO runs
++		 * dry: an audible glitch plus the xrun PipeWire reports
++		 * as an error.
++		 */
++		delta = rec->hw_ready + (last - confirmed);
++		if (delta < 0)
++			delta = 0;
++		if (interp > (u64)delta)
++			interp = delta;
++
++		target = confirmed + (int)interp;
++
++		/* Advance the report only forward, and derive it from the
++		 * cumulative counters alone - never from the raw confirmed
++		 * position, which may be stale relative to the counter
++		 * read beside it. A late COMPLETE that corrects actual
++		 * consumption below a previous interpolated report makes
++		 * target <= last; the report then holds until confirmed
++		 * consumption catches up, which also makes toggling the
++		 * interp parameter mid-stream safe. The signed delta is
++		 * correct across the 2^32 wrap of both counters, and it is
++		 * bounded by hw_ready, so a single conditional subtract
++		 * keeps reported_pos inside the buffer.
++		 */
++		delta = target - last;
++		if (delta > 0) {
++			atomic_set(&alsa_stream->reported_cum, target);
++			alsa_stream->reported_pos += delta;
++			if (alsa_stream->reported_pos >= alsa_stream->buffer_size)
++				alsa_stream->reported_pos -= alsa_stream->buffer_size;
++		}
+ 	}
+ 
+-	return snd_pcm_indirect_playback_pointer(substream,
+-		&alsa_stream->pcm_indirect,
+-		atomic_read(&alsa_stream->pos));
++	/*
++	 * Always return the last report - including when the anchor is
++	 * frozen (stopped, or the abnormal completion path) or the stream
++	 * is unprepared - never the raw confirmed position, which can sit
++	 * behind the last report and would be misread by
++	 * snd_pcm_indirect_playback_pointer (its bookkeeping comes from the
++	 * signed delta between successive reports) as a near-full-buffer
++	 * jump.
++	 */
++	return snd_pcm_indirect_playback_pointer(substream, rec,
++		alsa_stream->reported_pos);
+ }
+ 
+ /* operators */
+--- a/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
++++ b/drivers/staging/vc04_services/bcm2835-audio/bcm2835.h
+@@ -8,3 +8,4 @@
+ #include <linux/wait.h>
++#include <linux/seqlock.h>
+ #include <sound/core.h>
+ #include <sound/pcm.h>
+@@ -81,6 +82,11 @@
+ 	unsigned int buffer_size;
+ 	unsigned int period_size;
+ 	ktime_t interpolate_start;
++	atomic_t consumed_cum;		/* cumulative bytes the GPU confirmed (wraps) */
++	atomic_t reported_cum;		/* cumulative bytes last reported (wraps) */
++	unsigned int reported_pos;	/* last reported buffer-relative position */
++	seqlock_t pcm_seq;	/* pairs consumed_cum with interpolate_start and
++				 * serialises the write sites against each other */
+ 
+ 	struct bcm2835_audio_instance *instance;
+ 	int idx;
