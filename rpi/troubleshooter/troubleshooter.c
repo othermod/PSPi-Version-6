@@ -601,6 +601,66 @@ static void wifi_led_cleanup(void)
     if (wifi_led_claimed) wifi_led_set(wifi_link_up() ? 1 : 0);
 }
 
+/* Firmware version protocol (CMD_VERSION; matches the gamepad driver and
+   rpi/firmware). Probed once at startup: the result drives the MUTE tag
+   rendering (button bit vs hardware flag) and the on-screen version label. */
+
+#define CMD_VERSION 0x25
+
+/* CMD_VERSION response frame: 3 magic bytes "PSP", firmware version, 4 raw
+ * bootloader trailer bytes the firmware read from the top of its flash, then
+ * CRC-16-CCITT over the first 8 bytes, high byte then low. Magic + CRC make
+ * the frame self-identifying: firmware predating the version protocol answers
+ * the same read with its normal data packet, which can never validate. */
+#define VERSION_FRAME_LEN 10
+#define VERSION_FRAME_PAYLOAD 8
+#define VERSION_PROBE_ATTEMPTS 3
+#define VERSION_MAGIC_0 0x50  /* 'P' */
+#define VERSION_MAGIC_1 0x53  /* 'S' */
+#define VERSION_MAGIC_2 0x50  /* 'P' */
+#define BOOTLOADER_MARKER_0 0x50  /* 'P' */
+#define BOOTLOADER_MARKER_1 0x53  /* 'S' */
+#define BOOTLOADER_MARKER_2 0x50  /* 'P' */
+
+static uint8_t fw_version = 0;   /* 0 = pre-release firmware, no version protocol */
+static uint8_t bl_version = 0;   /* meaningful only when bl_present */
+static bool bl_present = false;
+
+/* The MCU latches the request in its ~1ms main loop, so a read racing that
+ * loop gets the normal data packet even on current firmware -- retry before
+ * concluding the protocol is absent. The frame CRC is checked regardless of
+ * any data-CRC tolerance: it is what tells a version frame from a packet. */
+static void detect_fw_version(void)
+{
+    static const uint8_t magic[3] = { VERSION_MAGIC_0, VERSION_MAGIC_1, VERSION_MAGIC_2 };
+    static const uint8_t bl_marker[3] = { BOOTLOADER_MARKER_0, BOOTLOADER_MARKER_1, BOOTLOADER_MARKER_2 };
+
+    for (int attempt = 0; attempt < VERSION_PROBE_ATTEMPTS; attempt++) {
+        uint8_t cmd[4] = { CMD_VERSION, 0, 0, 0 };
+        uint8_t buf[VERSION_FRAME_LEN];
+        if (write(i2c_fd, cmd, sizeof cmd) != sizeof cmd) { perror("version cmd"); return; }
+        usleep(10000);
+        ssize_t n = read(i2c_fd, buf, VERSION_FRAME_LEN);
+        if (n == VERSION_FRAME_LEN && memcmp(buf, magic, sizeof magic) == 0) {
+            uint16_t crc = crc16_ccitt(buf, VERSION_FRAME_PAYLOAD);
+            if ((uint8_t)(crc >> 8) == buf[8] && (uint8_t)crc == buf[9]) {
+                fw_version = buf[3];
+                bl_present = memcmp(&buf[4], bl_marker, sizeof bl_marker) == 0;
+                bl_version = bl_present ? buf[7] : 0;
+                break;
+            }
+        }
+        usleep(10000);
+    }
+
+    if (bl_present)
+        printf("controller firmware: v%u, bootloader v%u\n", fw_version, bl_version);
+    else if (fw_version > 0)
+        printf("controller firmware: v%u, no bootloader detected\n", fw_version);
+    else
+        printf("controller firmware: v0 (pre-release firmware detected)\n");
+}
+
 static bool parse_packet(const uint8_t *pkt, PadState *st)
 {
     if (crc16_ccitt(pkt, CRC_LEN) != (uint16_t)((pkt[9] << 8) | pkt[10]))
@@ -1007,6 +1067,24 @@ static void draw_lcd_test(Canvas *c)
     }
 }
 
+/* Boxed firmware-version label, vertically aligned with the BTN1/BTN2 tags
+ * (y=48, 32 tall). "BL -" shows whenever the bootloader can't be read ('-'
+ * is in the font; '?' is not -- the bitmap font is A-Z 0-9 : - / + space). */
+static void draw_fw_label(Canvas *c)
+{
+    char label[24];
+    if (bl_present)
+        snprintf(label, sizeof label, "FW V%u  BL V%u", fw_version, bl_version);
+    else
+        snprintf(label, sizeof label, "FW V%u  BL -", fw_version);
+    const int bw = 176, bh = 32;
+    const int bx = (c->d->w - bw) / 2;
+    const int by = 48;
+    fill_rect(c, bx, by, bw, bh, C_UNPRESSED);
+    rect_outline(c, bx, by, bw, bh, 2, C_FRAME);
+    center_text(c, bx + bw / 2, by + (bh - 14) / 2, label, 2, C_LABEL);
+}
+
 static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_fill)
 {
     clear(c);
@@ -1030,11 +1108,18 @@ static void draw_frame(Canvas *c, const PadState *st, bool audio_on, double pwr_
         draw_leader(c, xl - 14, ty, L_TAG_CX + TAG_W / 2 + 12, -1);
     }
 
+    /* firmware version, aligned with the BTN1/BTN2 row */
+    draw_fw_label(c);
+
     /* bottom row between the sticks: HOME VOL- VOL+ MUTE SEL START */
     draw_tag_rect(c, 198, ROW_Y, 64, 32, "HOME",  st->buttons & BTN_HOME);
     draw_tag_rect(c, 270, ROW_Y, 56, 32, "VOL-",  st->buttons & BTN_VOL_M);
     draw_tag_rect(c, 334, ROW_Y, 56, 32, "VOL+",  st->buttons & BTN_VOL_P);
-    draw_tag_rect(c, 398, ROW_Y, 64, 32, "MUTE",  st->muted);
+    /* MUTE: firmware v1+ reports the button like any other (the OS handles
+     * muting); older firmware mutes in hardware, so the tag tracks the
+     * hardware mute flag instead. */
+    draw_tag_rect(c, 398, ROW_Y, 64, 32, "MUTE",
+                  fw_version >= 1 ? !!(st->buttons & BTN_MUTE) : st->muted);
     draw_tag_rect(c, 470, ROW_Y, 64, 32, "SEL",   st->buttons & BTN_SELECT);
     draw_tag_rect(c, 542, ROW_Y, 64, 32, "START", st->buttons & BTN_START);
 
@@ -1220,6 +1305,7 @@ int main(int argc, char **argv)
     atexit(audio_cleanup);
     atexit(wifi_led_cleanup);   /* no-op unless we claimed the LED */
     if (!i2c_open()) return 1;
+    detect_fw_version();
 
     if (do_probe) { probe(); return 0; }
 
