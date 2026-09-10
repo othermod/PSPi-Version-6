@@ -37,6 +37,12 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     uint8_t brightness;
     #define DATASIZE 11
 
+    // Firmware identity probed at startup via CMD_VERSION.
+    // 0 = pre-release firmware without the version protocol.
+    uint8_t firmware_version = 0;
+    uint8_t bootloader_version = 0;
+    bool bootloader_present = false;
+
     // Default Controller configuration
     uint8_t joystick_count = 1;
     uint32_t dimming_timeout = 0;
@@ -49,7 +55,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     typedef struct {
         union {
             struct Buttons {
-                uint16_t mute:1;         // bit 0  - Unused (Mute)
+                uint16_t mute:1;         // bit 0  - Mute (KEY_MUTE on firmware v1+)
                 uint16_t select:1;        // bit 1  - Back (Select)
                 uint16_t start:1;         // bit 2  - Start
                 uint16_t a:1;            // bit 3  - A
@@ -300,6 +306,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         ioctl(virtual_keyboard_fd, UI_SET_EVBIT, EV_KEY);
         ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEUP);
         ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEDOWN);
+        ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_MUTE);
         ioctl(virtual_keyboard_fd, UI_SET_EVBIT, EV_SW);
         ioctl(virtual_keyboard_fd, UI_SET_SWBIT, SW_MUTE_DEVICE);
 
@@ -416,10 +423,56 @@ void cleanup_resources(void) {
     }
 
     #define CMD_BRIGHTNESS 0x22
+    #define CMD_VERSION 0x25
+
+    // CMD_VERSION response frame (layout owned by firmware config.h): 3 magic
+    // bytes "PSP", firmware version, 4 raw bootloader trailer bytes the
+    // firmware read from the top of its flash, then CRC-16-CCITT over the
+    // first 8 bytes, high byte then low. Magic + CRC make the frame
+    // self-identifying: firmware predating the version protocol answers the
+    // same read with its normal data packet, which can never validate.
+    #define VERSION_FRAME_LEN 10
+    #define VERSION_FRAME_PAYLOAD 8
+    #define VERSION_PROBE_ATTEMPTS 3
+    #define VERSION_MAGIC_0 0x50  /* 'P' */
+    #define VERSION_MAGIC_1 0x53  /* 'S' */
+    #define VERSION_MAGIC_2 0x50  /* 'P' */
+    #define BOOTLOADER_MARKER_0 0x50  /* 'P' */
+    #define BOOTLOADER_MARKER_1 0x53  /* 'S' */
+    #define BOOTLOADER_MARKER_2 0x50  /* 'P' */
 
     static inline void write_i2c_command(int fd, uint8_t cmd, uint8_t value) {
         uint8_t i2c_data[4] = {cmd, value, 0, 0};
         write(fd, i2c_data, 4);
+    }
+
+    // Probe the controller firmware for its version frame. The MCU latches the
+    // request in its ~1ms main loop, so a read racing that loop gets the normal
+    // data packet even on current firmware -- retry before concluding the
+    // protocol is absent. Firmware with no CMD_VERSION always answers with the
+    // data packet, which can never match the magic + CRC, leaving
+    // firmware_version at 0 (pre-release). The frame CRC is always checked,
+    // even with --nocrc: it is what tells a version frame from a data packet.
+    void detect_firmware_version(void) {
+        static const uint8_t magic[3] = { VERSION_MAGIC_0, VERSION_MAGIC_1, VERSION_MAGIC_2 };
+        static const uint8_t bl_marker[3] = { BOOTLOADER_MARKER_0, BOOTLOADER_MARKER_1, BOOTLOADER_MARKER_2 };
+
+        for (int attempt = 0; attempt < VERSION_PROBE_ATTEMPTS; attempt++) {
+            uint8_t buf[VERSION_FRAME_LEN];
+            write_i2c_command(controller_board_fd, CMD_VERSION, 0);
+            usleep(10000);  // give the MCU main loop time to process the command
+            if (read(controller_board_fd, buf, VERSION_FRAME_LEN) == VERSION_FRAME_LEN
+                && memcmp(buf, magic, sizeof(magic)) == 0) {
+                uint16_t crc = compute_crc16_ccitt(buf, VERSION_FRAME_PAYLOAD);
+                if ((uint8_t)(crc >> 8) == buf[8] && (uint8_t)crc == buf[9]) {
+                    firmware_version = buf[3];
+                    bootloader_present = memcmp(&buf[4], bl_marker, sizeof(bl_marker)) == 0;
+                    bootloader_version = bootloader_present ? buf[7] : 0;
+                    return;
+                }
+            }
+            usleep(10000);
+        }
     }
 
     void init_shared_memory(void) {
@@ -672,8 +725,16 @@ void cleanup_resources(void) {
             void update_keyboard_events(void) {
         if (virtual_keyboard_fd < 0) return;
 
-        struct input_event events[4];
+        struct input_event events[5];
         int n = 0;
+
+        // From firmware v1 the mute button no longer toggles the hardware amp
+        // and is reported like any other button, so the OS handles it. Older
+        // firmware mutes in hardware itself; emitting the key there too would
+        // double-handle the press.
+        if (firmware_version >= 1 &&
+            previous_controller_state.buttons.bits.mute != current_controller_data.buttons.bits.mute)
+            EMIT(events, n, EV_KEY, KEY_MUTE, current_controller_data.buttons.bits.mute);
 
         if (previous_controller_state.buttons.bits.vol_plus != current_controller_data.buttons.bits.vol_plus)
             EMIT(events, n, EV_KEY, KEY_VOLUMEUP, current_controller_data.buttons.bits.vol_plus);
@@ -796,6 +857,15 @@ void update_mouse_events(int uinput_fd) {
             parse_command_line_args(argc, argv);
             init_crc16_ccitt_table();
             init_i2c();
+            detect_firmware_version();
+            if (firmware_version > 0) {
+                if (bootloader_present)
+                    printf("Controller firmware: v%u, bootloader v%u\n", firmware_version, bootloader_version);
+                else
+                    printf("Controller firmware: v%u, no bootloader detected\n", firmware_version);
+            } else {
+                printf("Controller firmware: v0 (pre-release firmware detected)\n");
+            }
             init_shared_memory();
             if (autocenter) {
                 sample_axis_offsets();
