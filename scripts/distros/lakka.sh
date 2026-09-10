@@ -130,6 +130,7 @@ distro_post_patch() {
     sed -i 's/input_volume_up = "add"/input_volume_up = "volumeup"/'                        "$cfg"
     sed -i 's/input_volume_down = "subtract"/input_volume_down = "volumedown"/'             "$cfg"
     sed -i 's/input_audio_mute = "f9"/input_audio_mute = "mute"/'                           "$cfg"
+    sed -i 's/input_player1_analog_dpad_mode = "0"/input_player1_analog_dpad_mode = "1"/'   "$cfg"
 
     # Patched mono-downmix audio module, fetched from PSPi-6-Audio-Modules
     # and installed over the stock driver inside the squashfs.
