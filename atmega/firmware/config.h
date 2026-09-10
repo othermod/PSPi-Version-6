@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 3
+#define FIRMWARE_VERSION 1
 #define NORMAL_MODE_LOOP_MS 1       // Main loop interval
 #define SLEEP_MODE_LOOP_MS 5       // Sleep mode loop interval
 #define BTN_DEBOUNCE_LOOPS 10  // Buttons will remain "pressed" for this many loops
@@ -8,11 +8,9 @@
 #define I2C_ADDR 0x10
 #define I2C_IDLE_TRIGGER 200    // Loops before entering idle mode
 #define EEPROM_BRIGHT_ADDR 0
-#define EEPROM_MUTE_ADDR 4
 #define BAT_LOW 1095     // 3.2V
 #define BAT_GOOD 1216    // 3.5V
 #define BRIGHTNESS_DEFAULT 4 // 0-7 are valid
-#define MUTE_DEFAULT false // 0-1 are valid
 #define UPDATE_INTERVAL_REACHED currentTime - lastUpdateTime >= (state.sleeping ? SLEEP_MODE_LOOP_MS : NORMAL_MODE_LOOP_MS)
 
 // Port B pins
@@ -93,8 +91,6 @@
 #define T_L_LB 25    // Low time, low bit
 #define T_L_HB 10    // Low time, high bit
 #define T_OFF 3000   // Reset time
-
-#define READ_MUTE_BUTTON i2cWorking.buttons & 0b0000000000000001
 
 #define LED_FULL_GREEN 255
 #define LED_FULL_ORANGE 0

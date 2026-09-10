@@ -4,12 +4,10 @@
 #include "config.h"
 
 void writeBrightnessToEEPROM();
-void writeMuteStatusToEEPROM();
 
 struct SystemState {
   uint8_t debounceCount[16];
   bool dispPressed;
-  bool mutePressed;
   uint16_t sysVolt;
   uint16_t batVolt;
   uint16_t rpiTimeout;
@@ -130,7 +128,6 @@ void calculateCRC() {
 
 void readEEPROM() {
   uint8_t brightness = EEPROM.read(EEPROM_BRIGHT_ADDR);
-  uint8_t mute = EEPROM.read(EEPROM_MUTE_ADDR);
 
   // Handle freshly flashed atmega (0xFF EEPROM values)
   if (brightness > 7) {
@@ -139,17 +136,6 @@ void readEEPROM() {
   } else {
     i2cWorking.status.brightness = brightness;
   }
-
-  if (mute > 1) {
-    state.mute = MUTE_DEFAULT;  // Default to unmuted
-    writeMuteStatusToEEPROM();  // Save default to EEPROM
-  } else {
-    state.mute = mute;
-  }
-}
-
-void writeMuteStatusToEEPROM() {
-  EEPROM.update(EEPROM_MUTE_ADDR, state.mute);
 }
 
 void writeBrightnessToEEPROM() {
@@ -435,17 +421,6 @@ void heartbeatLED() {
   setBatteryLED();
 }
 
-void checkMuteButton() {
-  if (READ_MUTE_BUTTON) {
-    state.mutePressed = true;
-  } else if (state.mutePressed) { // checks whether a previously pressed button was released. only occurs if mute is not pressed on this loop
-    state.mute = !state.mute;
-    toggleAudioCircuit();
-    state.mutePressed = false;
-    writeMuteStatusToEEPROM();
-  }
-}
-
 void enterSleep() {
   i2cWorking.status.sleeping = true;
   state.sleeping = true;
@@ -644,7 +619,7 @@ void setup() {
   state.crcEnabled = true;
   state.wifiState = 0; // Initialize WiFi LED as disabled. make sure hardware is set
 
-  readEEPROM(); // reads mute and brightness from eeprom. doesnt yet set them in hardware.
+  readEEPROM(); // reads brightness from eeprom. doesnt yet set it in hardware.
 
   Wire.begin(I2C_ADDR);
   Wire.onRequest(onRequest);
@@ -658,7 +633,6 @@ void setup() {
 void normalModeFunctions() {
   readJoysticks();
   readSPIButtons();
-  checkMuteButton();
   checkLeftSwitch();
   checkShutdownButton();
   checkDisplayButton();
