@@ -591,6 +591,8 @@ void checkForInactiveI2C() {
     if (state.idleTimeout == I2C_IDLE_TRIGGER) {
       state.idle = true;
       toggleAudioCircuit();
+      state.wifiState = 0; // Pi stopped talking; LED off until a CMD_WIFI
+      toggleWiFiLED();
     }
   }
 }
