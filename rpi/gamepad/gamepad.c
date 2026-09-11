@@ -11,6 +11,12 @@
 #include <linux/uinput.h>
 #include <linux/input.h>
 #include <time.h>
+#include <net/if.h>
+#include <linux/if.h> // IF_OPER_* operstate constants
+#include <linux/if_link.h> // IFLA_OPERSTATE
+#include <linux/rtnetlink.h>
+#include <sys/socket.h>
+#include <errno.h>
 
 #define DEFAULT_POLLING_DELAY_MS 16000
 #define FAST_POLLING_DELAY_MS 8000
@@ -124,6 +130,7 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
     int virtual_keyboard_fd = -1;
     int virtual_mouse_fd = -1;
     int shared_memory_fd;
+    static int wifi_netlink_fd;
 
     #define BUTTON_CONFIG_STICK 0
     #define BUTTON_CONFIG_TRIGGER 1
@@ -307,8 +314,6 @@ do { (ev)[(cnt)].type = (t); (ev)[(cnt)].code = (c); \
         ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEUP);
         ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_VOLUMEDOWN);
         ioctl(virtual_keyboard_fd, UI_SET_KEYBIT, KEY_MUTE);
-        ioctl(virtual_keyboard_fd, UI_SET_EVBIT, EV_SW);
-        ioctl(virtual_keyboard_fd, UI_SET_SWBIT, SW_MUTE_DEVICE);
 
         struct uinput_user_dev uidev = {0};
         snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "PSPi Keyboard");
@@ -350,6 +355,9 @@ void cleanup_resources(void) {
         }
         if (shared_memory_fd >= 0) {
             close(shared_memory_fd);
+        }
+        if (wifi_netlink_fd >= 0) {
+            close(wifi_netlink_fd);
         }
     }
 
@@ -423,6 +431,7 @@ void cleanup_resources(void) {
     }
 
     #define CMD_BRIGHTNESS 0x22
+    #define CMD_WIFI 0x20
     #define CMD_VERSION 0x25
 
     // CMD_VERSION response frame (layout owned by firmware config.h): 3 magic
@@ -725,7 +734,7 @@ void cleanup_resources(void) {
             void update_keyboard_events(void) {
         if (virtual_keyboard_fd < 0) return;
 
-        struct input_event events[5];
+        struct input_event events[4];
         int n = 0;
 
         // From firmware v1 the mute button no longer toggles the hardware amp
@@ -740,8 +749,6 @@ void cleanup_resources(void) {
             EMIT(events, n, EV_KEY, KEY_VOLUMEUP, current_controller_data.buttons.bits.vol_plus);
         if (previous_controller_state.buttons.bits.vol_minus != current_controller_data.buttons.bits.vol_minus)
             EMIT(events, n, EV_KEY, KEY_VOLUMEDOWN, current_controller_data.buttons.bits.vol_minus);
-        if (previous_controller_state.status_flags.bits.muted != current_controller_data.status_flags.bits.muted)
-            EMIT(events, n, EV_SW, SW_MUTE_DEVICE, current_controller_data.status_flags.bits.muted);
 
         if (n > 0) {
             EMIT(events, n, EV_SYN, SYN_REPORT, 0);
@@ -851,9 +858,198 @@ void update_mouse_events(int uinput_fd) {
                    axis_offset_lx, axis_offset_ly, axis_offset_rx, axis_offset_ry);
         }
 
-        // ---- Main ----
+    // ---- WiFi LED + radio control ----
+
+    // Link state comes from rtnetlink RTM_NEWLINK events (no polling).
+    // LED follows IFLA_OPERSTATE, not ifi_flags: the flags read
+    // "up without running" for both disabled and connecting, so they
+    // cannot tell the states apart, and the network manager re-asserts
+    // IFF_UP right after an admin down.
+    // LED: 0 = default/off, 1 = connected (up), 2 = dormant (associating).
+    // The left switch toggles IFF_UP on wlan0.
+
+    #define WIFI_INTERFACE "wlan0"
+    #define WIFI_MIN_CHANGE_INTERVAL_SEC 30
+    #define WIFI_NL_BUF 16384
+
+    static int      wifi_netlink_fd  = -1;
+    static unsigned wifi_ifindex     = 0;   // 0 = wlan0 not seen yet
+    static int      wifi_led_state   = -1;  // last value sent
+    static int      wifi_radio_prev  = -1;  // last radio state applied
+    static time_t   wifi_radio_last_change = 0;  // monotonic time of last call, 0 = none yet
+
+    static void wifi_send_led(int state) {
+        if (state == wifi_led_state) return;
+        wifi_led_state = state;
+        write_i2c_command(controller_board_fd, CMD_WIFI, (uint8_t)state);
+    }
+
+    static int wifi_msg_operstate(const struct ifinfomsg *ifi, int len) {
+        struct rtattr *rta = IFLA_RTA(ifi);
+        int rem = len - NLMSG_LENGTH(sizeof(struct ifinfomsg));
+        for (; RTA_OK(rta, rem); rta = RTA_NEXT(rta, rem))
+            if (rta->rta_type == IFLA_OPERSTATE)
+                return *(uint8_t *)RTA_DATA(rta);
+        return -1;
+    }
+
+    // Off is the default: any operstate that is neither dormant nor up
+    // (down, notpresent, lowerlayerdown, unknown, ...) means no connection.
+    // A message carrying no operstate attribute (flag-only update) must not
+    // move the LED, so it reports -1 and the caller skips the update.
+    static int wifi_led_from_operstate(const struct ifinfomsg *ifi, int len) {
+        int op = wifi_msg_operstate(ifi, len);
+        if (op == IF_OPER_DORMANT) return 2;
+        if (op == IF_OPER_UP)      return 1;
+        if (op < 0)                return -1;
+        return 0;
+    }
+
+    // Current admin state of wlan0; false if it has no interface.
+    static bool wifi_get_ifup(void) {
+        int sock = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sock < 0) return false;
+
+        struct ifreq ifr = {0};
+        strncpy(ifr.ifr_name, WIFI_INTERFACE, IFNAMSIZ - 1);
+        bool up = (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) &&
+                  (ifr.ifr_flags & IFF_UP);
+        close(sock);
+        return up;
+    }
+
+    // Bring wlan0 up or down. Silently ignores a missing interface.
+    static void wifi_set_radio(bool up) {
+        int sock = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sock < 0) { perror("wifi: socket"); return; }
+
+        struct ifreq ifr = {0};
+        strncpy(ifr.ifr_name, WIFI_INTERFACE, IFNAMSIZ - 1);
+        if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0) {
+            if (up) ifr.ifr_flags |=  IFF_UP;
+            else    ifr.ifr_flags &= ~IFF_UP;
+            if (ioctl(sock, SIOCSIFFLAGS, &ifr) < 0)
+                perror("wifi: SIOCSIFFLAGS");
+        } else if (errno != ENODEV) {
+            perror("wifi: SIOCGIFFLAGS");
+        }
+        close(sock);
+    }
+
+    static const char *wifi_msg_ifname(const struct ifinfomsg *ifi, int len) {
+        struct rtattr *rta = IFLA_RTA(ifi);
+        int rem = len - NLMSG_LENGTH(sizeof(struct ifinfomsg));
+        for (; RTA_OK(rta, rem); rta = RTA_NEXT(rta, rem))
+            if (rta->rta_type == IFLA_IFNAME)
+                return (const char *)RTA_DATA(rta);
+        return NULL;
+    }
+
+    static void wifi_handle_link_msg(const struct nlmsghdr *nh) {
+        const struct ifinfomsg *ifi = NLMSG_DATA(nh);
+
+        if (nh->nlmsg_type == RTM_DELLINK) {
+            if (ifi->ifi_index == (int)wifi_ifindex) {
+                wifi_ifindex = 0;
+                wifi_send_led(0);
+            }
+            return;
+        }
+
+        const char *name = wifi_msg_ifname(ifi, nh->nlmsg_len);
+        bool is_ours = (wifi_ifindex != 0 && ifi->ifi_index == (int)wifi_ifindex)
+                       || (name && strcmp(name, WIFI_INTERFACE) == 0);
+        if (!is_ours) return;
+        wifi_ifindex = ifi->ifi_index;
+        int led = wifi_led_from_operstate(ifi, nh->nlmsg_len);
+        if (led >= 0)
+            wifi_send_led(led);
+    }
+
+    static void wifi_query_state(void) {
+        struct {
+            struct nlmsghdr nlh;
+            struct ifinfomsg ifi;
+        } req = {0};
+        req.nlh.nlmsg_len   = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+        req.nlh.nlmsg_flags = NLM_F_REQUEST;
+        req.nlh.nlmsg_type  = RTM_GETLINK;
+        req.nlh.nlmsg_seq   = 1;
+        req.ifi.ifi_family  = AF_UNSPEC;
+        req.ifi.ifi_index   = (int)wifi_ifindex;
+
+        struct sockaddr_nl kernel = { .nl_family = AF_NETLINK };
+        if (sendto(wifi_netlink_fd, &req, req.nlh.nlmsg_len, 0,
+                   (struct sockaddr *)&kernel, sizeof(kernel)) < 0)
+            perror("wifi: netlink query");
+    }
+
+    static void wifi_tick(void) {
+        bool radio_up = !current_controller_data.status_flags.bits.left_switch;
+        time_t now = monotonic_seconds();
+        if ((int)radio_up != wifi_radio_prev &&
+            (wifi_radio_last_change == 0 || now - wifi_radio_last_change >= WIFI_MIN_CHANGE_INTERVAL_SEC)) {
+            wifi_radio_prev = radio_up;
+            wifi_radio_last_change = now;
+            printf("wifi: radio change to %s at up=%ld epoch=%ld\n",
+                   radio_up ? "on" : "off", (long)now, (long)time(NULL));
+            wifi_set_radio(radio_up);
+        }
+
+        if (wifi_netlink_fd < 0) return;
+
+        char buf[WIFI_NL_BUF];
+        int len;
+        while ((len = recv(wifi_netlink_fd, buf, sizeof(buf), MSG_DONTWAIT)) > 0) {
+            for (struct nlmsghdr *nh = (struct nlmsghdr *)buf;
+                 NLMSG_OK(nh, len);
+                 nh = NLMSG_NEXT(nh, len)) {
+                if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK)
+                    wifi_handle_link_msg(nh);
+            }
+        }
+        // Queue overflow dropped events; resync from the kernel.
+        if (len < 0 && errno == ENOBUFS && wifi_ifindex != 0)
+            wifi_query_state();
+    }
+
+    static void wifi_init(void) {
+        wifi_netlink_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+        if (wifi_netlink_fd < 0) {
+            perror("wifi: netlink socket");
+            return;
+        }
+
+        struct sockaddr_nl local = {
+            .nl_family = AF_NETLINK,
+            .nl_groups = RTMGRP_LINK,
+        };
+        if (bind(wifi_netlink_fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
+            perror("wifi: netlink bind");
+            close(wifi_netlink_fd);
+            wifi_netlink_fd = -1;
+            return;
+        }
+
+        // Adopt the current radio state rather than forcing one. Otherwise a
+        // boot with wifi disabled in software would be driven up by the first
+        // tick, leaving the interface up but never associating.
+        wifi_radio_prev = wifi_get_ifup();
+
+        wifi_ifindex = if_nametoindex(WIFI_INTERFACE);
+        if (wifi_ifindex == 0) {
+            wifi_send_led(0);   // no interface (yet); adopt it if it appears
+            return;
+        }
+        wifi_query_state();
+    }
+
+    // ---- Main ----
 
         int main(int argc, char *argv[]) {
+            // stdout is block-buffered when not a tty; a daemon that never
+            // exits would sit on its startup prints forever.
+            setvbuf(stdout, NULL, _IOLBF, 0);
             parse_command_line_args(argc, argv);
             init_crc16_ccitt_table();
             init_i2c();
@@ -867,6 +1063,7 @@ void update_mouse_events(int uinput_fd) {
                 printf("Controller firmware: v0 (pre-release firmware detected)\n");
             }
             init_shared_memory();
+            wifi_init();
             if (autocenter) {
                 sample_axis_offsets();
             }
@@ -891,6 +1088,8 @@ void update_mouse_events(int uinput_fd) {
 
                 check_for_shutdown_condition();
 
+                wifi_tick();
+
                 if (dimming_timeout) {
                     check_idle_state(controller_board_fd);
                 }
@@ -898,8 +1097,7 @@ void update_mouse_events(int uinput_fd) {
                 switch (input_type) {
                     case INPUT_GAMEPAD:
                         if (previous_controller_state.buttons.raw != current_controller_data.buttons.raw ||
-                            memcmp(&previous_controller_state.left_stick_x, &current_controller_data.left_stick_x, 4) != 0 ||
-                            previous_controller_state.status_flags.bits.muted != current_controller_data.status_flags.bits.muted) {
+                            memcmp(&previous_controller_state.left_stick_x, &current_controller_data.left_stick_x, 4) != 0) {
                             update_gamepad_events(virtual_gamepad_fd);
                             update_keyboard_events();
                         previous_controller_state = current_controller_data;

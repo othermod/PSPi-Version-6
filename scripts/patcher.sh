@@ -189,9 +189,6 @@ build_drivers() {
     echo "Building atmega firmware..."
     ( cd "$PROJECT_DIR/atmega/firmware" && "${as_user[@]}" make all )
 
-    echo "Building wifi monitor..."
-    ( cd "$PROJECT_DIR/rpi/wifi" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
-
     echo "Building troubleshooter..."
     ( cd "$PROJECT_DIR/rpi/troubleshooter" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
 
@@ -538,7 +535,6 @@ patch_image() {
     cp "${base}/gamepad/${BIN}/gamepad"           "$mnt_boot/drivers/gamepad"
     cp "${base}/battery/${BIN}/battery_monitor"   "$mnt_boot/drivers/battery_monitor"
     cp "${base}/rtc/${BIN}/rtc"                   "$mnt_boot/drivers/rtc"
-    cp "${base}/wifi/${BIN}/wifi_monitor"         "$mnt_boot/drivers/wifi_monitor"
     cp "${base}/troubleshooter/${BIN}/troubleshooter" "$mnt_boot/drivers/troubleshooter"
 
     # Method-specific: set up the editable rootfs and register the cleanup trap
@@ -588,7 +584,7 @@ patch_image() {
                      "$rootfs_target/usr/lib/systemd/system/multi-user.target.wants"
 
             local unit
-            for unit in pspi.service pspi-wifi.service; do
+            for unit in pspi.service; do
                 sed "s|__DRIVERS_BASE__|$DRIVERS_BASE|g" \
                     "$CONFIG_DIR/$unit" \
                     > "$rootfs_target/usr/lib/systemd/system/$unit"

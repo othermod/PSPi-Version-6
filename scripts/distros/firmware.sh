@@ -101,10 +101,7 @@ BOOT
 
     # --- Service adjustments. The generic pspi.service has Restart=on-failure;
     # a dead flasher shouldn't be relaunched into the same broken state, so it
-    # becomes a one-shot. pspi-wifi.service is disabled entirely: wifi_monitor
-    # polls the ATmega over the same (bit-banged) bus and would race the
-    # flasher; the battery/wifi monitors have nothing to monitor here anyway
-    # (bootloader mode, no gamepad app running).
+    # becomes a one-shot.
     cat > "$mnt_root/usr/lib/systemd/system/pspi.service" <<'UNIT'
 [Unit]
 Description=PSPi firmware flasher
@@ -118,12 +115,11 @@ Restart=no
 [Install]
 WantedBy=multi-user.target
 UNIT
-    rm -f "$mnt_root/usr/lib/systemd/system/multi-user.target.wants/pspi-wifi.service"
-    echo "  [firmware] pspi.service made one-shot; pspi-wifi.service disabled"
+    echo "  [firmware] pspi.service made one-shot"
 
     # --- This image runs nothing but the flasher. The generic patcher copied
-    # every driver binary (gamepad, battery_monitor, rtc, wifi_monitor,
-    # troubleshooter) into drivers/; remove them so nothing can be started by
+    # every driver binary (gamepad, battery_monitor, rtc, troubleshooter)
+    # into drivers/; remove them so nothing can be started by
     # mistake. The battery module from the stock boot.sh is not loaded either
     # (boot.sh above replaces it wholesale).
     rm -rf "$mnt_boot/drivers"

@@ -56,7 +56,7 @@ distro_post_patch() {
     # like every other driver). The gamepad binary stays on the image but is
     # never executed, so it creates no virtual input devices and gamepad
     # input is not exposed to the OS. Same flow otherwise (battery_monitor,
-    # wifi_monitor via pspi-wifi.service, restart-on-crash). No pspi.conf
+    # restart-on-crash). No pspi.conf
     # parsing: troubleshooter takes no config args — it reads the controller
     # board directly and draws until the power key is held 500 ms (its
     # built-in shutdown) or the system is powered off via the gpio-poweroff
@@ -95,11 +95,6 @@ until [ -e /dev/i2c-1 ]; do sleep 1; done
         fi
     done
 ) &
-
-# On systemd, pspi-wifi.service owns wifi_monitor instead.
-if [ "${PSPI_WIFI_MANAGED:-}" != "1" ]; then
-    ./drivers/wifi_monitor &
-fi
 
 wait
 BOOT

@@ -78,9 +78,4 @@ fi
     done
 ) &
 
-# On systemd, pspi-wifi.service owns wifi_monitor instead.
-if [ "${PSPI_WIFI_MANAGED:-}" != "1" ]; then
-    ./drivers/wifi_monitor &
-fi
-
 wait
