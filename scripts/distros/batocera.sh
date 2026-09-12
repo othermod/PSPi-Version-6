@@ -3,9 +3,10 @@
 # wrapper, no asound.conf) with the prebuilt module from PSPi-6-Audio-Modules
 # added back. The PSPi feeds one audio pin per board, so the patched
 # snd-bcm2835 / rp1_aout downmixes (L+R)/2 and that pin carries the full
-# stereo image; everything else stays exactly as Batocera ships it. Compare
-# with batocera.sh, which additionally rewrites the userspace audio stack
-# (pipewire off, ALSA defaults, retroarch/SDL drivers, pactl wrapper).
+# stereo image; everything else stays exactly as Batocera ships it -- except
+# the stock update mechanism, which is disabled (see disable_stock_updater at
+# the bottom): a stock update would silently un-install PSPi. A PSPi-aware
+# updater is planned.
 PATCH_METHOD="squashfs"
 SQUASHFS_PATH="boot/batocera"
 DRIVERS_BASE="/boot"
@@ -185,4 +186,48 @@ distro_post_patch() {
     # Mono downmix stereo module -- the only audio modification in this
     # variant (see the block comment at the maps above).
     install_audio_module "$overlay_target" "$mnt_boot" "$5"
+
+    disable_stock_updater "$overlay_target"
+}
+
+# The stock Batocera updater is destructive to PSPi: it replaces the patched
+# boot/batocera squashfs with the stock one, and the initrd then deletes every
+# PSPi boot-partition file (drivers/, pspi.conf, boot.sh, pspi overlays) as
+# "stale" -- silently un-installing PSPi. Until a PSPi-aware updater exists,
+# disable both trigger paths:
+#   1) Seed updates.enabled=0 in the datainit batocera.conf so first boot
+#      copies it to /userdata/system/batocera.conf and ES never runs its
+#      post-boot update check. (Only affects fresh flashes; already-booted
+#      devices keep their seeded value.)
+#   2) Stub /usr/bin/batocera-upgrade so ES's manual "CHECK FOR UPDATES"
+#      and any SSH invocation fail with a clear message. The script itself
+#      never reads updates.enabled, so the seed alone is not a block.
+# The original is kept as batocera-upgrade.stock -- the PSPi-aware updater
+# will reuse its download/apply logic.
+disable_stock_updater() {
+    local rootfs="$1"
+
+    echo "  [batocera] Disabling stock update mechanism..."
+    local seed="${rootfs}/usr/share/batocera/datainit/system/batocera.conf"
+    [[ -f "$seed" ]] \
+        || die "[batocera] datainit batocera.conf seed missing"
+    sed -i 's/^updates\.enabled=1$/updates.enabled=0/' "$seed"
+    grep -q '^updates\.enabled=0$' "$seed" \
+        || die "[batocera] failed to set updates.enabled=0 in datainit seed"
+
+    local up="${rootfs}/usr/bin/batocera-upgrade"
+    [[ -f "$up" ]] \
+        || die "[batocera] batocera-upgrade missing from squashfs"
+    mv "$up" "${rootfs}/usr/bin/batocera-upgrade.stock"
+    cat > "$up" <<'STUB'
+#!/bin/sh
+# PSPi: the stock updater would replace the patched rootfs and delete the
+# PSPi boot files. A PSPi-aware updater is in development; the original
+# script is preserved as batocera-upgrade.stock.
+echo "Updates are disabled on PSPi images: the stock Batocera updater" \
+     "would remove the PSPi modifications." >&2
+exit 1
+STUB
+    chmod +x "$up"
+    echo "  [batocera] updates.enabled=0 seeded; batocera-upgrade stubbed"
 }
