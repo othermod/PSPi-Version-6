@@ -78,4 +78,7 @@ dtparam=act_led_activelow=no
 dtoverlay=pspi-audio-zero-kernel6+
 dtoverlay=pspi-lcd-overlay,zero
 
+# Disable power LED
+dtoverlay=gpio-hog,gpio=29
+
 [all]
