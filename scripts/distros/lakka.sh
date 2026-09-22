@@ -227,6 +227,10 @@ distro_post_patch() {
 
     local cfg="$overlay_target/etc/retroarch.cfg"
     sed -i 's/menu_swap_ok_cancel_buttons = "false"/menu_swap_ok_cancel_buttons = "true"/'  "$cfg"
+    # Menu at powersave: the PSPi amp/battery budget benefits more from a
+    # capped menu clock than it loses in navigation latency; games still
+    # get cpu_main_gov=ondemand.
+    sed -i 's/^cpu_menu_gov = .*/cpu_menu_gov = "powersave"/'                               "$cfg"
     sed -i 's/xmb_layout = "0"/xmb_layout = "2"/'                                          "$cfg"
     sed -i 's/xmb_menu_color_theme = .*/xmb_menu_color_theme = "7"/'                       "$cfg"
     sed -i 's/menu_shader_pipeline = .*/menu_shader_pipeline = "1"/'                        "$cfg"
