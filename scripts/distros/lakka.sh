@@ -55,6 +55,109 @@ MODULE_VERMAGIC[cm5]="6.12.66 SMP mod_unload aarch64"
 MODULE_VERMAGIC[zero2]="6.12.66 SMP preempt mod_unload modversions aarch64"
 MODULE_VERMAGIC[zero1]="6.12.66 mod_unload ARMv6 p2v8"
 
+# --- Patched RetroArch binary (retroarch-binaries releases) ---
+# The idle-power work (menu idle mode + alsathread parking, built via the
+# retroarch-binaries repo) lives in the /usr/bin/retroarch that ships in
+# the SYSTEM squashfs. The release is built from the same Lakka tag as the
+# images this file pins, and RETROARCH_BINARIES_TAG (patcher.sh) must be
+# bumped together with TARGET_URL/TARGET_SHA256 -- a binary has no marker
+# tying it to a Lakka build, so the pin is the only pairing guard.
+# RETROARCH_ELF is the readelf "Machine:" value; a wrong-arch artifact must
+# fail the build, not boot.
+declare -A RETROARCH_ASSET RETROARCH_ELF
+
+RETROARCH_ASSET[cm4]="retroarch-RPi4"
+RETROARCH_ASSET[cm5]="retroarch-RPi5"
+RETROARCH_ASSET[zero2]="retroarch-RPi3"
+RETROARCH_ASSET[zero1]="retroarch-RPi"
+
+RETROARCH_ELF[cm4]="AArch64"
+RETROARCH_ELF[cm5]="AArch64"
+RETROARCH_ELF[zero2]="AArch64"
+RETROARCH_ELF[zero1]="ARM"
+
+# Unlike the audio modules (whose only ABI gate, vermagic, lives inside the
+# file), a RetroArch binary carries no marker tying it to a Lakka build --
+# a mismatched binary installs fine and fails (or misbehaves) at boot. The
+# guard is therefore a pinned tag: RETROARCH_BINARIES_TAG must be bumped
+# together with TARGET_URL/TARGET_SHA256 in the same commit.
+RETROARCH_BINARIES_REPO="${RETROARCH_BINARIES_REPO:-othermod/retroarch-binaries}"
+RETROARCH_BINARIES_TAG="${RETROARCH_BINARIES_TAG:-v2026.09.22}"
+
+# Fetch+verify the patched RetroArch binary for <label>. Prints the verified
+# file path on stdout; any verification failure is fatal. Checksums come
+# from the GitHub API, which records a sha256 digest for every release
+# asset -- nothing extra to maintain in the release.
+fetch_retroarch_binary() {
+    local label="$1"
+    [[ -n "${RETROARCH_ASSET[$label]+x}" ]] \
+        || die "[lakka] no retroarch asset defined for target: $label"
+    [[ -n "${RETROARCH_ELF[$label]+x}" ]] \
+        || die "[lakka] no retroarch ELF machine defined for target: $label"
+    local asset="${RETROARCH_ASSET[$label]}"
+    local want_machine="${RETROARCH_ELF[$label]}"
+
+    command -v wget >/dev/null 2>&1 || die "[lakka] wget not found; needed to fetch the retroarch binary"
+    command -v python3 >/dev/null 2>&1 || die "[lakka] python3 not found; needed to parse GitHub release metadata"
+    command -v readelf >/dev/null 2>&1 \
+        || die "[lakka] readelf not found (binutils); needed to verify binary architecture"
+
+    local api_json="$CACHE_DIR/${RETROARCH_BINARIES_TAG}--release.json"
+    mkdir -p "$CACHE_DIR"
+    wget -nv --timeout=30 --tries=1 -O "$api_json" \
+        "https://api.github.com/repos/${RETROARCH_BINARIES_REPO}/releases/tags/${RETROARCH_BINARIES_TAG}" \
+        || die "[lakka] failed to query GitHub release ${RETROARCH_BINARIES_REPO}@${RETROARCH_BINARIES_TAG}"
+
+    local sha256 tag_used
+    read -r sha256 tag_used < <(python3 - "$api_json" "$asset" <<'EOF'
+import json, sys
+with open(sys.argv[1]) as f:
+    rel = json.load(f)
+for a in rel.get("assets", []):
+    if a["name"] == sys.argv[2]:
+        d = a.get("digest", "")
+        if not d.startswith("sha256:"):
+            sys.exit(2)
+        print(d.split(":", 1)[1], rel["tag_name"])
+        sys.exit(0)
+sys.exit(1)
+EOF
+)
+    case $? in
+        0) ;;
+        1) die "[lakka] $asset not found in ${RETROARCH_BINARIES_REPO}@${RETROARCH_BINARIES_TAG}" ;;
+        2) die "[lakka] $asset has no sha256 digest in the GitHub release metadata; cannot verify" ;;
+    esac
+
+    # download_image verifies the cached copy against the digest and
+    # re-downloads on mismatch, so a repointed release invalidates the cache.
+    download_image \
+        "https://github.com/${RETROARCH_BINARIES_REPO}/releases/download/${tag_used}/${asset}" \
+        "$sha256" "${tag_used}--$asset"
+
+    local got
+    got="$(readelf -h "$CACHE_DIR/${tag_used}--$asset" 2>/dev/null \
+        | sed -n 's/.*Machine:[[:space:]]*//p')"
+    [[ "$got" == "$want_machine" ]] \
+        || die "[lakka] $asset ELF machine mismatch: want '$want_machine', got '${got:-none}'"
+
+    echo "$CACHE_DIR/${tag_used}--$asset"
+}
+
+install_retroarch_binary() {
+    local rootfs="$1" label="$2"
+    local bin
+    bin="$(fetch_retroarch_binary "$label")"
+
+    local dest="$rootfs/usr/bin/retroarch"
+    [[ -f "$dest" ]] \
+        || die "[lakka] stock retroarch missing at $dest (image layout drift)"
+    cp "$bin" "$dest" \
+        || die "[lakka] failed to install $(basename "$bin") over $dest"
+    chmod 755 "$dest"
+    echo "  [lakka] Installed patched retroarch ($(basename "$bin"), sha256-verified)"
+}
+
 install_audio_module() {
     local rootfs="$1" mnt_boot="$2" label="$3"
     local ko
@@ -131,6 +234,10 @@ distro_post_patch() {
     sed -i 's/input_volume_down = "subtract"/input_volume_down = "volumedown"/'             "$cfg"
     sed -i 's/input_audio_mute = "f9"/input_audio_mute = "mute"/'                           "$cfg"
     sed -i 's/input_player1_analog_dpad_mode = "0"/input_player1_analog_dpad_mode = "1"/'   "$cfg"
+
+    # Patched RetroArch binary (idle-power work) from retroarch-binaries,
+    # fetched, sha256- and arch-verified, installed over the stock one.
+    install_retroarch_binary "$overlay_target" "$5"
 
     # Patched mono-downmix audio module, fetched from PSPi-6-Audio-Modules
     # and installed over the stock driver inside the squashfs.
