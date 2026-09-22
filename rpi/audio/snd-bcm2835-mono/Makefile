@@ -54,7 +54,7 @@ upstream/.fetched:
 	  git checkout -q FETCH_HEAD
 	touch $@
 
-PATCHES := mono_mix.patch pipewire_hwptr_interpolation.patch
+PATCHES := mono_mix.patch pipewire_hwptr_interpolation.patch pcm_pause.patch
 
 upstream/.patched: upstream/.fetched $(PATCHES)
 	cd upstream && git checkout -q -- $(UPSTREAM_PATH)

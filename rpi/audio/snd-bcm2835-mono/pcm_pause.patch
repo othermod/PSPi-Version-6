@@ -1,0 +1,31 @@
+--- a/drivers/staging/vc04_services/bcm2835-audio/bcm2835-pcm.c
++++ b/drivers/staging/vc04_services/bcm2835-audio/bcm2835-pcm.c
+@@ -12,7 +12,8 @@
+ static const struct snd_pcm_hardware snd_bcm2835_playback_hw = {
+ 	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+ 		 SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
+-		 SNDRV_PCM_INFO_SYNC_APPLPTR | SNDRV_PCM_INFO_BATCH),
++		 SNDRV_PCM_INFO_SYNC_APPLPTR | SNDRV_PCM_INFO_BATCH |
++		 SNDRV_PCM_INFO_PAUSE),
+ 	.formats = SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S16_LE,
+ 	.rates = SNDRV_PCM_RATE_CONTINUOUS | SNDRV_PCM_RATE_8000_192000,
+ 	.rate_min = 8000,
+@@ -332,6 +333,18 @@
+ 		alsa_stream->interpolate_start = 0; /* freeze interpolation */
+ 		write_sequnlock(&alsa_stream->pcm_seq);
+ 		return bcm2835_audio_stop(alsa_stream);
++	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
++		write_seqlock(&alsa_stream->pcm_seq);
++		alsa_stream->interpolate_start = 0; /* freeze interpolation */
++		write_sequnlock(&alsa_stream->pcm_seq);
++		return bcm2835_audio_stop(alsa_stream);
++	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
++		if (snd_bcm2835_interp) {
++			write_seqlock(&alsa_stream->pcm_seq);
++			alsa_stream->interpolate_start = ktime_get();
++			write_sequnlock(&alsa_stream->pcm_seq);
++		}
++		return bcm2835_audio_start(alsa_stream);
+ 	default:
+ 		return -EINVAL;
+ 	}
