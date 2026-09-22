@@ -8,7 +8,7 @@
  };
  
  static inline void aout_reg_wr(struct rp1_aout *ao, unsigned int offset, u32 val)
-@@ -261,6 +262,54 @@
+@@ -261,6 +262,55 @@
  	.startup	= rp1_aout_startup,
  	.hw_params	= rp1_aout_hw_params,
  	.trigger	= rp1_aout_trigger,
@@ -46,6 +46,7 @@
 + */
 +static const struct snd_pcm_hardware rp1_aout_pcm_hardware = {
 +	.info = SNDRV_PCM_INFO_INTERLEAVED,
++	.formats = SNDRV_PCM_FMTBIT_S16_LE,
 +	.periods_min = 2,
 +	.periods_max = UINT_MAX,
 +	.period_bytes_min = 256,
