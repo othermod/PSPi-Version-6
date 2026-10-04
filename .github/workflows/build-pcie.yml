@@ -5,9 +5,15 @@ on:
   push:
     paths:
       - 'rpi/pcie/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   pull_request:
     paths:
       - 'rpi/pcie/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   workflow_dispatch:
 
 jobs:
@@ -18,18 +24,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y device-tree-compiler make
-
-      - name: Build overlay
-        run: |
-          cd rpi/pcie
-          make
+      - name: Build
+        uses: ./.github/actions/make
+        with:
+          target: pcie
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pcie
-          path: rpi/pcie/*.dtbo
+          path: out/pcie/*.dtbo

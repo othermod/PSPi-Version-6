@@ -1,0 +1,28 @@
+name: Make in build container
+description: Build the toolchain image (with layer caching) and run a root Makefile target in it
+
+inputs:
+  target:
+    description: Root Makefile target to build
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@v3
+
+    - name: Build toolchain image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/amd64
+        tags: pspi-builder
+        load: true
+        cache-from: type=gha
+        # Parallel jobs write the same cache; a rejected write only means a
+        # colder cache next run, so it must not fail the build
+        cache-to: type=gha,mode=max,ignore-error=true
+
+    - name: Build ${{ inputs.target }}
+      shell: bash
+      run: make ${{ inputs.target }} SKIP_IMAGE=1
