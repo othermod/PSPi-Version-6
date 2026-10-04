@@ -60,7 +60,7 @@ set -euo pipefail
 #   die <msg>                     - print to stderr and exit
 #   PROJECT_DIR                   - repository root
 #   CONFIG_DIR                    - scripts/config
-#   DRIVER_BINARIES_DIR           - --driver-binaries path, empty when building locally
+#   DRIVER_BINARIES_DIR           - --driver-binaries path, or out/ when built locally
 #   detect_partition <img> <n>    - prints "<offset_bytes> <size_bytes>"
 #   attach_partition <img> <n>    - prints a bounded loop device path
 #   set_input_mouse <mnt_boot>
@@ -174,28 +174,12 @@ build_drivers() {
              "Run via sudo from your normal user, or install the core for root."
     fi
 
-    echo "Building gamepad..."
-    ( cd "$PROJECT_DIR/rpi/gamepad" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
-
-    echo "Building battery monitor..."
-    ( cd "$PROJECT_DIR/rpi/battery" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
-
-    echo "Building rtc..."
-    ( cd "$PROJECT_DIR/rpi/rtc" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
-
-    echo "Building firmware updater..."
-    ( cd "$PROJECT_DIR/rpi/firmware" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
-
-    echo "Building atmega firmware..."
-    ( cd "$PROJECT_DIR/atmega/firmware" && "${as_user[@]}" make all )
-
-    echo "Building troubleshooter..."
-    ( cd "$PROJECT_DIR/rpi/troubleshooter" && "${as_user[@]}" make 32 && "${as_user[@]}" make 64 )
-
-    for overlay in audio lcd pcie; do
-        echo "Building $overlay overlay..."
-        ( cd "$PROJECT_DIR/rpi/$overlay" && "${as_user[@]}" make clean && "${as_user[@]}" make all )
-    done
+    # NATIVE=1 builds with the host toolchain rather than the container. To
+    # build in the container instead, run `make` first and pass
+    # --driver-binaries out.
+    echo "Building drivers..."
+    "${as_user[@]}" make -C "$PROJECT_DIR" NATIVE=1 all || die "Driver build failed"
+    DRIVER_BINARIES_DIR="$PROJECT_DIR/out"
 }
 
 download_via_torrent() {

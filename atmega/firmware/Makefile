@@ -8,8 +8,9 @@ DATA_SIZE = 7164
 # Firmware version byte, parsed from config.h
 FW_VERSION = $(shell sed -n 's/^[[:space:]]*#define[[:space:]]\+FIRMWARE_VERSION[[:space:]]\+\([0-9]\+\).*/\1/p' config.h)
 
-# Verify Arduino AVR core is installed before doing anything
-ARDUINO_AVR = $(lastword $(sort $(wildcard $(HOME)/.arduino15/packages/arduino/hardware/avr/*)))
+# Arduino AVR core. Set by the build container; otherwise use the newest
+# version installed under ~/.arduino15
+ARDUINO_AVR ?= $(lastword $(sort $(wildcard $(HOME)/.arduino15/packages/arduino/hardware/avr/*)))
 
 ifeq ($(ARDUINO_AVR),)
 ifneq ($(MAKECMDGOALS),clean)
