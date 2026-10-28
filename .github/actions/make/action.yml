@@ -13,6 +13,11 @@ runs:
 
     - name: Build toolchain image
       uses: docker/build-push-action@v6
+      env:
+        # v6 uploads a <repo>~<id>.dockerbuild build-record artifact per build;
+        # build-images.yml collects artifacts with download-artifact pattern '*'
+        # and v4 of that action fails to download them, breaking collect-artifacts
+        DOCKER_BUILD_RECORD_UPLOAD: false
       with:
         context: .
         platforms: linux/amd64
