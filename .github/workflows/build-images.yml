@@ -148,7 +148,7 @@ jobs:
             squashfs-tools \
             e2fsprogs \
             zerofree \
-            qemu-user-static \
+            qemu-user-binfmt \
             binfmt-support \
             gcc-12-aarch64-linux-gnu \
             gcc-12-arm-linux-gnueabihf \
