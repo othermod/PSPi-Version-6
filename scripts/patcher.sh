@@ -229,27 +229,48 @@ download_image() {
     echo >&2 "  Downloading $compressed..."
     # The torrent fallback adds little on shared CI: its webseed typically
     # shares a host with the direct URL, and peer swarms are unreachable from
-    # cloud runners, so exhausting DOWNLOAD_ATTEMPTS here is the main path to
-    # success for a slow or rate-limiting mirror (observed with Recalbox:
-    # one of four concurrent image pulls got through at 2 attempts, three
-    # fell into a webseedless torrent).
+    # cloud runners, so the direct path is the main path and must survive
+    # dropouts: every attempt resumes the partial under $compressed.part with
+    # an HTTP Range request instead of restarting from byte 0. The partial
+    # also survives across runs (only the final name is cache-checked), so an
+    # aborted local build resumes where it left off. A partial is discarded
+    # only when it proves wrong:
+    #   - a checksum mismatch on a RESUMED file may be a splice of two
+    #     upstream versions (upstream moved mid-download); one clean restart
+    #     is the only retry that can change that outcome
+    #   - a checksum mismatch on a FRESH download means upstream moved under
+    #     a fixed URL; re-downloading returns the same bytes, so stop and let
+    #     the pinned-torrent / re-pin handling below take over
+    local partial="$cached.part"
     local attempts="$DOWNLOAD_ATTEMPTS"
-    local attempt actual_sha delay ok=0
+    local attempt actual_sha delay ok=0 drift=0
     for ((attempt = 1; attempt <= attempts; attempt++)); do
-        # Retry only incomplete transfers; a checksum failure is fatal below,
-        # never a retry (re-downloading re-fetches the same bytes).
-        if wget -nv --timeout=60 --tries=1 -O "$cached" "$url"; then
-            ok=1
-            break
+        local resumed=0
+        if [[ -s "$partial" ]]; then resumed=1; fi
+        if wget -nv --timeout=60 --tries=1 -c -O "$partial" "$url"; then
+            actual_sha="$(sha256sum "$partial" | awk '{print $1}')"
+            if [[ -z "$sha256" || "$actual_sha" == "$sha256" ]]; then
+                # The cache name only ever holds verified bytes
+                mv -f "$partial" "$cached"
+                ok=1
+                break
+            fi
+            if (( resumed )); then
+                echo >&2 "  Download attempt $attempt/$attempts: SHA256 mismatch on a resumed file; restarting from scratch..."
+                rm -f "$partial"
+            else
+                rm -f "$partial"
+                drift=1
+                break
+            fi
         fi
-        rm -f "$cached"
         if ((attempt < attempts)); then
             delay=$((attempt * 15))
             echo >&2 "  Download attempt $attempt/$attempts failed. Retrying in ${delay}s..."
             sleep "$delay"
         fi
     done
-    if [[ "$ok" != 1 ]]; then
+    if [[ "$ok" != 1 && "$drift" != 1 ]]; then
         if [[ -n "$torrent" ]]; then
             # Direct download failed every attempt (bad mirror, TLS error,
             # outage). The torrent's web seed/pieces ride a different path,
