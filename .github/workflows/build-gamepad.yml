@@ -5,9 +5,15 @@ on:
   push:
     paths:
       - 'rpi/gamepad/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   pull_request:
     paths:
       - 'rpi/gamepad/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   workflow_dispatch:
 
 jobs:
@@ -18,21 +24,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
-
       - name: Build
-        run: |
-          cd rpi/gamepad
-          make 32
-          make 64
+        uses: ./.github/actions/make
+        with:
+          target: gamepad
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: gamepad
-          path: |
-            rpi/gamepad/32
-            rpi/gamepad/64
+          path: out/gamepad/

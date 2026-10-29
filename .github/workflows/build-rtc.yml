@@ -5,9 +5,15 @@ on:
   push:
     paths:
       - 'rpi/rtc/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   pull_request:
     paths:
       - 'rpi/rtc/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   workflow_dispatch:
 
 jobs:
@@ -18,21 +24,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
-
       - name: Build
-        run: |
-          cd rpi/rtc
-          make 32
-          make 64
+        uses: ./.github/actions/make
+        with:
+          target: rtc
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rtc
-          path: |
-            rpi/rtc/32
-            rpi/rtc/64
+          path: out/rtc/

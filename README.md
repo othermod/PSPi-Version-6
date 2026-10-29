@@ -58,6 +58,15 @@ Having issues? Visit the [Troubleshooting Wiki Page](https://github.com/othermod
 
 The PSPi 6 board development is complete and boards are shipping. I do sometimes make minor changes to the board, but nothing that affects the important features. I'm continually improving documentation and working on guides to help users get the most out of their PSPi 6.
 
+## Building from Source
+
+The drivers, overlays, and ATmega firmware build inside a container, so the only requirement is Docker or Podman:
+
+```bash
+make            # build everything into out/
+make gamepad    # or build a single component
+```
+
 ## Community and Contributions
 
 While the PSPi 6 is primarily my personal project, I welcome contributions from the community. Whether you're a coder, designer, or just have great ideas, your input can help make the PSPi 6 even better. Here's how you can contribute:

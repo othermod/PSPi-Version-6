@@ -5,39 +5,32 @@ on:
   push:
     paths:
       - 'rpi/troubleshooter/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   pull_request:
     paths:
       - 'rpi/troubleshooter/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   workflow_dispatch:
 
 jobs:
   build:
-    # Same toolchain as the gamepad: the troubleshooter now drives the kernel
-    # DRM/KMS ioctl UAPI directly (no libdrm) and links fully static, so its
-    # 32-bit build is the plain armel (armv6 + softfp) cross-compile used by
-    # every other 32-bit PSPi driver -- no sysroot, no fetched packages, no
-    # multiarch setup. Runs on the standard amd64 runner.
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu libc6-dev-armel-cross libc6-dev-arm64-cross make
-
       - name: Build
-        run: |
-          cd rpi/troubleshooter
-          make 32
-          make 64
+        uses: ./.github/actions/make
+        with:
+          target: troubleshooter
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: troubleshooter
-          path: |
-            rpi/troubleshooter/32
-            rpi/troubleshooter/64
+          path: out/troubleshooter/

@@ -4,10 +4,16 @@ on:
   workflow_call:
   push:
     paths:
-      - 'atmega/firmware/**'
+      - 'atmega/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   pull_request:
     paths:
-      - 'atmega/firmware/**'
+      - 'atmega/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   workflow_dispatch:
 
 jobs:
@@ -18,35 +24,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install AVR toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-avr binutils-avr avr-libc
-
-      - name: Install arduino-cli
-        uses: arduino/setup-arduino-cli@v2
-
-      - name: Install Arduino AVR core
-        run: arduino-cli core install arduino:avr
-
       - name: Build
-        run: |
-          cd atmega
-          make all
+        uses: ./.github/actions/make
+        with:
+          target: atmega
 
-      # Stage the three hexes flat so the artifact root contains them directly.
-      # upload-artifact v4 roots the artifact at the least common ancestor of
-      # the paths, which scripts/distros/firmware.sh relies on being flat
-      # (it reads $DRIVER_BINARIES_DIR/atmega-firmware/firmware.hex).
-      - name: Stage artifacts
-        run: |
-          mkdir -p artifact-staging
-          cp atmega/firmware/firmware.hex artifact-staging/
-          cp atmega/bootloader/bootloader.hex artifact-staging/
-          cp atmega/combined.hex artifact-staging/
-
+      # The artifact root must contain the three hexes directly:
+      # scripts/distros/firmware.sh reads
+      # $DRIVER_BINARIES_DIR/atmega-firmware/firmware.hex.
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: atmega-firmware
-          path: artifact-staging/*
+          path: out/atmega-firmware/*

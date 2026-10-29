@@ -5,9 +5,15 @@ on:
   push:
     paths:
       - 'rpi/audio/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   pull_request:
     paths:
       - 'rpi/audio/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/actions/make/**'
   workflow_dispatch:
 
 jobs:
@@ -18,18 +24,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y device-tree-compiler make
-
-      - name: Build overlays
-        run: |
-          cd rpi/audio
-          make
+      - name: Build
+        uses: ./.github/actions/make
+        with:
+          target: audio
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: audio
-          path: rpi/audio/*.dtbo
+          path: out/audio/*.dtbo
