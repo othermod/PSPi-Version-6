@@ -190,8 +190,14 @@ download_via_torrent() {
     # --check-integrity: piece-verify whatever exists (resumes a partial file)
     # --seed-time=0: exit once complete -- this is a fetch, not a seeder
     # --file-allocation=none: avoid preallocating multi-GB placeholders
+    # --bt-stop-timeout: when the webseed shares a host with the failed direct
+    #   URL and no peers are reachable (GitHub runners take no inbound
+    #   connections, so a NAT'd seeder can never serve them), aria2 would
+    #   otherwise spin at 0% until the job's 6-hour timeout. Bail after 10
+    #   idle minutes and let the build fail cleanly instead.
     aria2c --seed-time=0 --continue=true --allow-overwrite=true \
            --check-integrity=true --file-allocation=none \
+           --bt-stop-timeout=600 --connect-timeout=30 --timeout=60 \
            --dir="$CACHE_DIR" "$torrent" 1>&2
 }
 
@@ -221,19 +227,18 @@ download_image() {
     fi
 
     echo >&2 "  Downloading $compressed..."
-    # With a torrent fallback configured, cap direct attempts at 2: a dead
-    # mirror (expired cert, outage) fails fast into the torrent -- 15s of
-    # backoff instead of 150s -- while still riding out one transient blip.
-    # Never raises attempts above DOWNLOAD_ATTEMPTS if it was set lower.
+    # The torrent fallback adds little on shared CI: its webseed typically
+    # shares a host with the direct URL, and peer swarms are unreachable from
+    # cloud runners, so exhausting DOWNLOAD_ATTEMPTS here is the main path to
+    # success for a slow or rate-limiting mirror (observed with Recalbox:
+    # one of four concurrent image pulls got through at 2 attempts, three
+    # fell into a webseedless torrent).
     local attempts="$DOWNLOAD_ATTEMPTS"
-    if [[ -n "$torrent" && "$DOWNLOAD_ATTEMPTS" -gt 2 ]]; then
-        attempts=2
-    fi
     local attempt actual_sha delay ok=0
     for ((attempt = 1; attempt <= attempts; attempt++)); do
         # Retry only incomplete transfers; a checksum failure is fatal below,
         # never a retry (re-downloading re-fetches the same bytes).
-        if wget -nv --timeout=30 --tries=1 -O "$cached" "$url"; then
+        if wget -nv --timeout=60 --tries=1 -O "$cached" "$url"; then
             ok=1
             break
         fi
